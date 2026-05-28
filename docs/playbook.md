@@ -21,6 +21,8 @@ The single source of truth for **patterns judged reusable** after solving a hard
 | `error-envelope` `taxonomy` `error-code-enum` `hint-with-action` | [6. Stable error envelope with error_code enum + actionable hint](#6-stable-error-envelope-with-error_code-enum--actionable-hint) | Tool ok=false response = `{error_code, stage, message, hint, retryable}`. Snapshot-test the envelope shape so callers can branch on it |
 | `slug-sanitize` `path-safety` `collection-name` `suggested-slug` | [7. Sanitize external slugs + return a suggested_slug on violation](#7-sanitize-external-slugs--return-a-suggested_slug-on-violation) | Any user-provided ID that becomes a path component or Chroma collection name must pass `^[a-zA-Z0-9_-]{1,64}$`. On violation, INVALID_INPUT envelope's `hint` includes a transliteration / hash-fallback suggested value |
 | `capability-cards` `structured-context` `ssot-yaml` `llm-grounding` | [8. Capability cards YAML as structured product context SSOT](#8-capability-cards-yaml-as-structured-product-context-ssot) | For accuracy-critical retrieval/scoring, freeform brief drifts; structured YAML with `schema_version` + pydantic SSOT keeps scoring reproducible and supports `draft → human edit → ingest` lifecycle |
+| `schema-drift` `pydantic-ssot` `snapshot-test` `schema-version-bump` | [9. JSON Schema snapshot drift test forces SCHEMA_VERSION discipline](#9-json-schema-snapshot-drift-test-forces-schema_version-discipline) | Lock `Model.model_json_schema()` against a committed snapshot file. Any drift fails CI with a one-liner refresh command; refresh requires bumping `SCHEMA_VERSION` in the same commit |
+| `idempotent-upsert` `content-derived-ids` `vector-store` `re-ingest` | [10. Content-derived stable chunk IDs make re-ingest in-place](#10-content-derived-stable-chunk-ids-make-re-ingest-in-place) | When you upsert structured records into a vector store, derive each chunk's id from its content position (`cap:{i}:{name}`, `trigger:{i}`, ...) so re-ingest of the same source updates rows instead of appending duplicates |
 
 When entries grow, re-sort by tag alphabetical order. Remove only when a pattern is invalidated (and record why).
 
@@ -108,6 +110,19 @@ For a `check_runtime`-style preflight tool, expose a separate path that *does* t
 **Why it works**: Python imports are cached per module. As long as the trigger point is inside a function that the import-time path doesn't call, deferring is free. The test catches any regression where someone adds an inadvertent module-top heavy import.
 
 **Reusable in**: Any stdio / IPC-based server hosted in the same process as expensive ML. Also applicable to CLI tools where `--help` should be instant.
+
+**Fixture pitfall — don't snapshot+restore sys.modules**: The naive cold-start fixture pattern is "snapshot `set(sys.modules)` at setup; on teardown pop everything not in the snapshot." It looks correct but breaks subtly: pydantic exposes `RootModel` via `__getattr__` lazy import AND caches the attribute on the parent `pydantic` package. Once cached, `from pydantic import RootModel` no longer re-triggers the lazy load — but the snapshot teardown has already popped `pydantic.root_model` from sys.modules. The next test's `mcp.types` re-import (which executes `class JSONRPCMessage(RootModel[...])` at module body) crashes with `KeyError: 'pydantic.root_model'` inside pydantic's `create_generic_submodel`. Same trap exists for any package that combines lazy `__getattr__` + parent-package attribute caching. Instead, **whitelist the prefixes you actually want to reset** (`event_intel.*` + the forbidden heavy modules) and leave infrastructure alone:
+
+```python
+@pytest.fixture
+def fresh_sys_modules():
+    yield
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+```
+
+See `tests/test_mcp_cold_start.py` and `docs/lesson-learned.md` (2026-05-28 entry).
 
 **Linked lesson**: (bd-coldcall-agent's Phase 14C-B documented the failure mode of the alternative architecture — process separation. We adopted lazy-load + cold-start guard as the simpler v0 solution.)
 
@@ -285,6 +300,102 @@ The optional `product_brief.md` is a *generated view* for human reading — neve
 **Why it works**: Each field is a deterministic input to scoring (capability keywords boost retrieval; bad_fit drives penalty; competitors trigger exclusion). Reproducibility comes from `schema_version` — changing the schema requires a bump and a migration plan. Authoring friction stays low because the LLM drafts most of it.
 
 **Reusable in**: Any LLM application where retrieval / scoring / matching depends on a structured "what we offer" frame. ABM tools, sales intelligence, BD discovery, recommender systems with editorial input.
+
+---
+
+## 9. JSON Schema snapshot drift test forces SCHEMA_VERSION discipline
+
+**Tags**: `schema-drift` `pydantic-ssot` `snapshot-test` `schema-version-bump`
+
+**Problem**: A pydantic model becomes the SSOT for some structured user content (yaml / json config / API payload). Over months, contributors add / rename / re-type fields without bumping `SCHEMA_VERSION`. Old user content silently starts failing in obscure ways. Downstream code (`if cards.schema_version == 1: ...`) keeps running against drifted shapes.
+
+**Solution**: Export the model's JSON Schema once, commit it as `schema_snapshot.json`, and write a test that re-exports + compares:
+
+```python
+# In cards/schema.py
+SCHEMA_VERSION = 1
+
+class CapabilityCards(BaseModel):
+    schema_version: Literal[1] = 1
+    ...
+
+# Snapshot generation (one-time + on each intentional bump)
+# event-intel export-schema --out src/event_intel/cards/schema_snapshot.json
+
+# In tests/test_cards_schema_drift.py
+def test_schema_snapshot_matches_current_model():
+    snapshot = _SNAPSHOT_PATH.read_text(encoding="utf-8").strip()
+    current = json.dumps(
+        CapabilityCards.model_json_schema(),
+        indent=2, sort_keys=True, ensure_ascii=False,
+    ).strip()
+    assert snapshot == current, (
+        "Schema drifted. If intentional:\n"
+        "  1. Bump SCHEMA_VERSION in cards/schema.py\n"
+        "  2. event-intel export-schema --out src/event_intel/cards/schema_snapshot.json\n"
+        "  3. Re-run pytest."
+    )
+
+def test_schema_version_is_one():
+    schema = CapabilityCards.model_json_schema()
+    assert schema["properties"]["schema_version"].get("const") == 1
+```
+
+The drift test failure message itself is the migration instruction. Contributors can't sneak in a field rename — the snapshot diff is loud and the refresh path is documented.
+
+**Why it works**: `model_json_schema()` is deterministic per pydantic version + model definition. `sort_keys=True` removes dict-ordering noise. The literal `schema_version: Literal[1]` makes pydantic emit `const: 1` in the schema, so accidental version mismatch surfaces in the drift test too (`test_schema_version_is_one`). Refresh is one CLI call (`event-intel export-schema --out ...`), so the friction is low enough that nobody is tempted to delete the test.
+
+**Caveats**: Pydantic version upgrades can change schema emission (added optional keys, defaults, etc.) and force a refresh that isn't a real schema change. Document this in the test's failure message so the next person knows whether to bump `SCHEMA_VERSION` or just refresh. The snapshot file is small (~5 KB) and lives next to the model — no separate fixtures dir.
+
+**Reusable in**: Any pydantic-as-SSOT scenario where humans hand-write the source content (yaml configs, capability cards, API request payloads, plugin manifests). Especially valuable when the schema is consumed across processes or projects.
+
+---
+
+## 10. Content-derived stable chunk IDs make re-ingest in-place
+
+**Tags**: `idempotent-upsert` `content-derived-ids` `vector-store` `re-ingest`
+
+**Problem**: A user edits `capability_cards.yaml`, re-runs `event-intel ingest --cards ...`. Naive ingest generates fresh `uuid4()` ids for each chunk → Chroma `upsert` treats them as new rows → collection grows linearly with every re-ingest → retrieval precision collapses (same capability returned 4x with slightly different vectors after 4 ingests).
+
+**Solution**: Derive each chunk's id from its position in the structured input, NOT from random uuid:
+
+```python
+# cards/ingest.py — flatten yields stable ids per logical role + index
+chunks.append(_Chunk(id="product:summary", text=..., ...))
+
+for i, cap in enumerate(cards.capabilities):
+    chunks.append(_Chunk(id=f"cap:{i}:{cap.name}", text=..., ...))
+
+chunks.append(_Chunk(id="ideal_customer:industries", text=..., ...))
+chunks.append(_Chunk(id="ideal_customer:signals",    text=..., ...))
+if ic.geo:
+    chunks.append(_Chunk(id="ideal_customer:geo",    text=..., ...))
+
+for i, trig in enumerate(cards.buying_triggers):
+    chunks.append(_Chunk(id=f"trigger:{i}", text=..., ...))
+```
+
+Re-ingest of the same yaml → identical id list → Chroma's `upsert` updates the existing rows in place. Re-ingest after a real edit (`cap[2].keywords` extended) → same id (`cap:2:{name}`) → updated text + new embedding overwrite the old row. Collection size matches the logical card count regardless of how many times you re-ingest.
+
+**Why it works**: Vector stores like Chroma treat `upsert` as "replace if id exists, else insert." When ids are content-deterministic, the operation is naturally idempotent. The id scheme also makes ad-hoc debugging tractable (`col.get(ids=["cap:0:Quantization"])` instead of grepping uuids).
+
+**Test pattern** (cheap to add): re-ingest twice with the same input, assert chunk count is identical:
+
+```python
+def test_reingest_is_idempotent_no_duplicates(repo_root):
+    cards = _load_fixture_cards(repo_root)
+    emb, vs = FakeEmbedding(), FakeVectorStore()
+    r1 = ingest_cards(cards=cards, workspace_id="default",
+                      embedding_provider=emb, vectorstore_provider=vs)
+    r2 = ingest_cards(cards=cards, workspace_id="default",
+                      embedding_provider=emb, vectorstore_provider=vs)
+    assert r1["chunks"] == r2["chunks"]
+    assert vs.collection_info("product_default")["count"] == r1["chunks"]
+```
+
+**Caveats**: If the id encodes mutable user-visible fields (`cap:{i}:{name}`), renaming `name` changes the id and creates an orphan row. Two ways to handle: (a) accept the cost and `delete + upsert` on each ingest (simple, fine for small collections), or (b) drop the human-readable suffix from the id (`cap:{i}` only) and store the name in metadata (more robust to renames, but breaks ad-hoc grep). v0 picks (a) — collections are small (< 100 chunks).
+
+**Reusable in**: Any pipeline that periodically rebuilds a vector store from a structured source (capability cards, knowledge base articles, product catalog rows). Avoid for pipelines where the source has no stable position (e.g. de-duplicated web crawl) — those need content-hash ids instead.
 
 ---
 
