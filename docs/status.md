@@ -75,7 +75,13 @@
         - `test_scoring.py` 12건: evidence_floor matrix (all 4 combos) / website_verification binary / buying_signal news count brackets / buying_signal trigger keyword bonus / category_fit zero w/o cards / category_fit increases with industry overlap / decide_tier **floor caps tier** (same score 9.0 → floor 2 = S, floor 1 = A, floor 0 = B) / decide_tier picks highest satisfied / full-pipeline floor cap (Both → S, UrlOnly → A, NoneEvidence → B) / bad_fit + competitor penalty drops tier / rationale call gated by tier (LLM count = #{S+A}) / length mismatch → MCPError(INTERNAL)
         - `test_mcp_cold_start.py` 신규 1건 (`test_s4_modules_keep_module_top_cold`): enrichment + retriever + scoring.* keep torch/transformers/sentence_transformers/chromadb/bitsandbytes out of sys.modules at import
       - cold-start 회귀 가드 유지. Heavy deps (sentence_transformers, chromadb) only enter via injected provider methods.
-    - ⏳ **S5** — Report (~2h)
+    - ✅ **S5** — Report (2026-05-28)
+      - `report/tier_list_md.py` — 6-section Markdown render (event header + Summary line + Tier S/A/B/C + Needs Review). Per-row chips (`url`, `news×N`, `snippet-only`), evidence snippet (whitespace-collapsed for scannability), top-3 news titles, rationale + angle when Sonnet ran, top-3 capability_fit breakdown. Within tier, descending by final_score. **Floor invariant guard**: `_assert_floor_invariant` raises if any S/A row has `has_official_url + has_news_signals < 1` — defensive against misconfigured `tier_rules`. En/Ko section headers.
+      - `report/tier_list_yaml.py` — machine-readable yaml. `build_tier_list_payload` → `dump_tier_list_yaml` → `load_tier_list_yaml` round-trips (load handles str or Path). `REPORT_SCHEMA_VERSION=1`. Payload includes per-exhibitor name/tier/final_score/evidence_floor/official_url/news_count/source_snippet/rationale/angle/capability_fit/capability_fit_breakdown + `needs_review` array.
+      - `report/brief_export.py` — optional `product_brief.md` from `CapabilityCards` (people-facing export view per plan §Context). Renders capabilities (keywords + buyer_pains + evidence_queries), ideal_customer, optional buying_triggers / bad_fit / competitors. En/Ko labels.
+      - 테스트: **115/115 green** (S0/S1/S2/S3/S4 106 + S5 9 신규)
+        - `test_report.py` 8건: 6 sections present + summary count line / floor invariant guard raises on bad S row / needs_review name does not leak into S/A/B/C sections / ko section headers / yaml round-trip preserves rationale + angle + breakdown + tier_counts / yaml load_from_path / brief renders all sections / ko brief labels
+        - `test_mcp_cold_start.py` 신규 1건 (`test_s5_report_modules_keep_module_top_cold`): report/* keeps torch/transformers/sentence_transformers/chromadb/bitsandbytes out of sys.modules (rendering is deps-free).
     - ⏳ **S6** — MCP wrap + slug validation + integration tests (~4.5h)
   - **Resumable batches**:
     - batch1 = S0 + S1 + S2 (~10.5h) ✅ — runtime preflight + product mini-RAG 살아있는 시점
@@ -96,7 +102,7 @@
 1. **batch1 완성** (S0+S1+S2 ✅) — runtime preflight + product mini-RAG 활성
 2. **S3 ✅** — Event Source → Extraction (chunked + cap + snippet-anchored)
 3. **S4 ✅** — Enrichment + Fit Retrieval (단방향) + Scoring + Resume — batch2 완료
-4. **S5** (다음 step) — Report (~2h)
-5. S6 — MCP wrap + slug validation + integration tests (~4.5h)
+4. **S5 ✅** — Report (tier_list.md + tier_list.yaml + product_brief.md)
+5. **S6** (다음 step) — MCP wrap + slug validation + integration tests (~4.5h)
 
 세션 간 재개: 항상 `docs/status.md` + `~/.claude/plans/tender-mixing-badger.md` 두 파일을 fresh context로 진입 시 먼저 읽기.

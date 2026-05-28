@@ -141,6 +141,24 @@ def test_s4_modules_keep_module_top_cold(fresh_sys_modules):
     )
 
 
+def test_s5_report_modules_keep_module_top_cold(fresh_sys_modules):
+    """S5: report/* must NOT pull heavy ML libs at module top — rendering is
+    pure markdown/yaml so this is just a regression guard."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.report.tier_list_md")
+    importlib.import_module("event_intel.report.tier_list_yaml")
+    importlib.import_module("event_intel.report.brief_export")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"S5 report modules leaked heavy ML imports: {leaked}. "
+        "Rendering should be deps-free."
+    )
+
+
 def test_events_modules_keep_module_top_cold(fresh_sys_modules):
     """S3: events.source_capture / events.extraction must NOT pull heavy ML
     libs at module import — trafilatura is the heaviest dep and is lazy-loaded
