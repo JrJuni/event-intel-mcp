@@ -38,10 +38,9 @@ def _not_implemented(tool_name: str) -> dict:
 @app.tool()
 def check_runtime(workspace_id: str = "default") -> dict:
     """Verify embedding model / vectorstore / API keys / product context (S1)."""
-    try:
-        return _not_implemented("check_runtime")
-    except Exception as e:
-        return envelope_from_exception(e, stage=Stage.PREFLIGHT)
+    from event_intel.tools.check_runtime import check_runtime as _impl
+
+    return _impl(workspace_id=workspace_id)
 
 
 @app.tool()

@@ -25,7 +25,17 @@
       - `config/defaults.yaml` — extraction caps + scoring weights + tier rules
       - `tests/test_mcp_cold_start.py` — `torch/transformers/sentence_transformers/chromadb/bitsandbytes` sys.modules 미진입 회귀 가드 + envelope shape 검증
       - 테스트: 3/3 green
-    - ⏳ **S1** — Runtime preflight + `check_runtime` tool + `models prepare` CLI (~3.5h 예상)
+    - ✅ **S1** — Runtime preflight + `check_runtime` tool + `models prepare` CLI (2026-05-28)
+      - `runtime/preflight.py` — `run_preflight(workspace_id, *, require_product_context, ...providers)` 5-check orchestrator. `load_config()` 가 nested required keys 검사 후 path-localized hint 반환.
+      - `runtime/models.py` — `prepare_bge_m3` (sentence_transformers lazy import + smoke encode + cache 재검증), `verify_bge_m3` (cache-only check)
+      - `tools/check_runtime.py` — preflight 를 **module reference 로 import** (lazy symbol import 은 monkeypatch 회피 패턴, project DO NOT 규칙)
+      - `mcp_server.py` — `check_runtime` stub → 실제 handler 로 교체
+      - `cli.py` — typer thin wrapper (`check-runtime` + `models prepare` + `models verify`). UTF-8 stdio reconfigure module top.
+      - 테스트: **22/22 green** (S0 4 + S1 18 신규)
+        - `test_runtime_preflight.py` 13건: 5-check 성공/실패 매트릭스 + R3 신규 3건 (product_context_missing, brave_quota_null_ok, config_error)
+        - `test_mcp_error_taxonomy.py` 5건: 10 error_codes × 6 stages snapshot + envelope_from_exception fallback
+        - `test_mcp_cold_start.py` 4건: stub loop 에서 check_runtime 제외 + envelope shape 검증 추가
+      - cold-start 회귀 가드 유지 (preflight.py 와 tools/check_runtime.py 모두 module top 에서 torch/chromadb/sentence_transformers 미진입)
     - ⏳ **S2** — Capability Cards (schema + drafter + validator + ingester) (~5h)
     - ⏳ **S3** — Event Source → Extraction (chunked + cap + snippet-anchored) (~5h)
     - ⏳ **S4** — Enrichment + Fit Retrieval + Scoring + Resume (~6h)

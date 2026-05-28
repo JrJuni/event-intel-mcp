@@ -1,0 +1,268 @@
+"""S1 — runtime preflight tests.
+
+Strategy: inject fake providers so we exercise the orchestrator without touching
+disk caches, the network, or ML libraries. Real provider behavior is covered by
+its own provider tests (later streams).
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+import yaml
+
+from event_intel.errors import ErrorCode, MCPError, Stage
+from event_intel.runtime import preflight as _preflight
+from event_intel.runtime.preflight import (
+    load_config,
+    run_preflight,
+)
+from event_intel.tools.check_runtime import check_runtime as check_runtime_tool
+
+
+# ---------- Fakes ----------
+
+
+class FakeEmbedding:
+    def __init__(self, *, ready: bool = True):
+        self._ready = ready
+
+    def is_ready(self) -> dict:
+        if self._ready:
+            return {"status": "ready", "path": "/fake/bge-m3", "size_mb": 1320}
+        return {"status": "missing", "path": "/fake/bge-m3"}
+
+    def embed(self, texts):  # pragma: no cover - not used by preflight
+        raise NotImplementedError
+
+
+class FakeVectorStore:
+    def __init__(self, *, writable: bool = True, product_chunks: int = 12):
+        self._writable = writable
+        self._product_chunks = product_chunks
+
+    def ensure_writable(self) -> dict:
+        if self._writable:
+            return {"status": "writable", "path": "/fake/chroma"}
+        return {"status": "denied", "path": "/fake/chroma", "error": "EACCES"}
+
+    def collection_info(self, name: str) -> dict:
+        if name.startswith("product_") and self._product_chunks > 0:
+            return {"exists": True, "count": self._product_chunks}
+        return {"exists": False, "count": 0}
+
+    def upsert(self, **kwargs):  # pragma: no cover - not used by preflight
+        raise NotImplementedError
+
+    def query(self, **kwargs):  # pragma: no cover - not used by preflight
+        raise NotImplementedError
+
+
+class FakeLLM:
+    def __init__(self, *, has_key: bool = True):
+        self._has_key = has_key
+
+    def ping(self) -> dict:
+        if self._has_key:
+            return {"status": "ok", "model": "claude-sonnet-4-6"}
+        return {"status": "missing_key"}
+
+    def chat_cached(self, **kwargs):  # pragma: no cover
+        raise NotImplementedError
+
+    def chat_once(self, **kwargs):  # pragma: no cover
+        raise NotImplementedError
+
+
+class FakeSearch:
+    def __init__(self, *, has_key: bool = True, quota: int | None = 1500, error: str | None = None):
+        self._has_key = has_key
+        self._quota = quota
+        self._error = error
+
+    def ping(self) -> dict:
+        if not self._has_key:
+            return {"status": "missing_key", "remaining_quota": None}
+        if self._error:
+            return {"status": "error", "remaining_quota": None, "error": self._error}
+        return {"status": "ok", "remaining_quota": self._quota}
+
+    def search(self, **kwargs):  # pragma: no cover
+        raise NotImplementedError
+
+
+@pytest.fixture
+def all_ready():
+    """Bundle of fakes where every check passes."""
+    return dict(
+        embedding_provider=FakeEmbedding(ready=True),
+        vectorstore_provider=FakeVectorStore(writable=True, product_chunks=12),
+        llm_provider=FakeLLM(has_key=True),
+        search_provider=FakeSearch(has_key=True, quota=1500),
+    )
+
+
+@pytest.fixture
+def minimal_config():
+    """Inline config dict that satisfies all required keys."""
+    return {
+        "schema_version": 1,
+        "llm": {"draft_cards_model": "claude-sonnet-4-6"},
+        "extraction": {"max_chunks_per_event": 12, "source_snippet_min_chars": 20},
+        "scoring": {
+            "weights": {"capability_fit": 0.3},
+            "tier_rules": {"S": {"min_final_score": 7.5}},
+        },
+        "paths": {"chroma_dir": "~/.event-intel/chroma"},
+    }
+
+
+# ---------- Success path ----------
+
+
+def test_preflight_success_with_all_ready(all_ready, minimal_config):
+    result = run_preflight("default", config=minimal_config, **all_ready)
+    assert result["ok"] is True
+    checks = result["checks"]
+    assert checks["embedding_model"]["status"] == "ready"
+    assert checks["vectorstore"]["status"] == "writable"
+    assert checks["anthropic_api"]["status"] == "ok"
+    assert checks["brave_api"]["status"] == "ok"
+    assert checks["brave_api"]["remaining_quota"] == 1500
+    assert checks["product_context"]["status"] == "ready"
+    assert checks["product_context"]["collection"] == "product_default"
+    assert checks["product_context"]["chunks"] == 12
+    assert isinstance(result["elapsed_ms"], int)
+
+
+# ---------- Per-check failure paths ----------
+
+
+def test_preflight_invalid_workspace_id_returns_invalid_input(all_ready, minimal_config):
+    with pytest.raises(MCPError) as exc:
+        run_preflight("bad slug!", config=minimal_config, **all_ready)
+    assert exc.value.error_code == ErrorCode.INVALID_INPUT
+    assert exc.value.stage == Stage.PREFLIGHT
+
+
+def test_preflight_missing_embedding_model_returns_model_not_ready(all_ready, minimal_config):
+    all_ready["embedding_provider"] = FakeEmbedding(ready=False)
+    with pytest.raises(MCPError) as exc:
+        run_preflight("default", config=minimal_config, **all_ready)
+    assert exc.value.error_code == ErrorCode.MODEL_NOT_READY
+    assert "models prepare" in str(exc.value.hint)
+
+
+def test_preflight_vectorstore_not_writable_returns_io_error(all_ready, minimal_config):
+    all_ready["vectorstore_provider"] = FakeVectorStore(writable=False)
+    with pytest.raises(MCPError) as exc:
+        run_preflight("default", config=minimal_config, **all_ready)
+    assert exc.value.error_code == ErrorCode.IO_ERROR
+
+
+def test_preflight_missing_anthropic_key_returns_config_error(all_ready, minimal_config):
+    all_ready["llm_provider"] = FakeLLM(has_key=False)
+    with pytest.raises(MCPError) as exc:
+        run_preflight("default", config=minimal_config, **all_ready)
+    assert exc.value.error_code == ErrorCode.CONFIG_ERROR
+    assert "ANTHROPIC_API_KEY" in exc.value.message
+
+
+def test_preflight_missing_brave_key_returns_config_error(all_ready, minimal_config):
+    all_ready["search_provider"] = FakeSearch(has_key=False)
+    with pytest.raises(MCPError) as exc:
+        run_preflight("default", config=minimal_config, **all_ready)
+    assert exc.value.error_code == ErrorCode.CONFIG_ERROR
+    assert "BRAVE_API_KEY" in exc.value.message
+
+
+# ---------- R3-#1: product context lifecycle ----------
+
+
+def test_preflight_missing_product_context_returns_product_context_missing(
+    all_ready, minimal_config
+):
+    all_ready["vectorstore_provider"] = FakeVectorStore(writable=True, product_chunks=0)
+    with pytest.raises(MCPError) as exc:
+        run_preflight("default", config=minimal_config, **all_ready)
+    assert exc.value.error_code == ErrorCode.PRODUCT_CONTEXT_MISSING
+    assert "ingest" in str(exc.value.hint)
+
+
+def test_preflight_skip_product_context_for_ingest(all_ready, minimal_config):
+    """ingest_product_context's own preflight must NOT require product context — the
+    whole point of that call is to create the collection."""
+    all_ready["vectorstore_provider"] = FakeVectorStore(writable=True, product_chunks=0)
+    result = run_preflight(
+        "default",
+        config=minimal_config,
+        require_product_context=False,
+        **all_ready,
+    )
+    assert result["ok"] is True
+    assert result["checks"]["product_context"]["status"] == "missing"
+
+
+# ---------- R3-#4: brave quota optional ----------
+
+
+def test_preflight_brave_quota_null_still_ok(all_ready, minimal_config):
+    all_ready["search_provider"] = FakeSearch(has_key=True, quota=None)
+    result = run_preflight("default", config=minimal_config, **all_ready)
+    assert result["ok"] is True
+    assert result["checks"]["brave_api"]["status"] == "ok"
+    assert result["checks"]["brave_api"]["remaining_quota"] is None
+
+
+# ---------- R3-#2: config error ----------
+
+
+def test_config_defaults_missing_key_returns_config_error(tmp_path):
+    broken = tmp_path / "broken.yaml"
+    broken.write_text(yaml.safe_dump({"schema_version": 1}), encoding="utf-8")
+    with pytest.raises(MCPError) as exc:
+        load_config(broken)
+    assert exc.value.error_code == ErrorCode.CONFIG_ERROR
+    assert "missing required config key" in exc.value.message
+    hint = exc.value.hint
+    assert isinstance(hint, dict)
+    assert str(broken) in hint["expected_path"]
+
+
+def test_config_defaults_file_not_found_returns_config_error(tmp_path):
+    missing = tmp_path / "nope.yaml"
+    with pytest.raises(MCPError) as exc:
+        load_config(missing)
+    assert exc.value.error_code == ErrorCode.CONFIG_ERROR
+    assert "not found" in exc.value.message
+
+
+def test_default_defaults_yaml_loads(repo_root: Path):
+    """The shipped config/defaults.yaml must satisfy every required key."""
+    data = load_config(repo_root / "config" / "defaults.yaml")
+    assert data["schema_version"] == 1
+    assert data["llm"]["draft_cards_model"]
+    assert data["extraction"]["max_chunks_per_event"] == 12
+
+
+# ---------- Tool boundary ----------
+
+
+def test_check_runtime_tool_renders_envelope_on_failure(monkeypatch, minimal_config):
+    """tools/check_runtime.py must catch MCPError and render to envelope."""
+
+    def fake_run_preflight(workspace_id, **kwargs):
+        raise MCPError(
+            error_code=ErrorCode.MODEL_NOT_READY,
+            stage=Stage.PREFLIGHT,
+            message="bge-m3 not cached",
+            hint={"fix": "Run `event-intel models prepare`"},
+            retryable=False,
+        )
+
+    monkeypatch.setattr(_preflight, "run_preflight", fake_run_preflight)
+    result = check_runtime_tool(workspace_id="default")
+    assert result["ok"] is False
+    assert result["error_code"] == "MODEL_NOT_READY"
+    assert result["stage"] == "preflight"
+    assert result["hint"]["fix"] == "Run `event-intel models prepare`"

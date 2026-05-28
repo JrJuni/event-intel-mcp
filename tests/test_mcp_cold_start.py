@@ -73,10 +73,9 @@ def test_tool_stubs_return_not_implemented_envelope(fresh_sys_modules):
     _purge("event_intel")
     server = importlib.import_module("event_intel.mcp_server")
 
-    # Each tool's minimal valid-shape kwargs. The stubs short-circuit so values
-    # are not actually used yet — this just satisfies signature checks.
+    # Tools still on the S0 stub (real impls land in S2/S3/S4/S5).
+    # check_runtime moved to a real handler in S1 and is exercised elsewhere.
     calls = {
-        "check_runtime": {},
         "draft_capability_cards": {"source_content": "stub"},
         "validate_capability_cards": {"cards_path": "stub.yaml"},
         "ingest_product_context": {"cards_path": "stub.yaml"},
@@ -92,3 +91,18 @@ def test_tool_stubs_return_not_implemented_envelope(fresh_sys_modules):
         assert result["ok"] is False, f"{tool_name} did not return ok=false"
         assert result["error_code"] == "INTERNAL"
         assert "not implemented yet" in result["message"]
+
+
+def test_check_runtime_tool_returns_envelope(fresh_sys_modules):
+    """check_runtime should always return an envelope (ok bool present), never raise.
+    Whether ok=True or ok=False depends on the local machine state (bge-m3 cached,
+    keys set, product context ingested) so we only assert envelope shape.
+    """
+    _purge("event_intel")
+    server = importlib.import_module("event_intel.mcp_server")
+    result = server.check_runtime(workspace_id="default")
+    assert isinstance(result, dict)
+    assert "ok" in result
+    if result["ok"] is False:
+        for key in ("error_code", "stage", "message"):
+            assert key in result, f"failure envelope missing `{key}`"
