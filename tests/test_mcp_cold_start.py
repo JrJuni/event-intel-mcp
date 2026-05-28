@@ -120,6 +120,24 @@ def test_cards_tools_keep_module_top_cold(fresh_sys_modules):
     )
 
 
+def test_events_modules_keep_module_top_cold(fresh_sys_modules):
+    """S3: events.source_capture / events.extraction must NOT pull heavy ML
+    libs at module import — trafilatura is the heaviest dep and is lazy-loaded
+    inside source_capture._strip_html; nothing else should leak either."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.events.source_capture")
+    importlib.import_module("event_intel.events.extraction")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"Events modules leaked heavy ML imports: {leaked}. "
+        "All heavy deps must be imported inside method bodies, not at module top."
+    )
+
+
 def test_check_runtime_tool_returns_envelope(fresh_sys_modules):
     """check_runtime should always return an envelope (ok bool present), never raise.
     Whether ok=True or ok=False depends on the local machine state (bge-m3 cached,

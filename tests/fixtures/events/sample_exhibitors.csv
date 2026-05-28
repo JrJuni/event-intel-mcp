@@ -1,0 +1,6 @@
+name,url,description,booth
+Mobius Labs,https://mobius.example.com,On-device NPU compiler stack for edge AI,A-12
+NeuroDrive Inc.,https://neurodrive.example.com,Autonomous driving perception stack with lidar fusion,A-15
+EdgeVision Co.,,Computer vision SDK for smart-city traffic cameras,A-22
+Synaptik Robotics,https://synaptik.example.com,Industrial robotic arm control with on-arm SLAM,B-04
+Quanta MedAI,,FDA-cleared on-device ultrasound interpretation,B-11

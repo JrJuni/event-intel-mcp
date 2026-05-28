@@ -55,13 +55,20 @@
         - `test_mcp_cold_start.py` 신규 1건 (`test_cards_tools_keep_module_top_cold`): cards modules + tools must NOT pull heavy ML imports at module top
       - cold-start 회귀 가드 유지 + `fresh_sys_modules` 픽스처 수정 — 기존 snapshot-restore 가 pydantic lazy `__getattr__` 캐싱과 충돌해 (pop 한 `pydantic.root_model` 이 후속 `from pydantic import RootModel` 으로 재로드되지 않음) `KeyError: 'pydantic.root_model'` 유발. 이제 teardown 에서 `event_intel.*` + `FORBIDDEN_HEAVY` 만 명시적으로 purge.
       - CLI smoke OK: 5 top-level subcommands (`check-runtime`, `draft-cards`, `validate`, `ingest`, `export-schema`) + `models` subapp. `export-schema` JSON 출력 검증.
-    - ⏳ **S3** — Event Source → Extraction (chunked + cap + snippet-anchored) (~5h)
+    - ✅ **S3** — Event Source → Extraction (chunked + cap + snippet-anchored) (2026-05-28)
+      - `events/source_capture.py` — 4 source kinds (`html_file`, `html_text`, `csv_file`, `text`). trafilatura lazy import (`include_tables=True`, `favor_recall=True` for exhibitor cards that often live inside structured layouts). CSV path keeps parsed rows on `SourceCapture.csv_rows` so extraction can short-circuit the LLM for structured rows in S4+. Failures fold to `MCPError(SOURCE_CAPTURE_FAILED, stage=EXTRACTION)`.
+      - `events/extraction.py` — chunked LLM extraction. `_split_chunks` prefers double-newline boundaries (preserves exhibitor card structure) and falls back to single-newline + hard slicing. `max_chunks_per_event=12` cap (review R2-#7): excess chunks dropped + warning. Snippet floor `>= 20 chars` (review R2-#9 raw_extraction): rows below are dropped silently. Lang-specific `_normalize_name` strips legal suffixes (`Co., Ltd.`, `Inc.`, etc.) + Korean prefixes (`㈜`, `주식회사 `). Confidence `< extraction_confidence_min` (0.6 default) routes to `needs_review` instead of main `candidates`. Tolerant LLM JSON parser (strips fences, recovers JSON array from prose wrapper).
+      - 테스트: **80/80 green** (S0/S1/S2 59 + S3 21 신규)
+        - `test_source_capture.py` 8건: html/csv/text/html_text happy paths + unsupported kind / missing file / short-capture warning / empty inline text
+        - `test_event_extraction.py` 12건: normalize_name (en + ko) / _split_chunks paragraph boundary / english html happy / snippet floor drops short rows / **chunk cap triggers warning + truncates to 12 + 12 LLM calls** / ko name merge collapses ㈜ vs 모비우스랩 (single candidate, chunk_indices accumulates) / low confidence routes to needs_review / empty capture → SOURCE_CAPTURE_FAILED / malformed LLM JSON recovered from prose wrapper / LLM exception → UPSTREAM_ERROR (retryable) / module-reference import smoke
+        - `test_mcp_cold_start.py` 신규 1건 (`test_events_modules_keep_module_top_cold`): events.* modules must NOT pull heavy ML imports at module top
+      - cold-start 회귀 가드 유지 (trafilatura lazy in `_strip_html`, all other heavy deps deferred to provider methods).
     - ⏳ **S4** — Enrichment + Fit Retrieval + Scoring + Resume (~6h)
     - ⏳ **S5** — Report (~2h)
     - ⏳ **S6** — MCP wrap + slug validation + integration tests (~4.5h)
   - **Resumable batches**:
-    - batch1 = S0 + S1 + S2 (~10.5h) — runtime preflight + product mini-RAG 살아있는 시점
-    - batch2 = S3 + S4 (~11h) — event extraction + scoring 끝, 실 전시회 fixture 수집 직전
+    - batch1 = S0 + S1 + S2 (~10.5h) ✅ — runtime preflight + product mini-RAG 살아있는 시점
+    - batch2 = S3 + S4 (~11h) — event extraction (S3 ✅) + scoring (S4 ⏳) 끝, 실 전시회 fixture 수집 직전
     - batch3 = S5 + S6 + 실 전시회 smoke (~6h) — v0 surface 완성, Claude Desktop 통합
   - **Done When (14 결정적 기준)**: `pip install -e .` + pytest 75+ green / cold-start 회귀 0 / 5개 MCP tool Claude Desktop 호출 가능 / e2e (check-runtime → draft → validate → ingest → build) 한 사이클 성공 / 실 전시회 2-3개 다른 패턴으로 tier_list.md 생성 + 모든 S/A row의 `has_url + has_news >= 1` / tier_list.yaml round-trip / README에 5-tool workflow + 10 error_code 매핑 / bd-agent와 import 0 / envelope snapshot + schema drift test green / sanitize_slug edge case green / `build_event_tier_list` 가 product 미ingest 시 `PRODUCT_CONTEXT_MISSING` 반환 / Korean event_slug → `INVALID_INPUT` envelope의 `hint.suggested_slug` ASCII-safe 값 / `check_runtime`가 Brave quota 미노출 시 `remaining_quota: null` + status `ok` / `config/defaults.yaml` 필수 키 누락 → `CONFIG_ERROR` + path-localized hint
 
@@ -76,8 +83,8 @@
 ## 다음 진입 순서
 
 1. **batch1 완성** (S0+S1+S2 ✅) — runtime preflight + product mini-RAG 활성
-2. **S3** (다음 step) — Event Source → Extraction (chunked + cap + snippet-anchored, ~5h)
-3. S4 — Enrichment + Fit Retrieval + Scoring + Resume (~6h) → 실 전시회 fixture 수집 직전
+2. **S3 ✅** — Event Source → Extraction (chunked + cap + snippet-anchored)
+3. **S4** (다음 step) — Enrichment + Fit Retrieval + Scoring + Resume (~6h) → 실 전시회 fixture 수집 직전
 4. S5 — Report (~2h)
 5. S6 — MCP wrap + slug validation + integration tests (~4.5h)
 
