@@ -1,0 +1,77 @@
+schema_version: 1
+product_name: Mobius
+one_liner: Embedded NPU compiler turning PyTorch/ONNX models into quantized binaries for automotive, robotics, and AR/VR devices.
+
+capabilities:
+  - name: Quantization-aware compile
+    keywords:
+      - INT4
+      - INT8
+      - per-channel calibration
+      - quantization
+      - PyTorch
+      - ONNX
+    buyer_pains:
+      - Model too large for SRAM budget
+      - Accuracy collapse after naive quantization
+    evidence_queries:
+      - "embedded INT8 quantization accuracy drop"
+      - "NPU memory budget 12MB SRAM"
+
+  - name: Cross-vendor NPU backend
+    keywords:
+      - Qualcomm Hexagon
+      - Cadence Tensilica
+      - Synopsys ARC
+      - ASIC
+      - heterogeneous compute
+    buyer_pains:
+      - Vendor lock-in for compiler toolchain
+      - Re-targeting cost when changing silicon
+    evidence_queries:
+      - "switching NPU vendor compiler effort"
+      - "Hexagon Tensilica multi-target compile"
+
+ideal_customer:
+  industries:
+    - automotive tier-1
+    - industrial robotics
+    - AR/VR devices
+  company_signals:
+    - hiring embedded ML compiler engineers
+    - public NPU SDK release
+    - ADAS Level 2/3 program
+  geo:
+    - US
+    - DE
+    - KR
+    - JP
+
+buying_triggers:
+  - signal: public NPU SDK release announcement
+    weight: 0.8
+  - signal: ADAS Level 2/3 program milestone slip
+    weight: 0.7
+  - signal: Series-C with strategic auto OEM
+    weight: 0.6
+
+bad_fit:
+  - reason: Cloud-only inference (no embedded target)
+    keywords:
+      - inference service
+      - cloud GPU
+  - reason: Already licensed a competitor compiler (lock-in)
+    keywords:
+      - AIMET license
+
+competitors:
+  - name: Edge Impulse Compiler
+    keywords:
+      - edge impulse
+  - name: Qualcomm AIMET
+    keywords:
+      - AIMET
+      - Hexagon
+  - name: ONNX Runtime Embedded
+    keywords:
+      - onnxruntime

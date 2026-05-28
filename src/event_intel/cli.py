@@ -86,6 +86,98 @@ def models_verify_cmd(
     raise typer.Exit(code=0 if result.get("status") == "ready" else 1)
 
 
+@app.command("draft-cards")
+def draft_cards_cmd(
+    workspace: str = typer.Option("default", "--workspace", "-w", help="Workspace ID."),
+    source: list[str] = typer.Option(
+        None,
+        "--source",
+        "-s",
+        help="Source file(s) (.md / .txt / .pdf). Repeatable.",
+    ),
+    text: str = typer.Option("", "--text", help="Inline source text (alternative to --source)."),
+    lang: str = typer.Option("en", "--lang", help="Output language (en or ko)."),
+    out: str | None = typer.Option(
+        None, "--out", "-o", help="Output yaml path (default: outputs/{ws}/capability_cards.draft.yaml)."
+    ),
+) -> None:
+    """Draft capability_cards.yaml from product source material."""
+    from event_intel.tools.draft_capability_cards import draft_capability_cards
+
+    if source and text:
+        typer.echo("Pick either --source or --text, not both.", err=True)
+        raise typer.Exit(code=2)
+    if not source and not text:
+        typer.echo("Provide --source <path> or --text <inline>.", err=True)
+        raise typer.Exit(code=2)
+
+    result = draft_capability_cards(
+        workspace_id=workspace,
+        source_kind="file" if source else "text",
+        source_content=text,
+        source_paths=list(source) if source else None,
+        lang=lang,
+        out_path=out,
+    )
+    _print_json(result)
+    raise typer.Exit(code=0 if result.get("ok") else 1)
+
+
+@app.command("validate")
+def validate_cmd(
+    cards: str = typer.Option(..., "--cards", "-c", help="Path to capability_cards.yaml."),
+) -> None:
+    """Validate a capability_cards.yaml against schema v1."""
+    from event_intel.tools.validate_capability_cards import validate_capability_cards
+
+    result = validate_capability_cards(cards_path=cards)
+    _print_json(result)
+    raise typer.Exit(code=0 if result.get("ok") else 1)
+
+
+@app.command("ingest")
+def ingest_cmd(
+    cards: str = typer.Option(..., "--cards", "-c", help="Path to capability_cards.yaml."),
+    workspace: str = typer.Option("default", "--workspace", "-w", help="Workspace ID."),
+) -> None:
+    """Embed + upsert cards into the product_{workspace} Chroma collection."""
+    from event_intel.tools.ingest_capability_cards import ingest_product_context
+
+    result = ingest_product_context(workspace_id=workspace, cards_path=cards)
+    _print_json(result)
+    raise typer.Exit(code=0 if result.get("ok") else 1)
+
+
+@app.command("export-schema")
+def export_schema_cmd(
+    out: str | None = typer.Option(
+        None,
+        "--out",
+        "-o",
+        help="Output path (default: outputs/_schema/capability_cards.v{N}.json).",
+    ),
+    fmt: str = typer.Option("json", "--format", help="json (only json supported in v0)."),
+) -> None:
+    """Export the capability_cards JSON Schema generated from the pydantic SSOT."""
+    import json as _json
+    from pathlib import Path
+
+    from event_intel.cards.schema import SCHEMA_VERSION, CapabilityCards
+
+    if fmt != "json":
+        typer.echo(f"unsupported --format {fmt!r}; only 'json' supported in v0", err=True)
+        raise typer.Exit(code=2)
+
+    schema = CapabilityCards.model_json_schema()
+    out_path = Path(out) if out else Path("outputs") / "_schema" / f"capability_cards.v{SCHEMA_VERSION}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        _json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    _print_json({"ok": True, "path": str(out_path), "schema_version": SCHEMA_VERSION})
+
+
 def main() -> None:
     """Module entrypoint for `python -m event_intel.cli`."""
     app()

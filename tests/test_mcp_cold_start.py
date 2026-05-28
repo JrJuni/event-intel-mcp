@@ -20,20 +20,26 @@ FORBIDDEN_HEAVY = (
 )
 
 
-@pytest.fixture
-def fresh_sys_modules():
-    """Snapshot sys.modules and restore on teardown so we can re-import cleanly."""
-    snapshot = set(sys.modules.keys())
-    yield
-    for mod in list(sys.modules.keys()):
-        if mod not in snapshot:
-            sys.modules.pop(mod, None)
-
-
 def _purge(prefix: str) -> None:
     for mod in list(sys.modules.keys()):
         if mod == prefix or mod.startswith(prefix + "."):
             sys.modules.pop(mod, None)
+
+
+@pytest.fixture
+def fresh_sys_modules():
+    """Reset only event_intel.* and FORBIDDEN_HEAVY on teardown so the next test
+    measures a real cold start. Do NOT snapshot-restore the entire sys.modules:
+    pydantic uses lazy __getattr__ for RootModel and other submodules, and
+    `from pydantic import X` caches the attribute on the parent package without
+    re-triggering the lazy load on subsequent calls — so blindly removing any
+    module that wasn't in the snapshot can wedge later re-imports with
+    `KeyError: 'pydantic.root_model'`.
+    """
+    yield
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
 
 
 def test_import_mcp_server_does_not_load_heavy_ml(fresh_sys_modules):
@@ -73,12 +79,10 @@ def test_tool_stubs_return_not_implemented_envelope(fresh_sys_modules):
     _purge("event_intel")
     server = importlib.import_module("event_intel.mcp_server")
 
-    # Tools still on the S0 stub (real impls land in S2/S3/S4/S5).
-    # check_runtime moved to a real handler in S1 and is exercised elsewhere.
+    # Tools still on the S0 stub (real impls land in S3+S4+S5).
+    # check_runtime moved to a real handler in S1.
+    # draft/validate/ingest_capability_cards moved to real handlers in S2.
     calls = {
-        "draft_capability_cards": {"source_content": "stub"},
-        "validate_capability_cards": {"cards_path": "stub.yaml"},
-        "ingest_product_context": {"cards_path": "stub.yaml"},
         "build_event_tier_list": {
             "event_name": "Stub",
             "event_slug": "stub",
@@ -91,6 +95,29 @@ def test_tool_stubs_return_not_implemented_envelope(fresh_sys_modules):
         assert result["ok"] is False, f"{tool_name} did not return ok=false"
         assert result["error_code"] == "INTERNAL"
         assert "not implemented yet" in result["message"]
+
+
+def test_cards_tools_keep_module_top_cold(fresh_sys_modules):
+    """S2: tools/{draft,validate,ingest}_capability_cards must not pull heavy ML
+    libs at module import — only on first real call (which still needs them via
+    embedding/vectorstore providers)."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.tools.draft_capability_cards")
+    importlib.import_module("event_intel.tools.validate_capability_cards")
+    importlib.import_module("event_intel.tools.ingest_capability_cards")
+    importlib.import_module("event_intel.cards.schema")
+    importlib.import_module("event_intel.cards.validator")
+    importlib.import_module("event_intel.cards.drafter")
+    importlib.import_module("event_intel.cards.ingest")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"Cards tools / modules leaked heavy ML imports: {leaked}. "
+        "All heavy deps must be imported inside method bodies, not at module top."
+    )
 
 
 def test_check_runtime_tool_returns_envelope(fresh_sys_modules):

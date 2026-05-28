@@ -50,21 +50,31 @@ def draft_capability_cards(
     source_content: str = "",
     source_paths: list[str] | None = None,
     lang: str = "en",
+    out_path: str | None = None,
 ) -> dict:
     """Draft capability_cards.yaml from source docs/text (S2)."""
-    try:
-        return _not_implemented("draft_capability_cards")
-    except Exception as e:
-        return envelope_from_exception(e, stage=Stage.PREFLIGHT)
+    from event_intel.tools.draft_capability_cards import (
+        draft_capability_cards as _impl,
+    )
+
+    return _impl(
+        workspace_id=workspace_id,
+        source_kind=source_kind,
+        source_content=source_content,
+        source_paths=source_paths,
+        lang=lang,
+        out_path=out_path,
+    )
 
 
 @app.tool()
 def validate_capability_cards(cards_path: str) -> dict:
     """Validate a hand-edited capability_cards.yaml against schema v1 (S2)."""
-    try:
-        return _not_implemented("validate_capability_cards")
-    except Exception as e:
-        return envelope_from_exception(e, stage=Stage.PREFLIGHT)
+    from event_intel.tools.validate_capability_cards import (
+        validate_capability_cards as _impl,
+    )
+
+    return _impl(cards_path=cards_path)
 
 
 @app.tool()
@@ -74,10 +84,15 @@ def ingest_product_context(
     extra_source_paths: list[str] | None = None,
 ) -> dict:
     """Ingest validated capability cards into the Product Context mini-RAG (S2)."""
-    try:
-        return _not_implemented("ingest_product_context")
-    except Exception as e:
-        return envelope_from_exception(e, stage=Stage.INGEST)
+    from event_intel.tools.ingest_capability_cards import (
+        ingest_product_context as _impl,
+    )
+
+    return _impl(
+        workspace_id=workspace_id,
+        cards_path=cards_path,
+        extra_source_paths=extra_source_paths,
+    )
 
 
 @app.tool()

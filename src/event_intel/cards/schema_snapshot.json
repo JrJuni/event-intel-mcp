@@ -1,0 +1,220 @@
+{
+  "$defs": {
+    "BadFit": {
+      "additionalProperties": false,
+      "properties": {
+        "keywords": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Keywords",
+          "type": "array"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "BadFit",
+      "type": "object"
+    },
+    "BuyingTrigger": {
+      "additionalProperties": false,
+      "properties": {
+        "signal": {
+          "minLength": 1,
+          "title": "Signal",
+          "type": "string"
+        },
+        "weight": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "signal",
+        "weight"
+      ],
+      "title": "BuyingTrigger",
+      "type": "object"
+    },
+    "Capability": {
+      "additionalProperties": false,
+      "properties": {
+        "buyer_pains": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Buyer Pains",
+          "type": "array"
+        },
+        "evidence_queries": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Evidence Queries",
+          "type": "array"
+        },
+        "keywords": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 3,
+          "title": "Keywords",
+          "type": "array"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "keywords",
+        "buyer_pains",
+        "evidence_queries"
+      ],
+      "title": "Capability",
+      "type": "object"
+    },
+    "Competitor": {
+      "additionalProperties": false,
+      "properties": {
+        "keywords": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Keywords",
+          "type": "array"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Competitor",
+      "type": "object"
+    },
+    "IdealCustomer": {
+      "additionalProperties": false,
+      "properties": {
+        "company_signals": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Company Signals",
+          "type": "array"
+        },
+        "geo": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Geo",
+          "type": "array"
+        },
+        "industries": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Industries",
+          "type": "array"
+        }
+      },
+      "required": [
+        "industries",
+        "company_signals"
+      ],
+      "title": "IdealCustomer",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "bad_fit": {
+      "items": {
+        "$ref": "#/$defs/BadFit"
+      },
+      "maxItems": 10,
+      "title": "Bad Fit",
+      "type": "array"
+    },
+    "buying_triggers": {
+      "items": {
+        "$ref": "#/$defs/BuyingTrigger"
+      },
+      "maxItems": 10,
+      "title": "Buying Triggers",
+      "type": "array"
+    },
+    "capabilities": {
+      "items": {
+        "$ref": "#/$defs/Capability"
+      },
+      "maxItems": 10,
+      "minItems": 1,
+      "title": "Capabilities",
+      "type": "array"
+    },
+    "competitors": {
+      "items": {
+        "$ref": "#/$defs/Competitor"
+      },
+      "maxItems": 20,
+      "title": "Competitors",
+      "type": "array"
+    },
+    "ideal_customer": {
+      "$ref": "#/$defs/IdealCustomer"
+    },
+    "one_liner": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "One Liner",
+      "type": "string"
+    },
+    "product_name": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Product Name",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "product_name",
+    "one_liner",
+    "capabilities",
+    "ideal_customer"
+  ],
+  "title": "CapabilityCards",
+  "type": "object"
+}
