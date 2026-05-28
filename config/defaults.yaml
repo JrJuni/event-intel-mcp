@@ -1,0 +1,57 @@
+# event-intel-mcp default settings. User overrides go in ~/.event-intel/config.yaml
+# (loader to be added in S2/S4).
+
+schema_version: 1
+
+extraction:
+  max_chunks_per_event: 12        # Hard cap on chunked LLM extraction calls (review R2-#7)
+  max_chars_per_chunk: 8000        # ~2k tokens per chunk
+  source_snippet_min_chars: 20     # Below this, candidate is dropped (review R2-#2)
+  extraction_confidence_min: 0.6   # Below this, candidate flagged needs_review
+
+enrichment:
+  max_companies: 30                # Per-event cap on enriched exhibitors
+  brave_count_web: 5
+  brave_count_news: 5
+  news_days_back: 180
+  fetch_timeout_seconds: 10
+  fetch_body_max_chars: 2000
+  cache_enabled: true              # Cache Brave responses per (query, kind) hash
+  official_url_levenshtein_threshold: 0.7
+
+scoring:
+  weights:
+    capability_fit: 0.30
+    source_confidence: 0.15
+    buying_signal: 0.15
+    website_verification: 0.10
+    category_fit: 0.15
+    competitor_penalty: -0.10
+    bad_fit_penalty: -0.10
+
+  tier_rules:
+    # Floor: has_official_url + has_news_signals (0/1/2). snippet always present after extraction.
+    S:
+      min_final_score: 7.5
+      evidence_floor_min: 2        # url + news both
+    A:
+      min_final_score: 6.0
+      evidence_floor_min: 1        # url OR news
+    B:
+      min_final_score: 4.0
+      evidence_floor_min: 0        # snippet-only allowed
+    C:
+      min_final_score: 0.0
+      evidence_floor_min: 0
+
+llm:
+  draft_cards_model: claude-sonnet-4-6
+  extract_exhibitors_model: claude-sonnet-4-6
+  rationale_model: claude-sonnet-4-6
+  draft_cards_max_tokens: 4096
+  extract_max_tokens: 4096
+  rationale_max_tokens: 256
+
+paths:
+  chroma_dir: ~/.event-intel/chroma
+  outputs_dir: outputs
