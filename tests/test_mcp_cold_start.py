@@ -75,26 +75,34 @@ def test_import_providers_package_is_cold(fresh_sys_modules):
     )
 
 
-def test_tool_stubs_return_not_implemented_envelope(fresh_sys_modules):
+def test_build_event_tier_list_module_keeps_cold(fresh_sys_modules):
+    """S6: tools.build_event_tier_list pulls in source_capture/extraction/
+    enrichment/retriever/scoring/report at module top — none of which may
+    leak heavy ML deps. Heavy deps stay behind provider lazy-load."""
     _purge("event_intel")
-    server = importlib.import_module("event_intel.mcp_server")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
 
-    # Tools still on the S0 stub (real impls land in S3+S4+S5).
-    # check_runtime moved to a real handler in S1.
-    # draft/validate/ingest_capability_cards moved to real handlers in S2.
-    calls = {
-        "build_event_tier_list": {
-            "event_name": "Stub",
-            "event_slug": "stub",
-            "source_ref": "stub.html",
-        },
-    }
-    for tool_name, kwargs in calls.items():
-        handler = getattr(server, tool_name)
-        result = handler(**kwargs)
-        assert result["ok"] is False, f"{tool_name} did not return ok=false"
-        assert result["error_code"] == "INTERNAL"
-        assert "not implemented yet" in result["message"]
+    importlib.import_module("event_intel.tools.build_event_tier_list")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"build_event_tier_list tool module leaked heavy ML imports: {leaked}. "
+        "Every heavy dep must stay behind a provider lazy import."
+    )
+
+
+def test_storage_identifiers_module_is_cold(fresh_sys_modules):
+    """S6: storage.identifiers is on every MCP tool's hot path (slug sanitize).
+    Must be import-cold."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.storage.identifiers")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, f"storage.identifiers leaked heavy ML imports: {leaked}"
 
 
 def test_cards_tools_keep_module_top_cold(fresh_sys_modules):

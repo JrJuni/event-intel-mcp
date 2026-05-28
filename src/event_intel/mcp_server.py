@@ -103,15 +103,26 @@ def build_event_tier_list(
     source_kind: str = "html_file",
     source_ref: str = "",
     lang: str = "en",
-    max_companies: int = 30,
+    max_companies: int | None = None,
     enrichment_enabled: bool = True,
     resume_from: str | None = None,
+    run_rationale: bool = True,
 ) -> dict:
     """Build a tiered exhibitor list from an event source (S3+S4+S5)."""
-    try:
-        return _not_implemented("build_event_tier_list")
-    except Exception as e:
-        return envelope_from_exception(e, stage=Stage.PREFLIGHT)
+    from event_intel.tools.build_event_tier_list import build_event_tier_list as _impl
+
+    return _impl(
+        workspace_id=workspace_id,
+        event_name=event_name,
+        event_slug=event_slug,
+        source_kind=source_kind,
+        source_ref=source_ref,
+        lang=lang,
+        max_companies=max_companies,
+        enrichment_enabled=enrichment_enabled,
+        resume_from=resume_from,
+        run_rationale=run_rationale,
+    )
 
 
 def main() -> None:

@@ -7,7 +7,10 @@ See plan v0.5 Contract #19: 10 error_codes × 6 stages.
 """
 from __future__ import annotations
 
+import pytest
+
 from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_exception
+from event_intel.storage.identifiers import sanitize_slug, validate_slug
 
 
 # Expected snapshot. If this drifts, downstream consumers must be updated too.
@@ -88,3 +91,72 @@ def test_envelope_from_exception_preserves_mcperror_taxonomy():
     assert envelope["stage"] == "enrichment"
     assert envelope["retryable"] is True
     assert envelope["hint"] == {"retry_after": 30}
+
+
+# ---------- S6 (R3-#2): 10×6 cartesian + (R3-#3): INVALID_INPUT hint shape ----------
+
+
+def test_envelope_cartesian_matrix_covers_10_codes_x_6_stages():
+    """All 60 (code, stage) combinations must round-trip cleanly through the
+    envelope renderer. This is the regression net for "new error code added
+    but tool boundary not updated" type drift."""
+    expected_keys = {"ok", "error_code", "stage", "message", "hint", "retryable"}
+    assert len(ErrorCode) == 10, "ErrorCode count drifted from 10 (plan v0.5 contract #19)"
+    assert len(Stage) == 6, "Stage count drifted from 6 (plan v0.5 contract #19)"
+
+    pairs_seen: set[tuple[str, str]] = set()
+    for code in ErrorCode:
+        for stage in Stage:
+            envelope = MCPError(
+                error_code=code,
+                stage=stage,
+                message=f"{code}@{stage}",
+                hint={"k": "v"},
+                retryable=False,
+            ).to_envelope()
+            assert set(envelope.keys()) == expected_keys, (
+                f"envelope schema drift at ({code}, {stage}): {set(envelope.keys())}"
+            )
+            assert envelope["error_code"] == str(code)
+            assert envelope["stage"] == str(stage)
+            pairs_seen.add((str(code), str(stage)))
+    assert len(pairs_seen) == 60, f"expected 60 unique pairs, got {len(pairs_seen)}"
+
+
+def test_invalid_input_hint_carries_suggested_slug_via_sanitize_slug():
+    """R3-#3 envelope acceptance — sanitize_slug raises MCPError whose envelope
+    surfaces `suggested_slug` in `hint`. This is the surface Claude Desktop
+    shows to the user, so the field name + shape are part of the contract.
+
+    NOTE: sanitize_slug/validate_slug are imported at module top, NOT inside
+    this function — see docs/lesson-learned.md S4 entry on class-identity
+    drift across cold-start fixture purges. Function-local imports bind
+    against the freshly re-imported module, which has a DIFFERENT MCPError
+    class object than the one bound at module top, breaking pytest.raises.
+    """
+    with pytest.raises(MCPError) as ei:
+        sanitize_slug("서울 ITS 2026", field_name="event_slug")
+    env = ei.value.to_envelope()
+    assert env["ok"] is False
+    assert env["error_code"] == "INVALID_INPUT"
+    assert env["stage"] == "preflight"
+    assert isinstance(env["hint"], dict)
+    assert "suggested_slug" in env["hint"]
+    assert validate_slug(env["hint"]["suggested_slug"])
+    assert env["hint"]["field"] == "event_slug"
+    assert env["hint"]["rule"] == "^[a-zA-Z0-9_-]{1,64}$"
+
+
+def test_invalid_input_envelope_for_each_user_facing_field():
+    """The same envelope contract applies regardless of which user-facing slug
+    field violated — workspace_id, event_slug, or any future surface."""
+    for field in ("workspace_id", "event_slug"):
+        with pytest.raises(MCPError) as ei:
+            sanitize_slug("../traversal", field_name=field)
+        env = ei.value.to_envelope()
+        assert env["error_code"] == "INVALID_INPUT"
+        assert env["hint"]["field"] == field
+        # Suggested slug must not echo the path-traversal bytes back.
+        suggested = env["hint"]["suggested_slug"]
+        assert "/" not in suggested
+        assert ".." not in suggested

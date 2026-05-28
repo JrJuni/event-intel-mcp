@@ -82,11 +82,22 @@
       - 테스트: **115/115 green** (S0/S1/S2/S3/S4 106 + S5 9 신규)
         - `test_report.py` 8건: 6 sections present + summary count line / floor invariant guard raises on bad S row / needs_review name does not leak into S/A/B/C sections / ko section headers / yaml round-trip preserves rationale + angle + breakdown + tier_counts / yaml load_from_path / brief renders all sections / ko brief labels
         - `test_mcp_cold_start.py` 신규 1건 (`test_s5_report_modules_keep_module_top_cold`): report/* keeps torch/transformers/sentence_transformers/chromadb/bitsandbytes out of sys.modules (rendering is deps-free).
-    - ⏳ **S6** — MCP wrap + slug validation + integration tests (~4.5h)
+    - ✅ **S6** — MCP wrap + slug validation + integration tests (2026-05-28)
+      - `storage/identifiers.py` — `sanitize_slug` (raise MCPError(INVALID_INPUT) on miss, with `suggested_slug` in hint), `validate_slug` (pure bool predicate), `suggest_slug` (NFKD-fold Latin diacritics → keep surviving ASCII → hyphenate runs → 64-char trim → hash-suffix fallback `event-{sha1[:8]}` for all-non-ASCII input). Deterministic across re-runs (same input → same slug → same Chroma collection).
+      - `tools/build_event_tier_list.py` — **the real 5th MCP tool**. Wires source_capture → extraction → enrichment (with cache + resume) → fit retrieval → scoring (rationale only for S/A) → render_tier_list_md + dump_tier_list_yaml → write to `outputs/{ws}/{slug}_{YYYYMMDD}/`. All providers via module-reference imports (monkeypatch safe). Preflight runs with `require_product_context=True` so missing-ingest fails fast with `PRODUCT_CONTEXT_MISSING` instead of an opaque downstream error. `enrichment_enabled=False` synthesizes snippet-only rows (no Brave calls). `_load_cards_if_available` best-effort loads cards for rationale prompting; absence falls back to generic rationale (no failure).
+      - `mcp_server.py::build_event_tier_list` — stub replaced with real handler delegation (lazy import inside the `@app.tool()` body).
+      - `runtime/preflight.py` — **provider imports moved to module top** (module-reference, not symbol). Closes a class-identity drift trap: when cold-start tests purge `event_intel.*` and run_preflight does function-local `from event_intel.providers.embedding import BgeM3Provider`, Python re-imports a fresh module whose `BgeM3Provider` is *not* the test's monkeypatched FakeEmbedding. Module-top `_embedding`/`_llm`/`_search`/`_vectorstore` references survive purge because the test files hold the same module objects. `_validate_workspace_id_minimal` retained as a back-compat shim that delegates to `sanitize_slug`.
+      - 테스트: **171/171 green** (S0/S1/S2/S3/S4/S5 115 + S6 56 신규)
+        - `test_identifiers.py` 36건: validate_slug accept/reject matrix (alphanum / underscore / hyphen / 64 chars / >64 / spaces / `..` / `/` / Hangul / Latin diacritics) + suggest_slug (punctuation strip / lowercase / Latin diacritic fold / `/` → `-` / Korean preserves embedded ASCII / pure Korean → hash fallback / determinism / 64-char truncation / empty / consecutive separator collapse / leading-trailing strip) + sanitize_slug passthrough + raise+hint (Korean / `..` / empty / oversize / envelope round-trip via `to_envelope()`)
+        - `test_mcp_tools.py` 10건: 4 input-validation cases (Korean event_slug → INVALID_INPUT + hint.suggested_slug + field="event_slug" / bad workspace_id / empty event_name / empty source_ref) + **PRODUCT_CONTEXT_MISSING via FakeVS product_chunks=0** / e2e full pipeline writes tier_list.md + tier_list.yaml + counts match / enrichment_enabled=False path (0 cache calls, "enrichment disabled" warning) / Korean lang e2e renders `# 샘플 박람회` + `최우선` headers / 5-tool surface check (all real handlers, no stubs) / SOURCE_CAPTURE_FAILED propagates at stage=extraction (not generic INTERNAL/preflight)
+        - `test_mcp_error_taxonomy.py` 신규 3건: **10 ErrorCode × 6 Stage cartesian matrix** (60 unique pairs, envelope schema lock) / INVALID_INPUT hint carries `suggested_slug` + `field` + `rule` via sanitize_slug / per-field envelope contract (workspace_id, event_slug; path-traversal bytes don't leak into suggested_slug)
+        - `test_cli.py` 6건: root --help lists all subcommands / models --help lists prepare+verify / export-schema writes valid JSON Schema / validate against sample_cards.yaml ok=true / draft-cards complains without --source-or-text / check-runtime always emits JSON envelope (ok or fail), exit code matches `ok`
+        - `test_mcp_cold_start.py` 신규 2건: build_event_tier_list module + storage.identifiers stay import-cold (no torch/transformers/sentence_transformers/chromadb/bitsandbytes leak)
+      - cold-start 회귀 가드 유지. Class-identity drift trap moved to documented module-top import pattern (lesson re-confirmed).
   - **Resumable batches**:
     - batch1 = S0 + S1 + S2 (~10.5h) ✅ — runtime preflight + product mini-RAG 살아있는 시점
     - batch2 = S3 + S4 (~11h) ✅ — event extraction + scoring 끝, 실 전시회 fixture 수집 직전
-    - batch3 = S5 + S6 + 실 전시회 smoke (~6h) — v0 surface 완성, Claude Desktop 통합
+    - batch3 = S5 + S6 (~6h) ✅ — v0 surface 완성. 다음: 실 전시회 2-3개 fixture로 smoke + Claude Desktop 등록 검증
   - **Done When (14 결정적 기준)**: `pip install -e .` + pytest 75+ green / cold-start 회귀 0 / 5개 MCP tool Claude Desktop 호출 가능 / e2e (check-runtime → draft → validate → ingest → build) 한 사이클 성공 / 실 전시회 2-3개 다른 패턴으로 tier_list.md 생성 + 모든 S/A row의 `has_url + has_news >= 1` / tier_list.yaml round-trip / README에 5-tool workflow + 10 error_code 매핑 / bd-agent와 import 0 / envelope snapshot + schema drift test green / sanitize_slug edge case green / `build_event_tier_list` 가 product 미ingest 시 `PRODUCT_CONTEXT_MISSING` 반환 / Korean event_slug → `INVALID_INPUT` envelope의 `hint.suggested_slug` ASCII-safe 값 / `check_runtime`가 Brave quota 미노출 시 `remaining_quota: null` + status `ok` / `config/defaults.yaml` 필수 키 누락 → `CONFIG_ERROR` + path-localized hint
 
 ---
@@ -103,6 +114,7 @@
 2. **S3 ✅** — Event Source → Extraction (chunked + cap + snippet-anchored)
 3. **S4 ✅** — Enrichment + Fit Retrieval (단방향) + Scoring + Resume — batch2 완료
 4. **S5 ✅** — Report (tier_list.md + tier_list.yaml + product_brief.md)
-5. **S6** (다음 step) — MCP wrap + slug validation + integration tests (~4.5h)
+5. **S6 ✅** — MCP wrap + slug validation + integration tests (171/171 green) — batch3 완료, v0 surface 완성
+6. **다음 step** — 실 전시회 fixture 2-3개 (서로 다른 사이트 패턴) → smoke build → Claude Desktop 등록 + tool discovery 확인 + Done When #5/#11/#12 검증
 
 세션 간 재개: 항상 `docs/status.md` + `~/.claude/plans/tender-mixing-badger.md` 두 파일을 fresh context로 진입 시 먼저 읽기.

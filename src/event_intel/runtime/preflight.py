@@ -16,6 +16,11 @@ from typing import TYPE_CHECKING
 import yaml
 
 from event_intel.errors import ErrorCode, MCPError, Stage
+from event_intel.providers import embedding as _embedding
+from event_intel.providers import llm as _llm
+from event_intel.providers import search as _search
+from event_intel.providers import vectorstore as _vectorstore
+from event_intel.storage.identifiers import sanitize_slug
 
 if TYPE_CHECKING:
     from event_intel.providers.embedding import EmbeddingProvider
@@ -24,18 +29,13 @@ if TYPE_CHECKING:
     from event_intel.providers.vectorstore import VectorStoreProvider
 
 
-# Minimal slug check used until storage/identifiers.sanitize_slug lands in S6.
 def _validate_workspace_id_minimal(workspace_id: str) -> None:
-    if not workspace_id or len(workspace_id) > 64 or not all(
-        c.isalnum() or c in "_-" for c in workspace_id
-    ):
-        raise MCPError(
-            error_code=ErrorCode.INVALID_INPUT,
-            stage=Stage.PREFLIGHT,
-            message=f"workspace_id '{workspace_id}' violates [a-zA-Z0-9_-]{{1,64}}",
-            hint={"rule": "^[a-zA-Z0-9_-]{1,64}$"},
-            retryable=False,
-        )
+    """Back-compat shim — delegates to `storage.identifiers.sanitize_slug`.
+
+    Kept so existing call sites (draft / ingest tool handlers) don't need to
+    update in lockstep. New code should call `sanitize_slug` directly.
+    """
+    sanitize_slug(workspace_id, field_name="workspace_id")
 
 
 # Required nested keys in defaults.yaml. Surfaced as CONFIG_ERROR with a dotted path.
@@ -139,22 +139,17 @@ def run_preflight(
     if config is None:
         config = load_config()
 
+    # Module-reference resolution (NOT `from X import Y`): keeps the test-time
+    # monkeypatch of provider classes alive across cold-start fixture purges
+    # (see docs/lesson-learned.md S4 class-identity drift entry).
     if embedding_provider is None:
-        from event_intel.providers.embedding import BgeM3Provider
-
-        embedding_provider = BgeM3Provider()
+        embedding_provider = _embedding.BgeM3Provider()
     if vectorstore_provider is None:
-        from event_intel.providers.vectorstore import ChromaProvider
-
-        vectorstore_provider = ChromaProvider()
+        vectorstore_provider = _vectorstore.ChromaProvider()
     if llm_provider is None:
-        from event_intel.providers.llm import AnthropicProvider
-
-        llm_provider = AnthropicProvider(model=config["llm"]["draft_cards_model"])
+        llm_provider = _llm.AnthropicProvider(model=config["llm"]["draft_cards_model"])
     if search_provider is None:
-        from event_intel.providers.search import BraveSearchProvider
-
-        search_provider = BraveSearchProvider()
+        search_provider = _search.BraveSearchProvider()
 
     start = time.monotonic()
     checks: dict[str, dict] = {}
