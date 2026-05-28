@@ -16,6 +16,11 @@ class ErrorCode(StrEnum):
     PRODUCT_CONTEXT_MISSING = "PRODUCT_CONTEXT_MISSING"
     SOURCE_CAPTURE_FAILED = "SOURCE_CAPTURE_FAILED"
     CONFIG_ERROR = "CONFIG_ERROR"
+    # Phase 18T acquisition layer (4 new codes)
+    ACQUISITION_AMBIGUOUS = "ACQUISITION_AMBIGUOUS"
+    LOGIN_REQUIRED = "LOGIN_REQUIRED"
+    OPERATOR_CAPTURE_REQUIRED = "OPERATOR_CAPTURE_REQUIRED"
+    ROBOTS_DISALLOWED = "ROBOTS_DISALLOWED"
 
 
 class Stage(StrEnum):
@@ -25,6 +30,7 @@ class Stage(StrEnum):
     SCORING = "scoring"
     REPORT = "report"
     INGEST = "ingest"
+    ACQUISITION = "acquisition"  # Phase 18T
 
 
 class MCPError(Exception):

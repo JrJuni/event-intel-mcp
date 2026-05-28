@@ -1,9 +1,10 @@
-"""S1 — MCPError envelope shape snapshot.
+"""MCPError envelope shape snapshot.
 
 Locks the envelope shape so downstream tooling (Claude Desktop client, CLI JSON
 output, future LSP-style integrations) can rely on it without dance.
 
-See plan v0.5 Contract #19: 10 error_codes × 6 stages.
+Phase 18S: 10 error_codes × 6 stages (60 pairs).
+Phase 18T: 14 error_codes × 7 stages (98 pairs). +4 codes, +1 stage.
 """
 from __future__ import annotations
 
@@ -25,6 +26,11 @@ EXPECTED_ERROR_CODES = {
     "PRODUCT_CONTEXT_MISSING",
     "SOURCE_CAPTURE_FAILED",
     "CONFIG_ERROR",
+    # Phase 18T acquisition layer (+4)
+    "ACQUISITION_AMBIGUOUS",
+    "LOGIN_REQUIRED",
+    "OPERATOR_CAPTURE_REQUIRED",
+    "ROBOTS_DISALLOWED",
 }
 
 EXPECTED_STAGES = {
@@ -34,6 +40,7 @@ EXPECTED_STAGES = {
     "scoring",
     "report",
     "ingest",
+    "acquisition",  # Phase 18T
 }
 
 
@@ -93,16 +100,21 @@ def test_envelope_from_exception_preserves_mcperror_taxonomy():
     assert envelope["hint"] == {"retry_after": 30}
 
 
-# ---------- S6 (R3-#2): 10×6 cartesian + (R3-#3): INVALID_INPUT hint shape ----------
+# ---------- 14×7 cartesian (Phase 18T) + INVALID_INPUT hint shape ----------
 
 
-def test_envelope_cartesian_matrix_covers_10_codes_x_6_stages():
-    """All 60 (code, stage) combinations must round-trip cleanly through the
-    envelope renderer. This is the regression net for "new error code added
-    but tool boundary not updated" type drift."""
+def test_envelope_cartesian_matrix_covers_14_codes_x_7_stages():
+    """All 98 (code, stage) combinations must round-trip cleanly through the
+    envelope renderer. Phase 18T expanded from 60 → 98 (14 codes × 7 stages)."""
     expected_keys = {"ok", "error_code", "stage", "message", "hint", "retryable"}
-    assert len(ErrorCode) == 10, "ErrorCode count drifted from 10 (plan v0.5 contract #19)"
-    assert len(Stage) == 6, "Stage count drifted from 6 (plan v0.5 contract #19)"
+    assert len(ErrorCode) == 14, (
+        f"ErrorCode count drifted (expected 14 for Phase 18T, got {len(ErrorCode)}). "
+        "Update this snapshot when adding new codes."
+    )
+    assert len(Stage) == 7, (
+        f"Stage count drifted (expected 7 for Phase 18T, got {len(Stage)}). "
+        "Update this snapshot when adding new stages."
+    )
 
     pairs_seen: set[tuple[str, str]] = set()
     for code in ErrorCode:
@@ -120,7 +132,7 @@ def test_envelope_cartesian_matrix_covers_10_codes_x_6_stages():
             assert envelope["error_code"] == str(code)
             assert envelope["stage"] == str(stage)
             pairs_seen.add((str(code), str(stage)))
-    assert len(pairs_seen) == 60, f"expected 60 unique pairs, got {len(pairs_seen)}"
+    assert len(pairs_seen) == 98, f"expected 98 unique pairs, got {len(pairs_seen)}"
 
 
 def test_invalid_input_hint_carries_suggested_slug_via_sanitize_slug():

@@ -33,5 +33,16 @@ outputs/*
 ~/.event-intel/
 .event-intel-cache/
 
+# Real-world exhibition fixtures (often carry officer names / PII via the
+# source pages). Synthetic fixtures (`sample_exhibitors*`, `large_*`) stay
+# tracked; anything else under tests/fixtures/events/ is operator-collected
+# and gitignored. See tests/fixtures/events/README.md for re-collection.
+tests/fixtures/events/*
+!tests/fixtures/events/sample_exhibitors.html
+!tests/fixtures/events/sample_exhibitors.csv
+!tests/fixtures/events/sample_exhibitors_ko.html
+!tests/fixtures/events/large_exhibitor_page.html
+!tests/fixtures/events/README.md
+
 # Notebooks
 .ipynb_checkpoints/

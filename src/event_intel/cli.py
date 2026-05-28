@@ -148,6 +148,87 @@ def ingest_cmd(
     raise typer.Exit(code=0 if result.get("ok") else 1)
 
 
+@app.command("build-event")
+def build_event_cmd(
+    workspace: str = typer.Option("default", "--workspace", "-w", help="Workspace ID."),
+    event_name: str = typer.Option(..., "--event-name", help="Human-readable event title."),
+    event_slug: str = typer.Option(..., "--event-slug", help="Slug for outputs/Chroma keys."),
+    html_file: str | None = typer.Option(None, "--html-file", help="Path to a saved exhibitor-list HTML."),
+    csv_file: str | None = typer.Option(None, "--csv-file", help="Path to a CSV with at least a name column."),
+    text_file: str | None = typer.Option(None, "--text-file", help="Path to a plain-text exhibitor list."),
+    lang: str = typer.Option("en", "--lang", help="Output language (en or ko)."),
+    max_companies: int | None = typer.Option(None, "--max-companies", help="Override enrichment cap."),
+    no_enrich: bool = typer.Option(False, "--no-enrich", help="Skip Brave enrichment (snippet-only scoring)."),
+    no_rationale: bool = typer.Option(False, "--no-rationale", help="Skip Sonnet rationale calls."),
+    resume_from: str | None = typer.Option(None, "--resume-from", help="Path to a per-row JSONL resume artifact."),
+) -> None:
+    """Build a tiered exhibitor list for an event from a saved source file."""
+    from event_intel.tools.build_event_tier_list import build_event_tier_list
+
+    provided = [(k, v) for k, v in [("--html-file", html_file), ("--csv-file", csv_file), ("--text-file", text_file)] if v]
+    if len(provided) != 1:
+        typer.echo("Pick exactly one of --html-file / --csv-file / --text-file.", err=True)
+        raise typer.Exit(code=2)
+    flag, path = provided[0]
+    if flag == "--html-file":
+        source_kind, source_ref = "html_file", path
+    elif flag == "--csv-file":
+        source_kind, source_ref = "csv_file", path
+    else:
+        source_kind, source_ref = "text_file", path  # Phase 18T: file-path contract
+
+    result = build_event_tier_list(
+        workspace_id=workspace,
+        event_name=event_name,
+        event_slug=event_slug,
+        source_kind=source_kind,
+        source_ref=source_ref,
+        lang=lang,
+        max_companies=max_companies,
+        enrichment_enabled=not no_enrich,
+        run_rationale=not no_rationale,
+        resume_from=resume_from,
+    )
+    _print_json(result)
+    raise typer.Exit(code=0 if result.get("ok") else 1)
+
+
+@app.command("analyze-page")
+def analyze_page_cmd(
+    url: str = typer.Option(..., "--url", help="Exhibition site URL to analyze."),
+    workspace: str = typer.Option("default", "--workspace", "-w"),
+    lang: str = typer.Option("en", "--lang"),
+) -> None:
+    """Classify an exhibition site URL and return acquisition hints (Phase 18T)."""
+    from event_intel.tools.analyze_event_page import analyze_event_page
+
+    result = analyze_event_page(url=url, lang=lang, workspace_id=workspace)
+    _print_json(result)
+    raise typer.Exit(code=0 if result.get("ok") else 1)
+
+
+@app.command("acquire-source")
+def acquire_source_cmd(
+    url: str = typer.Option(..., "--url", help="Exhibition site URL to acquire from."),
+    workspace: str = typer.Option("default", "--workspace", "-w"),
+    event_slug: str = typer.Option(..., "--event-slug", help="Slug for the event (cache key)."),
+    lang: str = typer.Option("en", "--lang"),
+    refetch: bool = typer.Option(False, "--refetch", help="Ignore cached artifact and re-acquire."),
+) -> None:
+    """Analyze → probe → fetch → artifact; returns (source_kind, source_ref) (Phase 18T)."""
+    from event_intel.tools.acquire_exhibitor_source import acquire_exhibitor_source
+
+    result = acquire_exhibitor_source(
+        url=url,
+        workspace_id=workspace,
+        event_slug=event_slug,
+        lang=lang,
+        refetch=refetch,
+    )
+    _print_json(result)
+    raise typer.Exit(code=0 if result.get("ok") else 1)
+
+
 @app.command("export-schema")
 def export_schema_cmd(
     out: str | None = typer.Option(

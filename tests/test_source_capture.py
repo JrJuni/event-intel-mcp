@@ -83,3 +83,29 @@ def test_empty_inline_text_raises():
     with pytest.raises(MCPError) as exc_info:
         capture_source(source_kind="text", source_ref="   ")
     assert exc_info.value.error_code == ErrorCode.SOURCE_CAPTURE_FAILED
+
+
+# ---------- text_file (Phase 18T) ----------
+
+
+def test_text_file_reads_file_contents_as_inline_text(tmp_path):
+    """text_file source kind reads a filesystem path and returns contents as inline
+    text — used by the acquisition layer when it writes JSON blobs to disk."""
+    p = tmp_path / "exhibitors.json"
+    content = '[{"name": "ExhibitorA", "description": "an AI company with long description for min"}]'
+    p.write_text(content, encoding="utf-8")
+    cap = capture_source(source_kind="text_file", source_ref=str(p))
+    assert cap.kind == "text_file"
+    assert cap.source_ref == str(p)
+    assert cap.text == content
+    assert cap.csv_rows is None
+
+
+def test_text_file_missing_path_raises_source_capture_failed(tmp_path):
+    with pytest.raises(MCPError) as ei:
+        capture_source(source_kind="text_file", source_ref=str(tmp_path / "nonexistent.txt"))
+    assert ei.value.error_code == ErrorCode.SOURCE_CAPTURE_FAILED
+
+
+def test_text_file_is_in_supported_kinds():
+    assert "text_file" in SUPPORTED_SOURCE_KINDS

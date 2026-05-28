@@ -30,10 +30,29 @@ def test_root_help_lists_all_subcommands():
         "draft-cards",
         "validate",
         "ingest",
+        "build-event",
         "export-schema",
         "models",
     ):
         assert sub in out, f"`{sub}` missing from `event-intel --help`:\n{out}"
+
+
+def test_build_event_rejects_multiple_source_flags():
+    res = runner.invoke(
+        app,
+        ["build-event", "--workspace", "default", "--event-name", "X",
+         "--event-slug", "x", "--html-file", "a.html", "--csv-file", "b.csv"],
+    )
+    assert res.exit_code != 0
+    assert "Pick exactly one" in res.output or "html" in res.output.lower()
+
+
+def test_build_event_rejects_no_source_flag():
+    res = runner.invoke(
+        app,
+        ["build-event", "--workspace", "default", "--event-name", "X", "--event-slug", "x"],
+    )
+    assert res.exit_code != 0
 
 
 def test_models_help_lists_prepare_and_verify():
@@ -93,3 +112,45 @@ def test_check_runtime_returns_envelope_even_with_no_keys(monkeypatch):
         assert res.exit_code == 1
     else:
         assert res.exit_code == 0
+
+
+# ---------- Phase 18T — new subcommands + --text-file mapping ----------
+
+def test_root_help_now_lists_eight_tools():
+    """Phase 18T adds analyze-page + acquire-source. Root help must grow."""
+    res = runner.invoke(app, ["--help"])
+    assert res.exit_code == 0
+    for sub in ("analyze-page", "acquire-source"):
+        assert sub in res.output, (
+            f"'{sub}' missing from --help after Phase 18T T0 wiring:\n{res.output}"
+        )
+
+
+def test_build_event_text_file_uses_text_file_source_kind(tmp_path, monkeypatch):
+    """Phase 18T R2-4: --text-file must map to source_kind='text_file' (file-path
+    contract), NOT 'text' (inline-string contract)."""
+    from event_intel.tools import build_event_tier_list as _bt_mod
+    from event_intel.runtime import preflight as _preflight
+
+    # Capture the source_kind that the tool receives.
+    captured: dict = {}
+
+    def _fake_build(**kwargs):
+        captured.update(kwargs)
+        return {"ok": False, "error_code": "INTERNAL", "stage": "preflight",
+                "message": "captured", "hint": None, "retryable": False}
+
+    monkeypatch.setattr(_bt_mod, "build_event_tier_list", _fake_build)
+
+    txt = tmp_path / "exhibitors.txt"
+    txt.write_text("Exhibitor A — AI company", encoding="utf-8")
+
+    runner.invoke(
+        app,
+        ["build-event", "--event-name", "X", "--event-slug", "x",
+         "--text-file", str(txt)],
+    )
+    assert captured.get("source_kind") == "text_file", (
+        f"Expected source_kind='text_file', got {captured.get('source_kind')!r}. "
+        "The CLI must map --text-file to the file-path contract, not 'text' (inline)."
+    )

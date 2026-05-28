@@ -185,6 +185,45 @@ def test_events_modules_keep_module_top_cold(fresh_sys_modules):
     )
 
 
+def test_t0_acquisition_modules_keep_module_top_cold(fresh_sys_modules):
+    """Phase 18T T0: acquisition package + storage.artifacts + 3 stub tools
+    must NOT pull heavy ML libs at module import."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.acquisition")
+    importlib.import_module("event_intel.storage.artifacts")
+    importlib.import_module("event_intel.tools.analyze_event_page")
+    importlib.import_module("event_intel.tools.probe_exhibitor_endpoint")
+    importlib.import_module("event_intel.tools.acquire_exhibitor_source")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"Phase 18T T0 acquisition modules leaked heavy ML imports: {leaked}. "
+        "All heavy deps must stay behind provider lazy imports."
+    )
+
+
+def test_t0_stub_tools_return_internal_envelope(fresh_sys_modules):
+    """Phase 18T T0 stub: 3 new tools must return an ok=false INTERNAL envelope
+    with stage=acquisition (not raise, not return None)."""
+    _purge("event_intel")
+    server = importlib.import_module("event_intel.mcp_server")
+
+    for tool_name, kwargs in [
+        ("analyze_event_page", {"url": "https://example.com"}),
+        ("probe_exhibitor_endpoint", {"url": "https://example.com", "hints": {}}),
+        ("acquire_exhibitor_source", {"url": "https://example.com",
+                                      "workspace_id": "default", "event_slug": "x"}),
+    ]:
+        result = getattr(server, tool_name)(**kwargs)
+        assert isinstance(result, dict), f"{tool_name} did not return dict"
+        assert result["ok"] is False, f"{tool_name} stub should return ok=false"
+        assert result["error_code"] == "INTERNAL", f"{tool_name} stub should return INTERNAL"
+        assert result["stage"] == "acquisition", f"{tool_name} stub should use stage=acquisition"
+
+
 def test_check_runtime_tool_returns_envelope(fresh_sys_modules):
     """check_runtime should always return an envelope (ok bool present), never raise.
     Whether ok=True or ok=False depends on the local machine state (bge-m3 cached,

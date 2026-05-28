@@ -125,6 +125,50 @@ def build_event_tier_list(
     )
 
 
+@app.tool()
+def analyze_event_page(
+    url: str = "",
+    lang: str = "en",
+    workspace_id: str = "default",
+) -> dict:
+    """Classify an exhibition site URL and return acquisition hints (Phase 18T)."""
+    from event_intel.tools.analyze_event_page import analyze_event_page as _impl
+
+    return _impl(url=url, lang=lang, workspace_id=workspace_id)
+
+
+@app.tool()
+def probe_exhibitor_endpoint(
+    url: str = "",
+    hints: dict | None = None,
+    lang: str = "en",
+) -> dict:
+    """Given analyzer hints, probe XHR/embedded-JSON endpoints (Phase 18T)."""
+    from event_intel.tools.probe_exhibitor_endpoint import probe_exhibitor_endpoint as _impl
+
+    return _impl(url=url, hints=hints, lang=lang)
+
+
+@app.tool()
+def acquire_exhibitor_source(
+    url: str = "",
+    workspace_id: str = "default",
+    event_slug: str = "",
+    lang: str = "en",
+    refetch: bool = False,
+) -> dict:
+    """Analyze → probe → fetch → artifact → (source_kind, source_ref) (Phase 18T)."""
+    from event_intel.tools.acquire_exhibitor_source import acquire_exhibitor_source as _impl
+
+    return _impl(
+        url=url,
+        workspace_id=workspace_id,
+        event_slug=event_slug,
+        lang=lang,
+        refetch=refetch,
+    )
+
+
 def main() -> None:
     """Entrypoint for `python -m event_intel.mcp_server`."""
     app.run()
