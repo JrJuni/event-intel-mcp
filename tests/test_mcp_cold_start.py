@@ -185,6 +185,24 @@ def test_events_modules_keep_module_top_cold(fresh_sys_modules):
     )
 
 
+def test_t05_acquisition_safety_modules_keep_module_top_cold(fresh_sys_modules):
+    """T0.5: url_safety / robots / raw_fetch / http_status_map must NOT pull heavy
+    ML libs at module import — they only need stdlib + httpx (lazy in raw_fetch)."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.acquisition.url_safety")
+    importlib.import_module("event_intel.acquisition.robots")
+    importlib.import_module("event_intel.acquisition.raw_fetch")
+    importlib.import_module("event_intel.acquisition.http_status_map")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"T0.5 acquisition safety modules leaked heavy ML imports: {leaked}."
+    )
+
+
 def test_t0_acquisition_modules_keep_module_top_cold(fresh_sys_modules):
     """Phase 18T T0: acquisition package + storage.artifacts + 3 stub tools
     must NOT pull heavy ML libs at module import."""
