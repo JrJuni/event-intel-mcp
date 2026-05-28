@@ -223,14 +223,16 @@ def test_t0_acquisition_modules_keep_module_top_cold(fresh_sys_modules):
     )
 
 
-def test_t0_stub_tools_return_internal_envelope(fresh_sys_modules):
-    """Phase 18T T0 stub: 3 new tools must return an ok=false INTERNAL envelope
-    with stage=acquisition (not raise, not return None)."""
+def test_t0_stub_tools_return_acquisition_envelope(fresh_sys_modules):
+    """Phase 18T: probe + acquire are still stubs; analyze has real impl.
+    All three must return an ok=false envelope with stage=acquisition.
+    probe and acquire return INTERNAL (stub); analyze returns INVALID_INPUT
+    (empty url) or UPSTREAM_ERROR depending on what the real impl encounters."""
     _purge("event_intel")
     server = importlib.import_module("event_intel.mcp_server")
 
+    # probe + acquire are stubs → always INTERNAL
     for tool_name, kwargs in [
-        ("analyze_event_page", {"url": "https://example.com"}),
         ("probe_exhibitor_endpoint", {"url": "https://example.com", "hints": {}}),
         ("acquire_exhibitor_source", {"url": "https://example.com",
                                       "workspace_id": "default", "event_slug": "x"}),
@@ -240,6 +242,12 @@ def test_t0_stub_tools_return_internal_envelope(fresh_sys_modules):
         assert result["ok"] is False, f"{tool_name} stub should return ok=false"
         assert result["error_code"] == "INTERNAL", f"{tool_name} stub should return INTERNAL"
         assert result["stage"] == "acquisition", f"{tool_name} stub should use stage=acquisition"
+
+    # analyze has a real impl — empty url → INVALID_INPUT at acquisition stage
+    result = server.analyze_event_page(url="")
+    assert isinstance(result, dict)
+    assert result["ok"] is False
+    assert result["stage"] == "acquisition"
 
 
 def test_check_runtime_tool_returns_envelope(fresh_sys_modules):
