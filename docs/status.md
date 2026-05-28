@@ -63,12 +63,23 @@
         - `test_event_extraction.py` 12건: normalize_name (en + ko) / _split_chunks paragraph boundary / english html happy / snippet floor drops short rows / **chunk cap triggers warning + truncates to 12 + 12 LLM calls** / ko name merge collapses ㈜ vs 모비우스랩 (single candidate, chunk_indices accumulates) / low confidence routes to needs_review / empty capture → SOURCE_CAPTURE_FAILED / malformed LLM JSON recovered from prose wrapper / LLM exception → UPSTREAM_ERROR (retryable) / module-reference import smoke
         - `test_mcp_cold_start.py` 신규 1건 (`test_events_modules_keep_module_top_cold`): events.* modules must NOT pull heavy ML imports at module top
       - cold-start 회귀 가드 유지 (trafilatura lazy in `_strip_html`, all other heavy deps deferred to provider methods).
-    - ⏳ **S4** — Enrichment + Fit Retrieval + Scoring + Resume (~6h)
+    - ✅ **S4** — Enrichment + Fit Retrieval (단방향) + Scoring + Resume (2026-05-28)
+      - `events/enrichment.py` — for each ExhibitorCandidate: trust extraction-supplied URL OR Brave web search for `"{name}" official site` + score each candidate URL (host-stem difflib ratio + name-token hit + LinkedIn/FB/Wikipedia/Crunchbase/Bloomberg/X/YouTube hard reject), pick top-scoring above threshold. Brave news search for `"{name}"` within `news_days_back`. **Per-(query,kind,lang) sha1 cache** under `~/.event-intel/cache/search/{ws}/` — re-runs hit cache with 0 search calls. **Resume artifact** JSONL at `~/.event-intel/resume/{ws}.jsonl` — pre-existing rows skipped by name, new rows appended. `max_companies` cap (review #11). Failures fold to `MCPError(UPSTREAM_ERROR, stage=ENRICHMENT, retryable=True)`.
+      - `rag/retriever.py::retrieve_fit_event_to_product` — **단방향** (review R2-#5 정정). Embed (name + snippet + description + top 3 news titles) for each exhibitor in a single batch, query `product_{ws}` collection top_k=5, return `FitResult(capability_fit=avg(top_k cosine), capability_fit_breakdown, competitor_hits, bad_fit_hits)`. Cosine derived from Chroma squared-L2 with normalized bge-m3 embeddings (`sim ≈ 1 - dist/2`, clamped). **One batched VS query call regardless of exhibitor count**. Never queries an `event_*` collection (mock-verified).
+      - `scoring/dimensions.py` — 7 deterministic dimensions (capability_fit, source_confidence, buying_signal w/ trigger-keyword bonus, website_verification, category_fit via ideal_customer overlap, competitor_penalty, bad_fit_penalty). All return 0..1 floats. Penalty weights in yaml are negative so the same `Σ w_i × d_i` formula subtracts naturally.
+      - `scoring/rules.py::decide_tier` — pure function over `(final_score, evidence_floor, tier_rules)`. **Evidence floor 3-state lifecycle** (Contract #9): `floor = int(has_official_url) + int(has_news_signals) ∈ {0,1,2}`. S requires floor ≥ 2; A requires floor ≥ 1; B/C floor 0 OK.
+      - `scoring/compute.py::score_exhibitors` — ties dimensions × weights → `final_score = clamp(0, 10, Σ × 10)` → tier via rules. Optional **rationale call** runs Sonnet (1 sentence + opening angle) only for `rationale_for_tiers=("S","A")` by default — LLM bounded use (Contract #5). Rationale failures swallowed (decorative). En/Ko prompt variants in `_RATIONALE_PROMPT_*`.
+      - 테스트: **106/106 green** (S0/S1/S2/S3 80 + S4 26 신규)
+        - `test_enrichment.py` 7건: 5-candidate happy path / extraction-supplied URL skips web search / **re-run hits cache with 0 search calls** / resume skips done rows by name + only retries remaining / max_companies cap + warning / upstream Brave failure → UPSTREAM_ERROR (retryable) / official_url threshold filters bad-host hits (LinkedIn/Wikipedia)
+        - `test_rag_ingest_retrieve.py` 6건: product collection naming matches preflight / similarity_from_distance clamping / averages top_k similarity + breakdown / counts competitor + bad_fit hits / **only queries product_{ws} not event_*** + single batched call / empty input → empty list
+        - `test_scoring.py` 12건: evidence_floor matrix (all 4 combos) / website_verification binary / buying_signal news count brackets / buying_signal trigger keyword bonus / category_fit zero w/o cards / category_fit increases with industry overlap / decide_tier **floor caps tier** (same score 9.0 → floor 2 = S, floor 1 = A, floor 0 = B) / decide_tier picks highest satisfied / full-pipeline floor cap (Both → S, UrlOnly → A, NoneEvidence → B) / bad_fit + competitor penalty drops tier / rationale call gated by tier (LLM count = #{S+A}) / length mismatch → MCPError(INTERNAL)
+        - `test_mcp_cold_start.py` 신규 1건 (`test_s4_modules_keep_module_top_cold`): enrichment + retriever + scoring.* keep torch/transformers/sentence_transformers/chromadb/bitsandbytes out of sys.modules at import
+      - cold-start 회귀 가드 유지. Heavy deps (sentence_transformers, chromadb) only enter via injected provider methods.
     - ⏳ **S5** — Report (~2h)
     - ⏳ **S6** — MCP wrap + slug validation + integration tests (~4.5h)
   - **Resumable batches**:
     - batch1 = S0 + S1 + S2 (~10.5h) ✅ — runtime preflight + product mini-RAG 살아있는 시점
-    - batch2 = S3 + S4 (~11h) — event extraction (S3 ✅) + scoring (S4 ⏳) 끝, 실 전시회 fixture 수집 직전
+    - batch2 = S3 + S4 (~11h) ✅ — event extraction + scoring 끝, 실 전시회 fixture 수집 직전
     - batch3 = S5 + S6 + 실 전시회 smoke (~6h) — v0 surface 완성, Claude Desktop 통합
   - **Done When (14 결정적 기준)**: `pip install -e .` + pytest 75+ green / cold-start 회귀 0 / 5개 MCP tool Claude Desktop 호출 가능 / e2e (check-runtime → draft → validate → ingest → build) 한 사이클 성공 / 실 전시회 2-3개 다른 패턴으로 tier_list.md 생성 + 모든 S/A row의 `has_url + has_news >= 1` / tier_list.yaml round-trip / README에 5-tool workflow + 10 error_code 매핑 / bd-agent와 import 0 / envelope snapshot + schema drift test green / sanitize_slug edge case green / `build_event_tier_list` 가 product 미ingest 시 `PRODUCT_CONTEXT_MISSING` 반환 / Korean event_slug → `INVALID_INPUT` envelope의 `hint.suggested_slug` ASCII-safe 값 / `check_runtime`가 Brave quota 미노출 시 `remaining_quota: null` + status `ok` / `config/defaults.yaml` 필수 키 누락 → `CONFIG_ERROR` + path-localized hint
 
@@ -84,8 +95,8 @@
 
 1. **batch1 완성** (S0+S1+S2 ✅) — runtime preflight + product mini-RAG 활성
 2. **S3 ✅** — Event Source → Extraction (chunked + cap + snippet-anchored)
-3. **S4** (다음 step) — Enrichment + Fit Retrieval + Scoring + Resume (~6h) → 실 전시회 fixture 수집 직전
-4. S5 — Report (~2h)
+3. **S4 ✅** — Enrichment + Fit Retrieval (단방향) + Scoring + Resume — batch2 완료
+4. **S5** (다음 step) — Report (~2h)
 5. S6 — MCP wrap + slug validation + integration tests (~4.5h)
 
 세션 간 재개: 항상 `docs/status.md` + `~/.claude/plans/tender-mixing-badger.md` 두 파일을 fresh context로 진입 시 먼저 읽기.

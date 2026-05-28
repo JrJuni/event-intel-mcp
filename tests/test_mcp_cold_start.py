@@ -120,6 +120,27 @@ def test_cards_tools_keep_module_top_cold(fresh_sys_modules):
     )
 
 
+def test_s4_modules_keep_module_top_cold(fresh_sys_modules):
+    """S4: enrichment / rag.retriever / scoring.* must NOT pull heavy ML libs
+    at module top. Embedding + vectorstore providers come in as args so the
+    heavy deps stay quarantined."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.events.enrichment")
+    importlib.import_module("event_intel.rag.retriever")
+    importlib.import_module("event_intel.scoring.dimensions")
+    importlib.import_module("event_intel.scoring.rules")
+    importlib.import_module("event_intel.scoring.compute")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"S4 modules leaked heavy ML imports: {leaked}. "
+        "All heavy deps must be imported inside method bodies, not at module top."
+    )
+
+
 def test_events_modules_keep_module_top_cold(fresh_sys_modules):
     """S3: events.source_capture / events.extraction must NOT pull heavy ML
     libs at module import — trafilatura is the heaviest dep and is lazy-loaded
