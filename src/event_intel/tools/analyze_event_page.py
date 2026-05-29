@@ -33,7 +33,7 @@ def analyze_event_page(
         model = config.get("llm", {}).get("extract_exhibitors_model", "claude-sonnet-4-6")
         max_tokens = int(config.get("llm", {}).get("extract_max_tokens", 2048))
 
-        llm_provider = _llm.AnthropicProvider(model=model)
+        llm_provider = _llm.make_llm_provider(config, model=model)
 
         return _analyzer.analyze_page(
             url=url,

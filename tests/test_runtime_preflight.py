@@ -65,7 +65,11 @@ class FakeLLM:
     def ping(self) -> dict:
         if self._has_key:
             return {"status": "ok", "model": "claude-sonnet-4-6"}
-        return {"status": "missing_key"}
+        return {
+            "status": "missing_key",
+            "message": "ANTHROPIC_API_KEY missing or invalid",
+            "fix": "Set ANTHROPIC_API_KEY in .env (see .env.example)",
+        }
 
     def chat_cached(self, **kwargs):  # pragma: no cover
         raise NotImplementedError
@@ -126,7 +130,7 @@ def test_preflight_success_with_all_ready(all_ready, minimal_config):
     checks = result["checks"]
     assert checks["embedding_model"]["status"] == "ready"
     assert checks["vectorstore"]["status"] == "writable"
-    assert checks["anthropic_api"]["status"] == "ok"
+    assert checks["llm_api"]["status"] == "ok"
     assert checks["brave_api"]["status"] == "ok"
     assert checks["brave_api"]["remaining_quota"] == 1500
     assert checks["product_context"]["status"] == "ready"
@@ -243,6 +247,66 @@ def test_default_defaults_yaml_loads(repo_root: Path):
     assert data["schema_version"] == 1
     assert data["llm"]["draft_cards_model"]
     assert data["extraction"]["max_chunks_per_event"] == 12
+
+
+# ---------- User config override (deep merge) ----------
+
+
+def test_user_config_overrides_single_key(tmp_path, monkeypatch):
+    """~/.event-intel/config.yaml (or EVENT_INTEL_CONFIG) overrides defaults
+    via deep merge — user file may be partial.
+    """
+    user_cfg = tmp_path / "user.yaml"
+    user_cfg.write_text(
+        yaml.safe_dump({"llm": {"provider": "chatgpt_oauth"}}), encoding="utf-8"
+    )
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(user_cfg))
+
+    data = load_config()  # no path arg → uses defaults + user merge
+    # User override wins
+    assert data["llm"]["provider"] == "chatgpt_oauth"
+    # Sibling keys preserved from defaults
+    assert data["llm"]["draft_cards_model"] == "claude-sonnet-4-6"
+    assert data["extraction"]["max_chunks_per_event"] == 12
+
+
+def test_user_config_overrides_nested_key_without_clobbering_siblings(tmp_path, monkeypatch):
+    """Deep merge: override a single nested key, all sibling nested keys survive."""
+    user_cfg = tmp_path / "user.yaml"
+    user_cfg.write_text(
+        yaml.safe_dump({"scoring": {"weights": {"capability_fit": 0.99}}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(user_cfg))
+
+    data = load_config()
+    assert data["scoring"]["weights"]["capability_fit"] == 0.99
+    # Sibling weight untouched
+    assert data["scoring"]["weights"]["source_confidence"] == 0.15
+    # Sibling section (tier_rules) untouched
+    assert data["scoring"]["tier_rules"]["S"]["min_final_score"] == 7.5
+
+
+def test_missing_user_config_is_silently_ignored(tmp_path, monkeypatch):
+    """Pointing EVENT_INTEL_CONFIG at a non-existent file is OK — defaults stand."""
+    missing = tmp_path / "no_such_file.yaml"
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+
+    data = load_config()  # must not raise
+    assert data["llm"]["draft_cards_model"] == "claude-sonnet-4-6"
+
+
+def test_user_config_partial_file_does_not_trigger_required_key_check(tmp_path, monkeypatch):
+    """A partial user file should NOT fail required-key validation — only the
+    final merged dict is checked.
+    """
+    user_cfg = tmp_path / "user.yaml"
+    user_cfg.write_text(yaml.safe_dump({"llm": {"provider": "chatgpt_oauth"}}), encoding="utf-8")
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(user_cfg))
+
+    data = load_config()
+    # No CONFIG_ERROR even though user file alone lacks schema_version etc.
+    assert data["schema_version"] == 1
 
 
 # ---------- Tool boundary ----------

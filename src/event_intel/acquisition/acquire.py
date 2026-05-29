@@ -114,7 +114,7 @@ def acquire_source(
     config = _preflight.load_config()
     model = config.get("llm", {}).get("extract_exhibitors_model", "claude-sonnet-4-6")
     max_tokens = int(config.get("llm", {}).get("extract_max_tokens", 2048))
-    llm_provider = _llm.AnthropicProvider(model=model)
+    llm_provider = _llm.make_llm_provider(config, model=model)
 
     analysis = _analyzer.analyze_page(
         url=url,

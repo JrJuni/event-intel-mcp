@@ -50,30 +50,48 @@ _REQUIRED_CONFIG_KEYS: tuple[tuple[str, ...], ...] = (
 )
 
 
-def _default_config_path() -> Path:
-    env_override = os.environ.get("EVENT_INTEL_CONFIG")
-    if env_override:
-        return Path(env_override).expanduser()
-    # Repo-shipped defaults: <repo_root>/config/defaults.yaml
+def _repo_defaults_path() -> Path:
+    """Shipped defaults: <repo_root>/config/defaults.yaml."""
     return Path(__file__).resolve().parents[3] / "config" / "defaults.yaml"
 
 
-def load_config(path: Path | None = None) -> dict:
-    """Load defaults.yaml and enforce that every required key is present.
+def _user_config_path() -> Path:
+    """User override file. ``EVENT_INTEL_CONFIG`` env var wins; else ~/.event-intel/config.yaml."""
+    env_override = os.environ.get("EVENT_INTEL_CONFIG")
+    if env_override:
+        return Path(env_override).expanduser()
+    return Path.home() / ".event-intel" / "config.yaml"
 
-    Raises MCPError(CONFIG_ERROR) with a path-localized hint on any miss.
+
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Recursively merge ``override`` into ``base``. New dict returned."""
+    result = dict(base)
+    for k, v in override.items():
+        if isinstance(v, dict) and isinstance(result.get(k), dict):
+            result[k] = _deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
+def _load_yaml_file(path: Path, *, allow_missing: bool = False) -> dict | None:
+    """Load a yaml file as a mapping. Raises CONFIG_ERROR on parse failure.
+
+    If ``allow_missing=True`` and the file does not exist, returns None
+    (used for the optional user override layer).
     """
-    config_path = (path or _default_config_path()).expanduser()
     try:
-        with config_path.open(encoding="utf-8") as f:
+        with path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
     except FileNotFoundError as exc:
+        if allow_missing:
+            return None
         raise MCPError(
             error_code=ErrorCode.CONFIG_ERROR,
             stage=Stage.PREFLIGHT,
-            message=f"config file not found at {config_path}",
+            message=f"config file not found at {path}",
             hint={
-                "expected_path": str(config_path),
+                "expected_path": str(path),
                 "fix": "Restore config/defaults.yaml or set EVENT_INTEL_CONFIG",
             },
             retryable=False,
@@ -82,11 +100,23 @@ def load_config(path: Path | None = None) -> dict:
         raise MCPError(
             error_code=ErrorCode.CONFIG_ERROR,
             stage=Stage.PREFLIGHT,
-            message=f"config file at {config_path} is not valid YAML: {exc}",
-            hint={"expected_path": str(config_path)},
+            message=f"config file at {path} is not valid YAML: {exc}",
+            hint={"expected_path": str(path)},
             retryable=False,
         ) from exc
 
+    if not isinstance(data, dict):
+        raise MCPError(
+            error_code=ErrorCode.CONFIG_ERROR,
+            stage=Stage.PREFLIGHT,
+            message=f"config file at {path} must be a YAML mapping at the root",
+            hint={"expected_path": str(path)},
+            retryable=False,
+        )
+    return data
+
+
+def _check_required_keys(data: dict, source_path: Path) -> None:
     for key_path in _REQUIRED_CONFIG_KEYS:
         cursor: object = data
         for key in key_path:
@@ -97,14 +127,43 @@ def load_config(path: Path | None = None) -> dict:
                     stage=Stage.PREFLIGHT,
                     message=f"missing required config key: {dotted}",
                     hint={
-                        "expected_path": str(config_path),
+                        "expected_path": str(source_path),
                         "missing_key": dotted,
-                        "fix": f"Add `{dotted}` to {config_path}",
+                        "fix": f"Add `{dotted}` to {source_path}",
                     },
                     retryable=False,
                 )
             cursor = cursor[key]
 
+
+def load_config(path: Path | None = None) -> dict:
+    """Load merged config.
+
+    When ``path`` is supplied, that file is loaded as a self-contained config
+    (backwards-compat for tests).
+
+    When ``path`` is None, the repo's ``config/defaults.yaml`` is loaded as the
+    base, then the optional user override at ``~/.event-intel/config.yaml`` (or
+    ``EVENT_INTEL_CONFIG``) is deep-merged on top. User keys overwrite defaults
+    at any nesting depth; user file may be partial.
+
+    Raises MCPError(CONFIG_ERROR) on any parse failure or missing required key.
+    """
+    if path is not None:
+        explicit = path.expanduser()
+        data = _load_yaml_file(explicit)
+        _check_required_keys(data, explicit)
+        return data
+
+    defaults_path = _repo_defaults_path()
+    data = _load_yaml_file(defaults_path)
+
+    user_path = _user_config_path()
+    user_data = _load_yaml_file(user_path, allow_missing=True)
+    if user_data is not None:
+        data = _deep_merge(data, user_data)
+
+    _check_required_keys(data, defaults_path)
     return data
 
 
@@ -147,7 +206,7 @@ def run_preflight(
     if vectorstore_provider is None:
         vectorstore_provider = _vectorstore.ChromaProvider()
     if llm_provider is None:
-        llm_provider = _llm.AnthropicProvider(model=config["llm"]["draft_cards_model"])
+        llm_provider = _llm.make_llm_provider(config, model=config["llm"]["draft_cards_model"])
     if search_provider is None:
         search_provider = _search.BraveSearchProvider()
 
@@ -183,20 +242,20 @@ def run_preflight(
         )
     checks["vectorstore"] = vs_status
 
-    # 3. Anthropic key
+    # 3. LLM provider key / auth
     llm_status = llm_provider.ping()
     if llm_status.get("status") != "ok":
         raise MCPError(
             error_code=ErrorCode.CONFIG_ERROR,
             stage=Stage.PREFLIGHT,
-            message="ANTHROPIC_API_KEY missing or invalid",
+            message=llm_status.get("message", "LLM provider not configured"),
             hint={
-                "fix": "Set ANTHROPIC_API_KEY in .env (see .env.example)",
+                "fix": llm_status.get("fix", "Check LLM provider configuration"),
                 "detail": llm_status,
             },
             retryable=False,
         )
-    checks["anthropic_api"] = llm_status
+    checks["llm_api"] = llm_status
 
     # 4. Brave key. remaining_quota may be None when Brave omits the header (R3-#4).
     brave_status = search_provider.ping()

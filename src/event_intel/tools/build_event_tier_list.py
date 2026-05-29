@@ -116,7 +116,7 @@ def build_event_tier_list(
 
         # 4. Extraction (S3, raises UPSTREAM_ERROR on LLM failure).
         llm_model_extract = config["llm"]["extract_exhibitors_model"]
-        extract_llm = _llm.AnthropicProvider(model=llm_model_extract)
+        extract_llm = _llm.make_llm_provider(config, model=llm_model_extract)
         extraction = _extraction.extract_exhibitors(
             capture=capture, lang=lang, llm_provider=extract_llm, config=config,
         )
@@ -169,7 +169,7 @@ def build_event_tier_list(
         rationale_llm = None
         if run_rationale and enriched_rows:
             rationale_model = config["llm"].get("rationale_model", llm_model_extract)
-            rationale_llm = _llm.AnthropicProvider(model=rationale_model)
+            rationale_llm = _llm.make_llm_provider(config, model=rationale_model)
         summary = _scoring.score_exhibitors(
             enriched=enriched_rows,
             fit_results=fit_results,

@@ -45,12 +45,14 @@ scoring:
       evidence_floor_min: 0
 
 llm:
+  provider: anthropic              # anthropic | chatgpt_oauth
   draft_cards_model: claude-sonnet-4-6
   extract_exhibitors_model: claude-sonnet-4-6
   rationale_model: claude-sonnet-4-6
   draft_cards_max_tokens: 4096
   extract_max_tokens: 4096
   rationale_max_tokens: 256
+  chatgpt_oauth_model: gpt-5.5             # used when provider=chatgpt_oauth (alt: gpt-5.4)
 
 paths:
   chroma_dir: ~/.event-intel/chroma

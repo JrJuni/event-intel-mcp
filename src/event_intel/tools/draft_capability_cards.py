@@ -46,14 +46,14 @@ def draft_capability_cards(
         chosen_model = model or config["llm"]["draft_cards_model"]
         max_tokens = int(config["llm"].get("draft_cards_max_tokens", 4096))
 
-        llm_provider = _llm.AnthropicProvider(model=chosen_model)
+        llm_provider = _llm.make_llm_provider(config, model=chosen_model)
         ping = llm_provider.ping()
         if ping.get("status") != "ok":
             raise MCPError(
                 error_code=ErrorCode.CONFIG_ERROR,
                 stage=Stage.INGEST,
-                message="ANTHROPIC_API_KEY missing or invalid",
-                hint={"fix": "Set ANTHROPIC_API_KEY in .env"},
+                message=ping.get("message", "LLM provider not configured"),
+                hint={"fix": ping.get("fix", "Check LLM provider configuration")},
                 retryable=False,
             )
 
