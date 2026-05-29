@@ -17,6 +17,12 @@ for _stream in (sys.stdout, sys.stderr):
         except (ValueError, AttributeError):
             pass
 
+from dotenv import load_dotenv  # noqa: E402
+
+# Load .env (project root) so API keys are available to provider modules.
+# Silent no-op if .env is absent — env vars already set by Claude Desktop win.
+load_dotenv()
+
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 
 from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_exception  # noqa: E402
