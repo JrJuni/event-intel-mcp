@@ -46,3 +46,6 @@ tests/fixtures/events/*
 
 # Notebooks
 .ipynb_checkpoints/
+
+# MCPB build artifacts (the .mcpb bundle is a build output, not source)
+mcpb/*.mcpb

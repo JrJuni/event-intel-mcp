@@ -1,0 +1,72 @@
+{
+  "manifest_version": "0.2",
+  "name": "event-intel-mcp",
+  "display_name": "Event Intelligence MCP",
+  "version": "0.2.0",
+  "description": "Turn exhibitor lists (URL / HTML / CSV / text) into evidence-backed BD target tier lists. 8 MCP tools, local mini-RAG (bge-m3 + Chroma).",
+  "long_description": "event-intel-mcp scores exhibitor companies against a product context (capability cards) using a 7-dimension scoring model with an evidence-floor lifecycle (has_url + has_news ceiling). Two flows: (1) product context lifecycle — draft, validate, ingest capability cards into a local Chroma collection; (2) event pipeline — URL/HTML/CSV → source acquisition → extraction → enrichment (Brave web/news) → fit retrieval (event evidence → product collection) → scoring → tier_list.md + tier_list.yaml. Supports Anthropic Claude or ChatGPT Plus OAuth as LLM backends.",
+  "author": {
+    "name": "JrJuni",
+    "email": "tyrical@naver.com",
+    "url": "https://github.com/JrJuni"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JrJuni/event-intel-mcp"
+  },
+  "homepage": "https://github.com/JrJuni/event-intel-mcp",
+  "license": "MIT",
+  "keywords": ["mcp", "bd", "tier-list", "exhibitor", "event", "rag", "bge-m3", "chroma"],
+  "tools": [
+    {"name": "check_runtime", "description": "Verify bge-m3 cache / Chroma writable / API keys / product context for a workspace."},
+    {"name": "draft_capability_cards", "description": "Draft a capability_cards.yaml from source docs (md/txt/pdf) or inline text."},
+    {"name": "validate_capability_cards", "description": "Validate a hand-edited capability_cards.yaml against schema v1 (pydantic SSOT)."},
+    {"name": "ingest_product_context", "description": "Embed validated capability cards via bge-m3 and upsert into Chroma product_{workspace_id} collection."},
+    {"name": "build_event_tier_list", "description": "Score exhibitors from an HTML/CSV/text source against the workspace's product context. Writes tier_list.md + tier_list.yaml."},
+    {"name": "analyze_event_page", "description": "Classify an exhibition site URL (static_html | xhr_endpoint | embedded_json | operator_capture_required | login_required) and return acquisition hints."},
+    {"name": "probe_exhibitor_endpoint", "description": "Probe XHR / embedded-JSON candidate endpoints surfaced by the analyzer and return the winning data source."},
+    {"name": "acquire_exhibitor_source", "description": "End-to-end URL acquisition: analyze → probe → fetch → write artifact + sha256 manifest. Returns (source_kind, source_ref) ready for build_event_tier_list."}
+  ],
+  "user_config": {
+    "python_path": {
+      "type": "file",
+      "title": "Python interpreter path",
+      "description": "Path to the Python interpreter where event-intel-mcp deps are installed (e.g., ~/miniconda3/envs/event-intel/python.exe). Requires the env to have run `pip install -e .` against the repo.",
+      "required": true
+    },
+    "repo_path": {
+      "type": "directory",
+      "title": "event-intel-mcp repo path",
+      "description": "Local clone of the event-intel-mcp repository (the folder containing pyproject.toml).",
+      "required": true
+    },
+    "brave_api_key": {
+      "type": "string",
+      "title": "Brave Search API key",
+      "description": "Required for build_event_tier_list enrichment (web + news search).",
+      "sensitive": true,
+      "required": true
+    },
+    "anthropic_api_key": {
+      "type": "string",
+      "title": "Anthropic API key",
+      "description": "Required only if you keep llm.provider=anthropic (default). Leave empty if you switched to chatgpt_oauth in ~/.event-intel/config.yaml.",
+      "sensitive": true,
+      "required": false
+    }
+  },
+  "server": {
+    "type": "python",
+    "entry_point": "server/launcher.py",
+    "mcp_config": {
+      "command": "${user_config.python_path}",
+      "args": ["-m", "event_intel.mcp_server"],
+      "env": {
+        "ANTHROPIC_API_KEY": "${user_config.anthropic_api_key}",
+        "BRAVE_API_KEY": "${user_config.brave_api_key}",
+        "PYTHONPATH": "${user_config.repo_path}/src",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}
