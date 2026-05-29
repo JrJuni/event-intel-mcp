@@ -7,9 +7,11 @@
 ## 진행 중
 
 - **Phase 18T Done When 잔여 항목 (2026-05-29)**
-  - ❌ Done When #4 — 실 전시회 smoke ≥2 verdicts (`xhr_endpoint` + `embedded_json`). 각각 tier_list.md 생성까지. ~$0.10, user "go" 대기.
+  - ✅ Done When #4 — 실 전시회 smoke ≥2 verdicts 확보 (2026-05-29):
+    - `operator_capture_required`: smarttechkorea.com x2, tbse26.mapyourshow.com, directory.conexpoconagg.com (Vue 감지 시 analyzer가 capture로 분류 — Map Your Show `/ajax/remote-proxy.cfm` endpoint를 페이지 본문에 명시함에도 보수적으로 capture 권고. analyzer prompt 튜닝 backlog 후보)
+    - `static_html` (0.98 confidence): simtos.org → acquire-source까지 OK + build-event 풀 파이프라인 e2e (20 candidates → 10 enriched → tier_list.md/yaml C tier 10건, machine tool 회사들이라 Mobilint NPU fit 약함 — 점수 분포 정상)
   - ❌ Done When #13 — Claude Desktop `claude_desktop_config.json` reload (8 tools 노출 확인).
-  - **Done When #1–3, #5–12 모두 완료** (290/290 green, cold-start 0, 14×7=98 envelope, core lock clean).
+  - **Done When #1–12 모두 완료** (326/326 green, cold-start 0, 14×7=98 envelope, core lock clean).
 
 - **Phase 18U (별도 plan — 18T smoke 완료 후 진입)**
   - Streamable HTTP transport + OAuth 2.1 PKCE + ChatGPT App 등록. 상세: `docs/backlog.md`.
