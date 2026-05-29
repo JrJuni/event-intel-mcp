@@ -95,6 +95,75 @@ _SCRIPT_BODY_RE = re.compile(
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
+# Backlog #11: endpoint evidence pre-scan.
+# When the LLM sees `detected_framework=Vue/React`, it tends to overshoot toward
+# `operator_capture_required` even when the page body openly contains XHR/AJAX
+# endpoint patterns (the Map Your Show / CONEXPO case discovered in Phase 18T
+# Done When #4 smoke). Surface these patterns in a dedicated <DETECTED_PATTERNS>
+# block so the LLM can't miss them within the 30 KB HTML truncation, and pair it
+# with an explicit "endpoint evidence beats framework label" priority rule in
+# the system prompt.
+_ENDPOINT_PATTERNS = [
+    # Map Your Show + classic ColdFusion / .NET XHR routes
+    re.compile(r"""/ajax/[^\s"'<>)]+\.(?:cfm|do|asp|aspx)[^\s"'<>)]*""", re.IGNORECASE),
+    re.compile(r"""\bremote-proxy[^\s"'<>)]*""", re.IGNORECASE),
+    # Generic API paths (must contain at least one extra segment after /api/)
+    re.compile(r"""/api/[a-zA-Z0-9_\-/.]+""", re.IGNORECASE),
+    # fetch("..."), fetch('...'), fetch(`...`) — relative or absolute URL inside the literal
+    re.compile(
+        r"""\bfetch\s*\(\s*[`"'](?P<url>(?:https?://[^`"']+|/[^`"']+))[`"']"""
+    ),
+    # jQuery $.ajax({url: "..."}), $.get("..."), $.post("...")
+    re.compile(
+        r"""\$\.(?:ajax|get|post|getJSON)\s*\(\s*\{?\s*url\s*:\s*["'](?P<url>[^"']+)["']"""
+    ),
+    re.compile(
+        r"""\$\.(?:get|post|getJSON)\s*\(\s*["'](?P<url>(?:https?://|/)[^"']+)["']"""
+    ),
+    # axios.get("..."), axios.post("..."), axios({url: "..."})
+    re.compile(
+        r"""\baxios(?:\.(?:get|post|put|delete|patch))?\s*\(\s*(?:\{[^}]*?url\s*:\s*)?["'](?P<url>(?:https?://|/)[^"']+)["']"""
+    ),
+    # XMLHttpRequest .open("GET", "...")
+    re.compile(
+        r"""\.open\s*\(\s*["'](?:GET|POST|PUT|DELETE|PATCH)["']\s*,\s*["'](?P<url>[^"']+)["']""",
+        re.IGNORECASE,
+    ),
+]
+
+_MAX_PATTERNS = 20
+_MAX_PATTERN_LEN = 240
+
+
+def _extract_endpoint_evidence(html: str, scripts: list[str]) -> list[str]:
+    """Regex-scan HTML + scripts for XHR/API endpoint patterns.
+
+    Returns a deduped, length-capped list of pattern strings. The LLM sees this
+    in a dedicated <DETECTED_PATTERNS> block so endpoint signals stay visible
+    even when the framework attribute (Vue/React) would otherwise overshoot to
+    `operator_capture_required`.
+    """
+    seen: dict[str, None] = {}
+    bodies = [html, *scripts]
+    for body in bodies:
+        if not body:
+            continue
+        for pat in _ENDPOINT_PATTERNS:
+            for m in pat.finditer(body):
+                if m.lastindex and "url" in m.groupdict() and m.group("url"):
+                    needle = m.group("url")
+                else:
+                    needle = m.group(0)
+                needle = needle.strip()
+                if not needle:
+                    continue
+                needle = needle[:_MAX_PATTERN_LEN]
+                if needle not in seen:
+                    seen[needle] = None
+                if len(seen) >= _MAX_PATTERNS:
+                    return list(seen.keys())
+    return list(seen.keys())
+
 
 def _extract_scripts(html: str, *, top_n: int = 5, max_each: int = 5120) -> list[str]:
     """Return the top-N longest inline <script> bodies, each capped at max_each chars."""
@@ -214,11 +283,18 @@ def analyze_page(
     system_prompt = _load_prompt(lang)
     scripts = _extract_scripts(html)
     truncated_html = _truncate(html)
+    detected_patterns = _extract_endpoint_evidence(html, scripts)
 
     scripts_block = "\n---\n".join(scripts) if scripts else "(no inline scripts found)"
+    patterns_block = (
+        "\n".join(f"- {p}" for p in detected_patterns)
+        if detected_patterns
+        else "(no XHR / fetch / ajax / api endpoint patterns detected)"
+    )
     user_content = (
         f"<PAGE_HTML>\n{truncated_html}\n</PAGE_HTML>\n\n"
-        f"<PAGE_SCRIPTS>\n{scripts_block}\n</PAGE_SCRIPTS>"
+        f"<PAGE_SCRIPTS>\n{scripts_block}\n</PAGE_SCRIPTS>\n\n"
+        f"<DETECTED_PATTERNS>\n{patterns_block}\n</DETECTED_PATTERNS>"
     )
 
     # 4. LLM call (exactly 1)

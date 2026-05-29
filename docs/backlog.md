@@ -8,17 +8,20 @@
 
 ## P1 — v0 진입 후 가장 먼저 검토
 
-### #11 analyze_event_page prompt 튜닝 — Vue/React 감지 시에도 endpoint 패턴 우선
-**증거**: Phase 18T Done When #4 smoke (2026-05-29) 중 tbse26.mapyourshow.com / directory.conexpoconagg.com 페이지가 본문에 `/ajax/remote-proxy.cfm?action=...` 엔드포인트 + `fetch(url, {X-Requested-With: XMLHttpRequest})` JS 코드 + `{{searchresults}}` placeholder + "No exhibitors could be found" fallback이 모두 명시되어 있음에도 analyzer가 `detected_framework=Vue` 기준으로 `operator_capture_required` (confidence 0.66~0.72) 권고.
+### ~~#11 analyze_event_page prompt 튜닝 — Vue/React 감지 시에도 endpoint 패턴 우선~~ ✅ 완료 (2026-05-29, commit pending)
 
-**현재 동작**: framework=Vue/React 감지 → 본문 endpoint 패턴 무시 → capture로 escape.
+**증거**: Phase 18T Done When #4 smoke (2026-05-29) 중 tbse26.mapyourshow.com / directory.conexpoconagg.com 페이지가 본문에 `/ajax/remote-proxy.cfm?action=...` 엔드포인트 + `fetch(url, {X-Requested-With: XMLHttpRequest})` JS 코드 + `{{searchresults}}` placeholder + "No exhibitors could be found" fallback이 모두 명시되어 있음에도 analyzer가 `detected_framework=Vue` 기준으로 `operator_capture_required` (confidence 0.66~0.72) 권고하던 문제.
 
-**수정 방향**:
-- `prompts/{en,ko}/analyze_event_page.txt` 결정 우선순위 재배열 — "framework 감지보다 본문 endpoint/placeholder 증거가 우선"을 prompt에 명시
-- 또는 acquisition/analyzer.py에 deterministic pre-check 추가 (정규식으로 `/ajax/.*\.cfm`, `remote-proxy`, `searchresults` 등 강한 신호 감지 시 LLM에게 hint 주거나 LLM 우회)
-- Map Your Show family는 known pattern이라 `acquisition/known_patterns.py` 신설하여 host suffix 기반 short-circuit 검토
+**적용한 수정**:
+- `acquisition/analyzer.py`에 `_extract_endpoint_evidence(html, scripts)` 정규식 pre-scan 추가 — 7가지 패턴 (`/ajax/*.cfm`, `/api/*`, `remote-proxy`, `fetch(...)`, `$.ajax({url:...})`, `axios(...)`, `XMLHttpRequest.open(...)`) deduplicate + 길이 cap 240자 + 최대 20개
+- `<DETECTED_PATTERNS>` 블록을 user_content에 추가하여 30 KB HTML truncation 안에서도 엔드포인트 신호가 LLM 시야에 남음
+- `prompts/{en,ko}/analyze_event_page.txt`에 **PRIORITY RULE** 추가: "Endpoint evidence beats framework label" — DETECTED_PATTERNS에 XHR/fetch/ajax URL이 하나라도 있으면 framework가 Vue/React여도 verdict는 반드시 `xhr_endpoint`. `operator_capture_required`는 관찰 가능한 API 호출이 전혀 없을 때만 적용.
 
-**검증 acceptance**: tbse26.mapyourshow.com에 대해 verdict=`xhr_endpoint` + hints.candidate_endpoints에 `/ajax/remote-proxy.cfm?action=search&searchtype=exhibitorgallery` 류 항목 ≥1개.
+**검증 결과**:
+- tbse26.mapyourshow.com: `verdict=xhr_endpoint` confidence 0.97 + 4개 candidate_endpoints (search + getsearchcategories + getcountries + getstates) ✅
+- directory.conexpoconagg.com: `verdict=xhr_endpoint` confidence 0.98 + 5개 candidate_endpoints ✅
+- 340/340 tests green (+8 신규: 7 regex pattern 검증 + 4 prompt construction 검증)
+- 이전 verdict 분류 회귀 없음 (FakeLLM parametrize 4 verdicts 그대로 통과)
 
 ---
 

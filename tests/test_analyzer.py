@@ -217,3 +217,123 @@ def test_analyze_page_prompt_construction_includes_untrusted_delimiters():
     assert "</PAGE_HTML>" in user
     assert "<PAGE_SCRIPTS>" in user
     assert "</PAGE_SCRIPTS>" in user
+
+
+# ---------- Backlog #11: endpoint evidence pre-scan ----------
+
+
+@pytest.mark.parametrize("snippet,expected_substr", [
+    # Map Your Show / ColdFusion XHR
+    ('var url = "/8_0/ajax/remote-proxy.cfm?action=search&searchtype=exhibitorgallery";',
+     "/ajax/remote-proxy.cfm"),
+    # fetch() with relative path
+    ('fetch("/api/v1/exhibitors?page=1", {method: "GET"})', "/api/v1/exhibitors"),
+    # fetch() with absolute URL
+    ('fetch("https://api.example.com/list", {headers: {}})',
+     "https://api.example.com/list"),
+    # jQuery $.ajax with url:
+    ('$.ajax({url: "/exhibitor/list.do", type: "POST"});', "/exhibitor/list.do"),
+    # $.get shorthand
+    ('$.get("/data/companies.json", function(d){});', "/data/companies.json"),
+    # axios.get
+    ('axios.get("/api/v2/companies").then(...);', "/api/v2/companies"),
+    # XMLHttpRequest .open
+    ('xhr.open("GET", "/legacy/list.aspx", true);', "/legacy/list.aspx"),
+])
+def test_extract_endpoint_evidence_finds_xhr_patterns(snippet, expected_substr):
+    """Each known XHR/AJAX/API pattern surfaces in the detected list."""
+    patterns = _analyzer._extract_endpoint_evidence(html="", scripts=[snippet])
+    joined = " | ".join(patterns)
+    assert expected_substr in joined, (
+        f"expected {expected_substr!r} in detected patterns; got: {patterns}"
+    )
+
+
+def test_extract_endpoint_evidence_dedupes_repeated_patterns():
+    snippet = (
+        'fetch("/api/list");\n'
+        'fetch("/api/list");\n'
+        'fetch("/api/list");\n'
+    )
+    patterns = _analyzer._extract_endpoint_evidence(html="", scripts=[snippet])
+    assert patterns.count("/api/list") == 1, f"duplicates not collapsed: {patterns}"
+
+
+def test_extract_endpoint_evidence_caps_at_max_patterns():
+    """20 distinct fetches should be capped; 21st should be dropped."""
+    snippet = "\n".join(f'fetch("/api/path/{i}");' for i in range(25))
+    patterns = _analyzer._extract_endpoint_evidence(html="", scripts=[snippet])
+    assert len(patterns) <= 20
+
+
+def test_extract_endpoint_evidence_returns_empty_when_no_patterns():
+    plain = "<html><body><h1>Welcome</h1><p>No scripts here.</p></body></html>"
+    patterns = _analyzer._extract_endpoint_evidence(html=plain, scripts=[])
+    assert patterns == []
+
+
+def test_analyze_page_includes_detected_patterns_block_in_user_content():
+    """Backlog #11: <DETECTED_PATTERNS> block exposes endpoint evidence to LLM
+    so framework=Vue/React doesn't mask visible XHR signals."""
+    llm = _FakeLLM(_good_verdict("xhr_endpoint"))
+    body = (
+        "<html><body>"
+        "<div id=\"exhibitor-app\"></div>"
+        "<script>"
+        "fetch('/ajax/remote-proxy.cfm?action=search&searchtype=exhibitorgallery')"
+        ".then(r => r.json());"
+        "</script>"
+        "</body></html>"
+    )
+    with _patch_robots(), _patch_fetch(body=body):
+        analyze_page(url="https://example.com/exhibitors", llm_provider=llm)
+
+    user = llm.captured_user
+    assert "<DETECTED_PATTERNS>" in user, (
+        f"DETECTED_PATTERNS block missing from user prompt:\n{user[:500]}"
+    )
+    assert "</DETECTED_PATTERNS>" in user
+    # The Map Your Show endpoint must be surfaced verbatim.
+    assert "remote-proxy" in user, (
+        f"detected Map Your Show endpoint missing from user prompt:\n{user[:500]}"
+    )
+
+
+def test_analyze_page_detected_patterns_block_says_none_when_empty():
+    """When no patterns are detected, the block carries an explicit 'none' line
+    so the LLM doesn't hallucinate phantom endpoints."""
+    llm = _FakeLLM(_good_verdict("static_html"))
+    plain_body = "<html><body>" + "<p>Exhibitor name in static HTML.</p>" * 50 + "</body></html>"
+    with _patch_robots(), _patch_fetch(body=plain_body):
+        analyze_page(url="https://example.com/exhibitors", llm_provider=llm)
+
+    user = llm.captured_user
+    assert "<DETECTED_PATTERNS>" in user
+    assert "no XHR / fetch / ajax / api endpoint patterns detected" in user
+
+
+def test_system_prompt_includes_priority_rule_endpoint_beats_framework():
+    """The system prompt must state that endpoint evidence beats framework label.
+    Backlog #11: without this rule, GPT-5/Sonnet defaults to capture verdict
+    when detected_framework=Vue/React, masking visible XHR endpoints."""
+    llm = _FakeLLM(_good_verdict("static_html"))
+    with _patch_robots(), _patch_fetch():
+        analyze_page(url="https://example.com/exhibitors", llm_provider=llm)
+
+    sys = llm.captured_system
+    # Look for the priority-rule phrasing (en prompt).
+    lower = sys.lower()
+    assert "endpoint evidence beats framework label" in lower or (
+        "priority rule" in lower and "framework" in lower
+    ), f"priority rule missing from en prompt:\n{sys[:600]}"
+
+
+def test_korean_prompt_includes_priority_rule():
+    llm = _FakeLLM(_good_verdict("static_html"))
+    with _patch_robots(), _patch_fetch():
+        analyze_page(url="https://example.com/exhibitors", lang="ko", llm_provider=llm)
+
+    sys = llm.captured_system
+    assert "우선순위 규칙" in sys or "엔드포인트 증거는 프레임워크 라벨을 이깁니다" in sys, (
+        f"priority rule missing from ko prompt:\n{sys[:600]}"
+    )
