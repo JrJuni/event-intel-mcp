@@ -303,13 +303,21 @@ def _capture_payload() -> dict:
     return captured, _stream
 
 
-def test_payload_forwards_max_tokens_as_max_output_tokens():
-    """plan v3 R3: caller's max_tokens must reach the backend, not be silently dropped."""
+def test_payload_omits_max_tokens_due_to_codex_backend_limitation():
+    """Codex backend rejects max_output_tokens / max_tokens / max_completion_tokens
+    with 400 "Unsupported parameter" (verified 2026-05-29 smoke). The caller's
+    max_tokens is therefore informational only when this provider is selected.
+
+    This test prevents reintroducing the field — if a future commit adds it,
+    the next real-site smoke will 400 again."""
     captured, stream_fn = _capture_payload()
     p = _make_provider_with_token()
     with patch("httpx.stream", side_effect=stream_fn):
         p.chat_once(system="sys", user="hi", max_tokens=2048)
-    assert captured["payload"]["max_output_tokens"] == 2048
+    payload = captured["payload"]
+    assert "max_output_tokens" not in payload
+    assert "max_tokens" not in payload
+    assert "max_completion_tokens" not in payload
 
 
 def test_payload_applies_per_instance_reasoning_effort():

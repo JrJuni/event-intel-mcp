@@ -365,14 +365,18 @@ class ChatGPTOAuthProvider(LLMProvider):
             ],
             "store": False,
             "stream": True,
-            # plan v3 R3: forward caller's cap. Codex backend accepts the
-            # standard Responses-API field name.
-            "max_output_tokens": max_tokens,
             # plan v3 R7: per-instance effort, validated at __init__.
             "reasoning": {"effort": self._reasoning_effort, "summary": "auto"},
         }
-        # `temperature` is intentionally omitted — Codex backend rejected it
-        # in earlier probes. The Codex models are near-deterministic by default.
+        # Intentionally omitted, all rejected by the Codex backend with
+        # "Unsupported parameter" (verified 2026-05-29 smoke test):
+        #   - max_output_tokens / max_tokens / max_completion_tokens
+        #   - temperature
+        # Caller's `max_tokens` is therefore informational only when this
+        # provider is selected. The backend enforces its own output cap based
+        # on the model + subscription tier.
+        _ = max_tokens  # explicit "we know this is dropped"
+        _ = temperature
         headers = {
             "Authorization": f"Bearer {token}",
             "chatgpt-account-id": account_id,
