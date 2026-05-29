@@ -224,30 +224,60 @@ def test_t0_acquisition_modules_keep_module_top_cold(fresh_sys_modules):
 
 
 def test_t0_stub_tools_return_acquisition_envelope(fresh_sys_modules):
-    """Phase 18T: probe + acquire are still stubs; analyze has real impl.
-    All three must return an ok=false envelope with stage=acquisition.
-    probe and acquire return INTERNAL (stub); analyze returns INVALID_INPUT
-    (empty url) or UPSTREAM_ERROR depending on what the real impl encounters."""
+    """Phase 18T: acquire is still a stub (T3); analyze + probe have real impls.
+    - acquire_exhibitor_source returns INTERNAL (stub).
+    - analyze_event_page returns INVALID_INPUT (empty url) — real impl.
+    - probe_exhibitor_endpoint returns INVALID_INPUT (empty url) — real impl (T2).
+    """
     _purge("event_intel")
     server = importlib.import_module("event_intel.mcp_server")
 
-    # probe + acquire are stubs → always INTERNAL
+    # All three acquisition tools now have real impls (T1/T2/T3).
+    # Empty url → INVALID_INPUT (caught at the boundary before any network call).
     for tool_name, kwargs in [
-        ("probe_exhibitor_endpoint", {"url": "https://example.com", "hints": {}}),
-        ("acquire_exhibitor_source", {"url": "https://example.com",
-                                      "workspace_id": "default", "event_slug": "x"}),
+        ("analyze_event_page", {"url": ""}),
+        ("probe_exhibitor_endpoint", {"url": "", "hints": {}}),
+        ("acquire_exhibitor_source", {"url": "", "workspace_id": "default", "event_slug": "x"}),
     ]:
         result = getattr(server, tool_name)(**kwargs)
         assert isinstance(result, dict), f"{tool_name} did not return dict"
-        assert result["ok"] is False, f"{tool_name} stub should return ok=false"
-        assert result["error_code"] == "INTERNAL", f"{tool_name} stub should return INTERNAL"
-        assert result["stage"] == "acquisition", f"{tool_name} stub should use stage=acquisition"
+        assert result["ok"] is False
+        assert result["error_code"] == "INVALID_INPUT"
+        assert result["stage"] == "acquisition"
 
-    # analyze has a real impl — empty url → INVALID_INPUT at acquisition stage
-    result = server.analyze_event_page(url="")
-    assert isinstance(result, dict)
-    assert result["ok"] is False
-    assert result["stage"] == "acquisition"
+
+def test_acquire_module_keeps_module_top_cold(fresh_sys_modules):
+    """Phase 18T T3: acquisition.acquire + tools.acquire_exhibitor_source must NOT
+    pull heavy ML libs at module import — acquire is pure orchestration code."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.acquisition.acquire")
+    importlib.import_module("event_intel.tools.acquire_exhibitor_source")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"Phase 18T T3 acquire modules leaked heavy ML imports: {leaked}. "
+        "All heavy deps must stay behind provider lazy imports."
+    )
+
+
+def test_probe_module_keeps_module_top_cold(fresh_sys_modules):
+    """Phase 18T T2: acquisition.probe + tools.probe_exhibitor_endpoint must NOT
+    pull heavy ML libs at module import — probe is pure httpx + stdlib."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.acquisition.probe")
+    importlib.import_module("event_intel.tools.probe_exhibitor_endpoint")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"Phase 18T T2 probe modules leaked heavy ML imports: {leaked}. "
+        "probe.py is pure code — no ML deps should appear at module top."
+    )
 
 
 def test_check_runtime_tool_returns_envelope(fresh_sys_modules):
