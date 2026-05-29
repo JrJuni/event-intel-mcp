@@ -6,7 +6,56 @@
 
 ## 진행 중
 
-- **Phase 18S — Event Intelligence MCP v0 (2026-05-28 시작)**
+- **Phase 18T Done When 잔여 항목 (2026-05-29)**
+  - ❌ Done When #4 — 실 전시회 smoke ≥2 verdicts (`xhr_endpoint` + `embedded_json`). 각각 tier_list.md 생성까지. ~$0.10, user "go" 대기.
+  - ❌ Done When #13 — Claude Desktop `claude_desktop_config.json` reload (8 tools 노출 확인).
+  - **Done When #1–3, #5–12 모두 완료** (290/290 green, cold-start 0, 14×7=98 envelope, core lock clean).
+
+- **Phase 18U (별도 plan — 18T smoke 완료 후 진입)**
+  - Streamable HTTP transport + OAuth 2.1 PKCE + ChatGPT App 등록. 상세: `docs/backlog.md`.
+
+---
+
+## 완료
+
+- **Phase 18T — Adaptive Source Acquisition Layer (2026-05-29 완료)**
+  - **목표.** URL 하나로 analyze → probe → artifact → `build_event_tier_list` 파이프라인 진입. 5개 → 8개 MCP 도구.
+  - **Baseline**: Phase 18S commit `2682032`, 173/173 green.
+  - **Stream 진행**:
+    - ✅ **T0** — acquisition scaffold + error taxonomy 10→14 + stage 6→7 + `text_file` source kind + 3 stub tools (commit `78481f7`)
+      - `src/event_intel/acquisition/__init__.py` 패키지 신설
+      - `storage/artifacts.py` — path resolution + atomic write + manifest read/write skeleton
+      - `errors.py` +4 ErrorCode (`ACQUISITION_AMBIGUOUS`, `LOGIN_REQUIRED`, `OPERATOR_CAPTURE_REQUIRED`, `ROBOTS_DISALLOWED`) + Stage `acquisition` (총 14×7=98 쌍)
+      - `source_capture.py` — `text_file` source kind 추가, 기존 4 kinds byte-for-byte 불변
+      - `cli.py` — `--text-file` → `source_kind="text_file"` 매핑 수정 (R2-4 fix)
+      - 3 stub tools `analyze_event_page` / `probe_exhibitor_endpoint` / `acquire_exhibitor_source` → `INTERNAL` envelope. `mcp_server.py` lazy-wrap 등록
+    - ✅ **T0.5** — URL safety + robots + raw_fetch + http_status_map (commit `df0a404`)
+      - `acquisition/url_safety.py` — `validate_url()` (private IP / localhost / non-http scheme / userinfo / no-dot host 거부) + `host_relation()` (PSL-free same/subdomain/cross)
+      - `acquisition/robots.py` — stdlib `urllib.robotparser` + per-host 1h cache + conservative deny on 5xx
+      - `acquisition/raw_fetch.py` — `RawResponse` raw GET/POST. safety violation→raises, transport failure→returns with `status=0 + network_error`. HTTP semantic mapping 없음 (R2-3)
+      - `acquisition/http_status_map.py` — `map_http_response()` Contract #9 전체 소유. short-body SPA shell 패스 (R2-2). `(should_proceed, MCPError | None)` 반환
+      - tests: `test_url_safety.py` 10건 + `test_robots.py` 6건 + `test_raw_fetch.py` 6건 + `test_http_status_map.py` 8건 = 30건 신규
+    - ✅ **T1** — `analyze_event_page` real impl (commit `6f0d3c4`)
+      - `acquisition/analyzer.py` — `AnalyzeHints` pydantic schema (`extra="forbid"`) + `analyze_page()` 1 Sonnet call + `<PAGE_HTML>` / `<PAGE_SCRIPTS>` UNTRUSTED 딜리미터 + ignore-instruction rule
+      - `tools/analyze_event_page.py` — stub body → real impl. module-reference import 패턴.
+      - `prompts/en/analyze_event_page.txt` + `prompts/ko/analyze_event_page.txt`
+      - tests: `test_analyzer.py` 10건 (4 verdict FakeLLM + private IP → INVALID_INPUT + robots → ROBOTS_DISALLOWED + 401→LOGIN_REQUIRED + 5xx→UPSTREAM_ERROR + non-JSON + prompt-construction delimiter + schema-rejects-unexpected-verdict)
+    - ✅ **T2** — `probe_exhibitor_endpoint` real impl (이번 세션)
+      - `acquisition/probe.py` — `_response_looks_like_exhibitor_list(body, lang)` en+ko 키워드 밀도 스코어 + `ProbeAttempt` / `ProbeResult` dataclass + `probe_endpoints()` (candidate 루프, method allowlist {GET,POST}, host_relation 체크, advisory warning carry) + `probe_embedded_json()` (stdlib regex script_id/script_var_name + dotted key_path walk)
+      - `tools/probe_exhibitor_endpoint.py` — stub body → real impl
+      - tests: `test_probe.py` 14건 (winner / all-below-threshold → ACQUISITION_AMBIGUOUS / 4xx skip / 5xx all → ACQUISITION_AMBIGUOUS / Korean scorer / cross-origin skip / embedded_json regex / max-5 cap / hints validation → INVALID_INPUT / method allowlist PUT skip / advisory warning carry / tool wrapper happy / tool wrapper failure envelope)
+      - **핵심 패턴**: Korean 스코어 `max(ko_density, en_density)` (별도 분모), string-path `patch()` (cold-start purge 후 모듈 identity 보장), MCPError 클래스 test body 내부 import (class identity 보장)
+    - ✅ **T3** — `acquire_exhibitor_source` orchestrator + manifest + e2e (이번 세션)
+      - `storage/artifacts.py` 완성 — `artifact_dir` / `write_artifact` (atomic) / `write_manifest` (atomic) / `read_manifest` / `verify_artifact_sha256` / `make_manifest` / `sha256_of` / `ManifestModel` / `EVENT_INTEL_ARTIFACTS_DIR` env override
+      - `acquisition/acquire.py` — 5-verdict 오케스트레이터. analyze→(probe→)fetch→write_artifact+manifest. 캐시 hit sha256 검증 (corrupt→refetch+warn). XHR 페이지네이션 `max_pages=3`. embedded_json → `("text_file", path)` (v1.1 R1-3 fix)
+      - `tools/acquire_exhibitor_source.py` — stub body → real impl
+      - `cli.py` — `analyze-page` + `acquire-source` subcommand 추가
+      - tests: `test_artifacts.py` 10건 (atomic write / manifest round-trip / sha256 correct/mismatch/missing / read None cases / env override) + `test_acquire.py` 12건 (5 verdict branches / cache hit / sha256 mismatch refetch / refetch=True / Korean slug → INVALID_INPUT / workspace isolation / tool wrapper)
+      - cold-start: `test_acquire_module_keeps_module_top_cold` + `test_probe_module_keeps_module_top_cold` 추가
+  - **최종 수치**: 290/290 green, `git diff 2682032 src/event_intel/tools/build_event_tier_list.py` = empty (core lock clean)
+  - **Done When 잔여**: #4 (real smoke), #13 (Claude Desktop reload)
+
+- **Phase 18S — Event Intelligence MCP v0 (2026-05-28 완료)**
   - **목표.** 전시회 참가사 리스트(URL / HTML / CSV / pasted text)를 evidence-backed BD 타겟 티어리스트로 변환하는 **standalone MCP 서버**. bd-coldcall-agent의 `discover_targets` 약점 두 가지(factual verification 부족 + bottom-up seed 부재)를 자체 mini-RAG + 5개 MCP tool로 해소.
   - **Plan v0.5 final** (`~/.claude/plans/tender-mixing-badger.md`). 3 round blind review (1st 8 findings P1×5+P2×3, 2nd 8 findings P1×4+P2×4, 3rd 4 findings P2×2+P3×2) 모두 반영. Repo name `event-intel-mcp` lock. 핵심 결정:
     - Standalone repo (bd-agent import 0)
@@ -102,19 +151,14 @@
 
 ---
 
-## 완료
-
-(없음 — Phase 18S S0이 첫 커밋)
 
 ---
 
 ## 다음 진입 순서
 
-1. **batch1 완성** (S0+S1+S2 ✅) — runtime preflight + product mini-RAG 활성
-2. **S3 ✅** — Event Source → Extraction (chunked + cap + snippet-anchored)
-3. **S4 ✅** — Enrichment + Fit Retrieval (단방향) + Scoring + Resume — batch2 완료
-4. **S5 ✅** — Report (tier_list.md + tier_list.yaml + product_brief.md)
-5. **S6 ✅** — MCP wrap + slug validation + integration tests (171/171 green) — batch3 완료, v0 surface 완성
-6. **다음 step** — 실 전시회 fixture 2-3개 (서로 다른 사이트 패턴) → smoke build → Claude Desktop 등록 + tool discovery 확인 + Done When #5/#11/#12 검증
+1. ✅ Phase 18S (S0~S6) — v0 surface 완성 (173/173 green)
+2. ✅ Phase 18T (T0~T3) — acquisition layer 완성 (290/290 green)
+3. **Phase 18T Done When 마무리** — 실 전시회 smoke ≥2 verdicts (user "go" 후) + Claude Desktop reload
+4. **Phase 18U** (별도 plan 작성 필요) — Streamable HTTP + OAuth 2.1 PKCE + ChatGPT App 등록
 
-세션 간 재개: 항상 `docs/status.md` + `~/.claude/plans/tender-mixing-badger.md` 두 파일을 fresh context로 진입 시 먼저 읽기.
+세션 간 재개: `docs/status.md` + `~/.claude/plans/tender-mixing-badger.md` 먼저 읽기.
