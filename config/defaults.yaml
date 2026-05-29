@@ -53,6 +53,7 @@ llm:
   extract_max_tokens: 4096
   rationale_max_tokens: 256
   chatgpt_oauth_model: gpt-5.5             # used when provider=chatgpt_oauth (alt: gpt-5.4)
+  chatgpt_oauth_reasoning_effort: low      # low | medium | high (Codex Responses reasoning effort)
 
 paths:
   chroma_dir: ~/.event-intel/chroma

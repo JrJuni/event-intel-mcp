@@ -162,9 +162,19 @@ class ChatGPTOAuthProvider(LLMProvider):
     _REDIRECT_URI = "http://localhost:1455/auth/callback"
     _RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses"
     _TOKEN_PATH = Path.home() / ".event-intel" / "chatgpt_auth.json"
+    _ALLOWED_REASONING_EFFORTS = frozenset({"low", "medium", "high"})
 
-    def __init__(self, *, model: str = "gpt-5.5"):
+    def __init__(self, *, model: str = "gpt-5.5", reasoning_effort: str = "low"):
+        # plan v3 R7: validate at __init__ so typos surface as ValueError
+        # immediately (preflight wraps as CONFIG_ERROR) rather than as opaque
+        # backend errors at first chat_*() call.
+        if reasoning_effort not in self._ALLOWED_REASONING_EFFORTS:
+            raise ValueError(
+                f"reasoning_effort must be one of {sorted(self._ALLOWED_REASONING_EFFORTS)}, "
+                f"got {reasoning_effort!r}"
+            )
         self.model = model
+        self._reasoning_effort = reasoning_effort
         self._tokens: dict | None = None
 
     # ---- token persistence ----
@@ -355,8 +365,14 @@ class ChatGPTOAuthProvider(LLMProvider):
             ],
             "store": False,
             "stream": True,
-            "reasoning": {"effort": "low", "summary": "auto"},
+            # plan v3 R3: forward caller's cap. Codex backend accepts the
+            # standard Responses-API field name.
+            "max_output_tokens": max_tokens,
+            # plan v3 R7: per-instance effort, validated at __init__.
+            "reasoning": {"effort": self._reasoning_effort, "summary": "auto"},
         }
+        # `temperature` is intentionally omitted — Codex backend rejected it
+        # in earlier probes. The Codex models are near-deterministic by default.
         headers = {
             "Authorization": f"Bearer {token}",
             "chatgpt-account-id": account_id,
@@ -372,6 +388,11 @@ class ChatGPTOAuthProvider(LLMProvider):
         output_tokens = 0
         final_model = self.model
         stop_reason: str | None = None
+        # plan v3 R1: track structural completion separately from text content.
+        # A stream that yields deltas but never reaches `response.completed`
+        # is a truncated/dropped stream and MUST surface as an error.
+        seen_completed = False
+        seen_error_payload: object | None = None
 
         with httpx.stream(
             "POST", self._RESPONSES_URL, headers=headers, json=payload, timeout=120
@@ -395,6 +416,7 @@ class ChatGPTOAuthProvider(LLMProvider):
                 if etype == "response.output_text.delta":
                     text_parts.append(event.get("delta", ""))
                 elif etype == "response.completed":
+                    seen_completed = True
                     final = event.get("response", {})
                     final_model = final.get("model", final_model)
                     usage = final.get("usage", {}) or {}
@@ -408,6 +430,28 @@ class ChatGPTOAuthProvider(LLMProvider):
                                 for block in item.get("content", []):
                                     if block.get("type") == "output_text":
                                         text_parts.append(block.get("text", ""))
+                elif etype in ("response.failed", "response.error", "response.incomplete"):
+                    # plan v3 R1: backend error events surface as RuntimeError.
+                    # The caller (tool boundary) wraps as UPSTREAM_ERROR envelope.
+                    seen_error_payload = (
+                        event.get("error")
+                        or event.get("response", {}).get("error")
+                        or event.get("response", {}).get("status")
+                        or event
+                    )
+                    break
+
+        if seen_error_payload is not None:
+            raise RuntimeError(
+                f"ChatGPT backend reported error event: {seen_error_payload!r}"
+            )
+        if not seen_completed:
+            # Partial deltas + truncation, or no events at all — either way the
+            # response is structurally incomplete and the caller cannot trust it.
+            raise RuntimeError(
+                "ChatGPT backend returned an incomplete stream "
+                "(no response.completed event before close)."
+            )
 
         return LLMResponse(
             text="".join(text_parts),
@@ -478,6 +522,9 @@ def make_llm_provider(config: dict, *, model: str | None = None) -> LLMProvider:
     provider_name = config.get("llm", {}).get("provider", "anthropic")
     if provider_name == "chatgpt_oauth":
         oauth_model = config.get("llm", {}).get("chatgpt_oauth_model", "gpt-5.5")
-        return ChatGPTOAuthProvider(model=oauth_model)
+        # plan v3 R7: forward optional reasoning_effort override. __init__
+        # validates the value so a typo in config surfaces immediately.
+        effort = config.get("llm", {}).get("chatgpt_oauth_reasoning_effort", "low")
+        return ChatGPTOAuthProvider(model=oauth_model, reasoning_effort=effort)
     resolved = model or config.get("llm", {}).get("draft_cards_model", "claude-sonnet-4-6")
     return AnthropicProvider(model=resolved)

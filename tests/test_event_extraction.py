@@ -231,6 +231,71 @@ def test_malformed_llm_json_is_recovered_from_array_window():
     assert [c.name for c in result.candidates] == ["Salvaged Co."]
 
 
+# ---------- dict-wrapped LLM responses (plan v3 R6) ----------
+
+
+def test_dict_wrapped_response_with_known_key_unwraps(caplog):
+    """GPT-5.5 frequently returns `{"exhibitors": [...]}` — extractor must unwrap."""
+    capture = SourceCapture(text="W" * 500, kind="text", source_ref="<x>")
+    response = json.dumps({
+        "exhibitors": [
+            {"name": "WrappedCo", "source_snippet": "wrapped enough to clear the snippet floor"}
+        ]
+    })
+    llm = FakeLLM(responses=[response])
+    with caplog.at_level("WARNING", logger="event_intel.events.extraction"):
+        result = extract_exhibitors(
+            capture=capture, lang="en", llm_provider=llm,
+            config=_config(max_chars_per_chunk=10000),
+        )
+    assert [c.name for c in result.candidates] == ["WrappedCo"]
+    assert any("'exhibitors'" in rec.message or "auto-unwrap" in rec.message
+               for rec in caplog.records)
+
+
+def test_dict_wrapped_response_with_data_key_unwraps():
+    capture = SourceCapture(text="D" * 500, kind="text", source_ref="<x>")
+    response = json.dumps({
+        "data": [
+            {"name": "DataKey Inc.", "source_snippet": "long enough source snippet right here"}
+        ]
+    })
+    llm = FakeLLM(responses=[response])
+    result = extract_exhibitors(
+        capture=capture, lang="en", llm_provider=llm,
+        config=_config(max_chars_per_chunk=10000),
+    )
+    assert [c.name for c in result.candidates] == ["DataKey Inc."]
+
+
+def test_single_key_dict_with_list_value_unwraps_as_fallback():
+    """Unknown wrapping key — single-key dict with list value still unwraps."""
+    capture = SourceCapture(text="S" * 500, kind="text", source_ref="<x>")
+    response = json.dumps({
+        "totally_unknown_key": [
+            {"name": "FallbackCo", "source_snippet": "snippet long enough to clear the floor"}
+        ]
+    })
+    llm = FakeLLM(responses=[response])
+    result = extract_exhibitors(
+        capture=capture, lang="en", llm_provider=llm,
+        config=_config(max_chars_per_chunk=10000),
+    )
+    assert [c.name for c in result.candidates] == ["FallbackCo"]
+
+
+def test_multi_key_dict_without_list_value_returns_empty():
+    """No list value anywhere — extractor returns zero candidates (not crash)."""
+    capture = SourceCapture(text="N" * 500, kind="text", source_ref="<x>")
+    response = json.dumps({"foo": 1, "bar": "two"})
+    llm = FakeLLM(responses=[response])
+    result = extract_exhibitors(
+        capture=capture, lang="en", llm_provider=llm,
+        config=_config(max_chars_per_chunk=10000),
+    )
+    assert result.candidates == []
+
+
 # ---------- upstream LLM failure surfaces as UPSTREAM_ERROR ----------
 
 

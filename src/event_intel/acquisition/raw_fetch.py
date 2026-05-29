@@ -26,8 +26,20 @@ from event_intel.acquisition.url_safety import host_relation, validate_url
 from event_intel.errors import ErrorCode, MCPError, Stage
 
 # Default user-agent string — identifies the tool to site operators.
+# Shared with robots.py so the robots.txt fetch and the actual page fetch
+# present the same identity to the server (policy identity = fetch identity).
 _USER_AGENT = "event-intel-mcp/0.1 (exhibitor list acquisition; contact: see GitHub)"
 _DEFAULT_TIMEOUT = 20.0
+
+
+def get_user_agent() -> str:
+    """Public accessor for the shared User-Agent string.
+
+    Used by `acquisition.robots` to fetch robots.txt with the same UA that
+    `fetch_raw` uses for the actual page request. Keeps `_USER_AGENT` private
+    while documenting the cross-module dependency.
+    """
+    return _USER_AGENT
 
 
 @dataclass

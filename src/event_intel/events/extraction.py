@@ -23,11 +23,22 @@ Heavy imports stay lazy — this module is import-cold for the MCP server.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from event_intel.errors import ErrorCode, MCPError, Stage
+
+_log = logging.getLogger(__name__)
+
+# plan v3 R6: known wrapping keys an LLM may use to envelope the candidate list.
+# When the response is a dict (instead of the requested top-level list), unwrap
+# the first matching key. Single-key dicts with a list value are also unwrapped
+# as a fallback. Both paths emit a warning so the prompt can be tuned later.
+_EXHIBITOR_LIST_KEYS = (
+    "exhibitors", "results", "data", "items", "candidates", "companies", "rows",
+)
 
 if TYPE_CHECKING:
     from event_intel.events.source_capture import SourceCapture
@@ -194,6 +205,34 @@ def _parse_llm_chunk(raw: str, *, chunk_index: int) -> list[ExhibitorCandidate]:
             data = json.loads(text[start : end + 1])
         except json.JSONDecodeError:
             return []
+    # plan v3 R6: tolerate dict-wrapped responses (`{"exhibitors": [...]}` etc.)
+    # GPT-5.5 and other models frequently envelope arrays — silently dropping
+    # those as zero candidates causes confusing empty tier lists.
+    if isinstance(data, dict):
+        unwrapped: list | None = None
+        for key in _EXHIBITOR_LIST_KEYS:
+            value = data.get(key)
+            if isinstance(value, list):
+                _log.warning(
+                    "Extraction LLM wrapped response in dict key %r — auto-unwrapping. "
+                    "Consider tuning the prompt to ensure a direct list output.",
+                    key,
+                )
+                unwrapped = value
+                break
+        if unwrapped is None and len(data) == 1:
+            # Single-key dict with a list value — unwrap as a last resort.
+            (only_value,) = data.values()
+            if isinstance(only_value, list):
+                _log.warning(
+                    "Extraction LLM wrapped response in a single-key dict; "
+                    "auto-unwrapping the only value."
+                )
+                unwrapped = only_value
+        if unwrapped is None:
+            return []
+        data = unwrapped
+
     if not isinstance(data, list):
         return []
     out: list[ExhibitorCandidate] = []
