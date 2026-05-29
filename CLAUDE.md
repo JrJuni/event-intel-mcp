@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project north star
 
-**event-intel-mcp** turns exhibitor lists (URL / HTML / CSV / pasted text) into evidence-backed BD target tier lists via a standalone MCP server. Single product surface (Claude Desktop), 5 MCP tools, local mini-RAG (bge-m3 + Chroma), zero dependency on the sibling bd-coldcall-agent repo.
+**event-intel-mcp** turns exhibitor lists (URL / HTML / CSV / pasted text) into evidence-backed BD target tier lists via a standalone MCP server. Single product surface (Claude Desktop), 8 MCP tools (5 core + 3 acquisition layer), local mini-RAG (bge-m3 + Chroma), zero dependency on the sibling bd-coldcall-agent repo.
 
 ## Dev environment
 
@@ -51,19 +51,22 @@ The full catalog (debugging snippets, all flags, MCP config) is in `docs/command
 
 ## Architecture — the big picture
 
-5 MCP tools, single FastMCP process, local mini-RAG:
+8 MCP tools, single FastMCP process, local mini-RAG:
 
 ```
 Claude Desktop (stdio JSON-RPC)
    │
    ▼
-event_intel.mcp_server (FastMCP) — 5 tools
+event_intel.mcp_server (FastMCP) — 8 tools
    │
    ├─ check_runtime              (runtime/preflight.py — bge-m3 cache / Chroma / API keys / product context)
    ├─ draft_capability_cards     (cards/drafter.py — Sonnet chunked draft from source docs)
    ├─ validate_capability_cards  (cards/validator.py — pydantic schema v1)
    ├─ ingest_product_context     (cards/ingest.py — bge-m3 → Chroma upsert)
-   └─ build_event_tier_list      (events/* + rag/* + scoring/* + report/*)
+   ├─ build_event_tier_list      (events/* + rag/* + scoring/* + report/*)
+   ├─ analyze_event_page         (acquisition/analyzer.py — verdict + hints, 1 Sonnet call)
+   ├─ probe_exhibitor_endpoint   (acquisition/probe.py — XHR + embedded_json probes)
+   └─ acquire_exhibitor_source   (acquisition/acquire.py — orchestrator → artifact + manifest)
 ```
 
 Two-flow model:
@@ -79,16 +82,17 @@ Full pipeline diagram + evidence floor lifecycle: `docs/architecture.md`.
 - **Adapter / orchestration layers import via module reference, not symbol.** `from event_intel.providers import llm as _llm` + `_llm.AnthropicProvider(...)`, NOT `from event_intel.providers.llm import AnthropicProvider`. Symbol import binds at import time and silently slips false-greens in monkeypatched tests. Applies to events/, cards/, tools/, scoring/. See `docs/playbook.md#2`.
 - **Cards schema authority is pydantic, sole.** `cards/schema.py` is the SSOT. Do NOT add a hand-maintained `config/capability_cards.schema.yaml` — JSON schema is generated on demand via `event-intel export-schema`. `tests/test_cards_schema_drift.py` snapshot-guards the schema. See `docs/playbook.md#8`.
 - **User-provided slugs must be sanitized at every entry point.** `workspace_id` / `event_slug` / `event_name` all flow into filesystem paths and Chroma collection names. Every MCP tool entry runs `storage/identifiers.sanitize_slug(s)` first. Violations return `INVALID_INPUT` envelope with `hint.suggested_slug`. See `docs/playbook.md#7`.
-- **Tool ok=false responses use the MCPError envelope, always.** 10 stable `error_code` values × 6 `stage` values. New error scenarios reuse the enum; don't invent ad-hoc error strings. Envelope shape is snapshot-tested. See `docs/playbook.md#6`.
+- **Tool ok=false responses use the MCPError envelope, always.** 14 stable `error_code` values × 7 `stage` values (Phase 18T added 4 codes + `acquisition` stage). New error scenarios reuse the enum; don't invent ad-hoc error strings. Envelope shape is snapshot-tested. See `docs/playbook.md#6`.
+- **Never call `urllib.robotparser.read()` directly.** It silently maps fetch failures (incl. 403 to Python-urllib UA) to `disallow_all=True` and surfaces them as a real `Disallow: /` policy. Use httpx with the shared `raw_fetch.get_user_agent()` + explicit status→policy mapping (200→parse, 404/410/401/403→allow, 5xx/transport→deny). See `docs/playbook.md#12` + `docs/lesson-learned.md` 2026-05-29 entry.
 - **Event extraction caps are enforced, not advisory.** `max_chunks_per_event` (default 12) prevents 200k-char HTML pages from triggering 25 Sonnet calls. `max_companies` (default 30) caps enrichment. Both are yaml-driven (`config/defaults.yaml`).
 - **Evidence floor is a 3-state lifecycle, not a single rule.** raw_extraction drops snippet-less candidates entirely; enriched layer tries to attach official_url + news; scoring uses `has_url + has_news` count to ceiling tier (2 → S/A, 1 → A max, 0 → B max). `needs_review` is orthogonal (extraction_confidence low OR enrichment hard fail), NOT a tier ceiling. See `docs/architecture.md`.
 - **No FastAPI / no Web UI / no SQLite / no Notion / no separate ML worker.** Single-process FastMCP + Chroma + filesystem artifacts. The simpler architecture was an explicit choice for v0 (see plan v0.5 OOS list and `docs/backlog.md` for the deferred items). Don't introduce them without a new phase plan.
 
 ### Config is 3-tier — do not collapse
 
-- **`.env`** → secrets only (`ANTHROPIC_API_KEY`, `BRAVE_API_KEY`). Gitignored. `.env.example` is the committed template.
-- **`config/defaults.yaml`** → shipped non-secret defaults (extraction caps, scoring weights, tier rules, model names). Committed.
-- **`~/.event-intel/config.yaml`** (optional, added in S2/S4) → per-workspace user overrides. Not committed.
+- **`.env`** → secrets only (`ANTHROPIC_API_KEY` or none for OAuth path, `BRAVE_API_KEY`). Gitignored. `.env.example` is the committed template. Auto-loaded via `python-dotenv` at `cli.py` + `mcp_server.py` module top.
+- **`config/defaults.yaml`** → shipped non-secret defaults (extraction caps, scoring weights, tier rules, model names, `llm.provider: anthropic`). Committed.
+- **`~/.event-intel/config.yaml`** (optional, active) → per-workspace user overrides, deep-merged over defaults. Most common use: `llm.provider: chatgpt_oauth` for cost-free experimentation. Not committed. See `docs/playbook.md#14`.
 
 ## Project docs convention
 
@@ -114,18 +118,19 @@ event-intel-mcp/
   .env.example
   config/defaults.yaml
   src/event_intel/
-    mcp_server.py        — FastMCP entry, 5 tool registrations
+    mcp_server.py        — FastMCP entry, 8 tool registrations
     cli.py               — typer thin wrapper (added in S2/S6)
-    errors.py            — MCPError + error_code/stage enums
-    runtime/             — preflight + models prepare (S1)
-    providers/           — LLM / Embedding / VectorStore / Search / Fetch ABCs + defaults
+    errors.py            — MCPError + 14 error_code × 7 stage enums
+    runtime/             — preflight + models prepare (S1) + user config deep-merge
+    providers/           — LLM (Anthropic | ChatGPTOAuth) + factory / Embedding / VectorStore / Search / Fetch ABCs
     cards/               — schema + drafter + validator + ingest (S2)
     events/              — source_capture + extraction + enrichment (S3+S4)
+    acquisition/         — analyzer + probe + acquire + url_safety + robots + raw_fetch (Phase 18T)
     rag/                 — store + retriever + chunker
     scoring/             — dimensions + rules + compute (S4)
     report/              — tier_list_md + tier_list_yaml + brief_export (S5)
-    tools/               — MCP tool handlers (one file per tool)
-    storage/             — workspaces + artifacts + identifiers (sanitize_slug)
+    tools/               — MCP tool handlers (one file per tool, 8 total)
+    storage/             — workspaces + artifacts (atomic + sha256 manifest) + identifiers (sanitize_slug)
     prompts/{en,ko}/     — LLM prompt templates
   outputs/               — per-workspace per-event artifacts (gitignored except .gitkeep)
   tests/

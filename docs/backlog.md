@@ -8,7 +8,17 @@
 
 ## P1 — v0 진입 후 가장 먼저 검토
 
-(없음 — 현재 Phase 18S v0 진행 중. v0 land 후 채워짐)
+### #11 analyze_event_page prompt 튜닝 — Vue/React 감지 시에도 endpoint 패턴 우선
+**증거**: Phase 18T Done When #4 smoke (2026-05-29) 중 tbse26.mapyourshow.com / directory.conexpoconagg.com 페이지가 본문에 `/ajax/remote-proxy.cfm?action=...` 엔드포인트 + `fetch(url, {X-Requested-With: XMLHttpRequest})` JS 코드 + `{{searchresults}}` placeholder + "No exhibitors could be found" fallback이 모두 명시되어 있음에도 analyzer가 `detected_framework=Vue` 기준으로 `operator_capture_required` (confidence 0.66~0.72) 권고.
+
+**현재 동작**: framework=Vue/React 감지 → 본문 endpoint 패턴 무시 → capture로 escape.
+
+**수정 방향**:
+- `prompts/{en,ko}/analyze_event_page.txt` 결정 우선순위 재배열 — "framework 감지보다 본문 endpoint/placeholder 증거가 우선"을 prompt에 명시
+- 또는 acquisition/analyzer.py에 deterministic pre-check 추가 (정규식으로 `/ajax/.*\.cfm`, `remote-proxy`, `searchresults` 등 강한 신호 감지 시 LLM에게 hint 주거나 LLM 우회)
+- Map Your Show family는 known pattern이라 `acquisition/known_patterns.py` 신설하여 host suffix 기반 short-circuit 검토
+
+**검증 acceptance**: tbse26.mapyourshow.com에 대해 verdict=`xhr_endpoint` + hints.candidate_endpoints에 `/ajax/remote-proxy.cfm?action=search&searchtype=exhibitorgallery` 류 항목 ≥1개.
 
 ---
 

@@ -23,6 +23,10 @@ The single source of truth for **patterns judged reusable** after solving a hard
 | `capability-cards` `structured-context` `ssot-yaml` `llm-grounding` | [8. Capability cards YAML as structured product context SSOT](#8-capability-cards-yaml-as-structured-product-context-ssot) | For accuracy-critical retrieval/scoring, freeform brief drifts; structured YAML with `schema_version` + pydantic SSOT keeps scoring reproducible and supports `draft → human edit → ingest` lifecycle |
 | `schema-drift` `pydantic-ssot` `snapshot-test` `schema-version-bump` | [9. JSON Schema snapshot drift test forces SCHEMA_VERSION discipline](#9-json-schema-snapshot-drift-test-forces-schema_version-discipline) | Lock `Model.model_json_schema()` against a committed snapshot file. Any drift fails CI with a one-liner refresh command; refresh requires bumping `SCHEMA_VERSION` in the same commit |
 | `idempotent-upsert` `content-derived-ids` `vector-store` `re-ingest` | [10. Content-derived stable chunk IDs make re-ingest in-place](#10-content-derived-stable-chunk-ids-make-re-ingest-in-place) | When you upsert structured records into a vector store, derive each chunk's id from its content position (`cap:{i}:{name}`, `trigger:{i}`, ...) so re-ingest of the same source updates rows instead of appending duplicates |
+| `chatgpt-oauth` `codex-backend` `sse` `pkce` `subscription-llm` | [11. ChatGPT Plus subscription as LLM provider via Codex backend OAuth](#11-chatgpt-plus-subscription-as-llm-provider-via-codex-backend-oauth) | PKCE flow at `auth.openai.com` → `chatgpt.com/backend-api/codex/responses` SSE call. 5 backend-specific constraints (headers + payload field restrictions) that aren't documented anywhere centrally — reverse-engineered from Codex CLI source |
+| `robots-txt` `urllib` `transport-failure` `policy-decoupling` | [12. robots.txt fetch decoupled from policy mapping](#12-robotstxt-fetch-decoupled-from-policy-mapping) | Never use `urllib.robotparser.read()` directly — it silently maps fetch failures (incl. 403 to Python-urllib UA) to `disallow_all=True`. Use httpx with explicit status→policy mapping (200→parse, 4xx→allow, 5xx/transport→deny) |
+| `sse-stream` `completed-required` `silent-truncation` `streaming-llm` | [13. SSE LLM streams require explicit `completed` event for success](#13-sse-llm-streams-require-explicit-completed-event-for-success) | Don't return collected deltas as success on stream EOF. Without an explicit `response.completed` (or backend equivalent) terminator, partial deltas are indistinguishable from network truncation. Raise RuntimeError |
+| `provider-factory` `user-config-override` `deep-merge` `swap-defaults` | [14. Provider factory + user config deep-merge for zero-cost provider swap](#14-provider-factory--user-config-deep-merge-for-zero-cost-provider-swap) | `make_llm_provider(config)` reads `~/.event-intel/config.yaml` deep-merged over `config/defaults.yaml`. User toggles `llm.provider: anthropic ↔ chatgpt_oauth` with no code change. Trade-off: cost (Anthropic) vs stability (subscription) |
 
 When entries grow, re-sort by tag alphabetical order. Remove only when a pattern is invalidated (and record why).
 
@@ -396,6 +400,294 @@ def test_reingest_is_idempotent_no_duplicates(repo_root):
 **Caveats**: If the id encodes mutable user-visible fields (`cap:{i}:{name}`), renaming `name` changes the id and creates an orphan row. Two ways to handle: (a) accept the cost and `delete + upsert` on each ingest (simple, fine for small collections), or (b) drop the human-readable suffix from the id (`cap:{i}` only) and store the name in metadata (more robust to renames, but breaks ad-hoc grep). v0 picks (a) — collections are small (< 100 chunks).
 
 **Reusable in**: Any pipeline that periodically rebuilds a vector store from a structured source (capability cards, knowledge base articles, product catalog rows). Avoid for pipelines where the source has no stable position (e.g. de-duplicated web crawl) — those need content-hash ids instead.
+
+---
+
+## 11. ChatGPT Plus subscription as LLM provider via Codex backend OAuth
+
+**Tags**: `chatgpt-oauth` `codex-backend` `sse` `pkce` `subscription-llm`
+
+**Problem**: You want to use a ChatGPT Plus / Pro subscription as the LLM backend for an agent (zero per-token cost during dev). The official `api.openai.com` endpoints require a separately billed API key — the subscription doesn't grant access. Codex CLI / OpenClaw / Warp solve this by reverse-engineering the ChatGPT desktop client's auth flow: PKCE OAuth at `auth.openai.com` → call a different backend (`chatgpt.com/backend-api/codex/responses`) that *does* honor the subscription. No central documentation of the full protocol exists.
+
+**Solution**: Implement the protocol with these 5 backend constraints that aren't obvious until you hit them (each costs a debug cycle if discovered the hard way — see `docs/lesson-learned.md` 2026-05-29 OAuth entry):
+
+```python
+# 1. PKCE auth URL — state + Codex identifiers required, not just OAuth basics
+authorize_url = "https://auth.openai.com/oauth/authorize?" + urlencode({
+    "response_type": "code",
+    "client_id": "app_EMoamEEZ73f0CkXaXp7hrann",  # Codex CLI client_id
+    "redirect_uri": "http://localhost:1455/auth/callback",
+    "scope": "openid profile email offline_access api.connectors.read api.connectors.invoke",
+    "code_challenge": pkce_challenge,
+    "code_challenge_method": "S256",
+    "state": secrets.token_urlsafe(32),                  # ← required, not optional
+    "originator": "codex_cli_rs",                        # ← required
+    "codex_cli_simplified_flow": "true",                 # ← required
+    "id_token_add_organizations": "true",                # ← required
+})
+
+# 2. Endpoint: NOT api.openai.com — Codex-specific subdomain
+RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses"
+
+# 3. Headers: chatgpt-account-id from JWT, plus Codex identity headers
+account_id = jwt_payload["https://api.openai.com/auth"]["chatgpt_account_id"]
+headers = {
+    "Authorization": f"Bearer {access_token}",
+    "chatgpt-account-id": account_id,
+    "OpenAI-Beta": "responses=experimental",
+    "originator": "codex_cli_rs",
+    "OAI-Product-Sku": "codex",
+    "accept": "text/event-stream",
+    "content-type": "application/json",
+}
+
+# 4. Model name: only gpt-5.5 and gpt-5.4 are accepted (verify via ~/.codex/models_cache.json)
+# Plausible-looking names like gpt-5-codex / gpt-5.1-codex-mini are rejected with 400.
+
+# 5. Payload: NO max_output_tokens / max_tokens / max_completion_tokens / temperature
+#    All are 400 "Unsupported parameter" — Codex backend strips them client-side.
+payload = {
+    "model": "gpt-5.5",
+    "instructions": system,
+    "input": [{"type": "message", "role": "user", "content": [{"type": "input_text", "text": user}]}],
+    "store": False,
+    "stream": True,
+    "reasoning": {"effort": "low", "summary": "auto"},
+}
+```
+
+**SSE parsing pitfall** — see playbook #13 for the full pattern, but specifically for Codex backend:
+- success events: `response.output_text.delta` (incremental) + `response.completed` (terminator, also carries `usage` + final `output[]` fallback)
+- failure events: `response.error` / `response.failed` / `response.incomplete` — raise on these
+- *seen_completed required* — partial deltas without `response.completed` = truncation, NOT silent success
+
+**Why each constraint exists** (best guesses from observed behavior):
+- `state` / `originator` / `codex_cli_simplified_flow`: the auth flow disambiguates between general OAuth and the Codex CLI sub-flow that doesn't ask for API-level scopes
+- `chatgpt.com/backend-api`: subscription billing pipeline is on the consumer infra, separate from the API infra
+- Field restrictions (`max_*_tokens`, `temperature`): Codex backend hard-codes inference params — exposing them would let users break the subscription's controlled cost envelope
+
+**Caveats**:
+- Reverse-engineered protocol → backend can change without notice. Keep the path as an opt-in fallback for cost-sensitive dev, with the official API as the production default
+- Tokens cached at `~/.event-intel/chatgpt_auth.json` — refresh_token rotates on each `refresh_grant` call, so if you copy the file between machines only one stays valid
+- Test all field restrictions with absence-asserts (`assert "max_output_tokens" not in payload`) so future PRs don't reintroduce them
+
+**Reusable in**: Any project that wants ChatGPT Plus / Pro as a dev-time LLM backend. The same skeleton (PKCE → JWT account_id → chatgpt.com/backend-api → SSE parse) ports to other languages — Codex CLI is Rust, this playbook entry is the Python equivalent. **Reference implementations** when debugging: openai/codex (official Rust), 7shi/codex-oauth (minimal), numman-ali/opencode-openai-codex-auth (TS port). No single source is complete — cross-reference all three.
+
+---
+
+## 12. robots.txt fetch decoupled from policy mapping
+
+**Tags**: `robots-txt` `urllib` `transport-failure` `policy-decoupling`
+
+**Problem**: `urllib.robotparser.RobotFileParser.read()` does its own HTTP fetch internally using `urllib.request.urlopen` with the Python-urllib UA. Some sites (Cloudflare protections, anti-bot WAFs) return 403 to that UA. `robotparser` swallows the failure and sets `disallow_all = True`, surfacing the same shape as a real `Disallow: /` policy. Your code then reports "robots disallowed" to the user — but the actual robots.txt says `Allow: /`. False positive that's invisible until you compare against curl.
+
+**Solution**: Don't use the high-level `read()`. Fetch robots.txt yourself with httpx using your real page-fetch UA, then map status → policy explicitly:
+
+```python
+# acquisition/robots.py
+from event_intel.acquisition.raw_fetch import get_user_agent
+
+def _fetch_and_parse(robots_url: str, *, timeout: float = 10.0) -> _CacheEntry:
+    try:
+        resp = httpx.get(
+            robots_url,
+            headers={"User-Agent": get_user_agent()},  # same UA as real fetches
+            timeout=timeout,
+            follow_redirects=True,
+        )
+    except (httpx.RequestError, httpx.HTTPError):
+        return _CacheEntry(rp=None, allowed=False, expires=...)  # transport failure → conservative deny
+
+    rp = urllib.robotparser.RobotFileParser()
+    rp.set_url(robots_url)
+
+    if resp.status_code == 200:
+        rp.parse(resp.text.splitlines())
+        return _CacheEntry(rp=rp, allowed=True, expires=...)
+    if resp.status_code in (404, 410):
+        return _CacheEntry(rp=None, allowed=True, expires=...)  # RFC 9309: no robots = allow
+    if resp.status_code in (401, 403):
+        return _CacheEntry(rp=None, allowed=True, expires=...)  # robots hidden = allow (lenient)
+    if 500 <= resp.status_code < 600:
+        return _CacheEntry(rp=None, allowed=False, expires=...)  # 5xx → conservative deny
+    return _CacheEntry(rp=None, allowed=False, expires=...)
+```
+
+Then `is_allowed(target_url)` returns `True` whenever `entry.rp is None and entry.allowed=True` (no policy = allow) or `entry.rp.can_fetch("*", target_url)` when a policy exists.
+
+**Why it works**:
+- UA consistency: robots fetch and content fetch use the same identity, so policy decisions match what the site sees from us
+- Explicit status mapping: each status code's semantic intent is in the code, not buried in stdlib defaults
+- Transport failures (timeout, DNS, connection reset) become a deny — failsafe direction for an unknown site state
+
+**Test pattern**: mock `httpx.get` to return canned status codes and verify the mapping. Don't bypass `_fetch_and_parse` — test it directly so any future change to the mapping is caught:
+
+```python
+def test_403_treated_as_allow(monkeypatch):
+    fake_resp = MagicMock(status_code=403)
+    monkeypatch.setattr(httpx, "get", lambda *a, **kw: fake_resp)
+    entry = _fetch_and_parse("https://example.com/robots.txt")
+    assert entry.allowed is True
+    assert entry.rp is None
+```
+
+**Reusable in**: Any crawler / fetcher / agent that respects robots.txt. The general pattern — **never let a high-level stdlib helper own both the fetch and the policy decision** — also applies to: SSL context defaults, DNS resolution, cookie jars, redirect policies. Decouple at every layer where the stdlib has a "convenient" silent default.
+
+---
+
+## 13. SSE LLM streams require explicit `completed` event for success
+
+**Tags**: `sse-stream` `completed-required` `silent-truncation` `streaming-llm`
+
+**Problem**: Streaming LLM endpoints (OpenAI Responses, Anthropic messages, Codex backend) emit incremental `delta` events plus a terminator (`response.completed` for Responses-style backends; `message_stop` for Anthropic). If you collect all deltas and return the joined text on `iter_lines()` exhaustion, you can't distinguish:
+- (a) legitimate complete response → fine to return
+- (b) network truncation mid-stream → caller sees partial text as final answer
+
+Both produce a list of deltas with no `completed` marker. In Plan v3 round 1 review this was flagged as silent corruption — caller has no way to detect (b) and acts on incomplete data.
+
+**Solution**: Make `seen_completed = True` a required success condition. Without it, raise:
+
+```python
+seen_completed = False
+seen_error: Any = None
+text_parts: list[str] = []
+
+for line in resp.iter_lines():
+    if not line or not line.startswith("data:"):
+        continue
+    raw = line[5:].lstrip()
+    if raw == "[DONE]":
+        break
+    try:
+        event = json.loads(raw)
+    except json.JSONDecodeError:
+        continue
+
+    etype = event.get("type", "")
+    if etype == "response.output_text.delta":
+        text_parts.append(event.get("delta", ""))
+    elif etype == "response.completed":
+        seen_completed = True
+        # harvest model + usage + final output[] fallback
+    elif etype in ("response.failed", "response.error", "response.incomplete"):
+        seen_error = event.get("error") or event.get("response", {}).get("status", "unknown")
+        break
+
+if seen_error is not None:
+    raise RuntimeError(f"backend error event: {seen_error}")
+if not seen_completed:
+    raise RuntimeError("backend returned incomplete stream (no response.completed)")
+```
+
+Note: an empty `text_parts` *with* `seen_completed = True` is legitimate — backend can return zero output (refusal, empty result). Don't conflate "no deltas" with "incomplete".
+
+**Test pattern** — cover all 4 termination shapes:
+
+```python
+def test_chat_once_returns_text_from_deltas(): ...                 # deltas + completed = OK
+def test_chat_once_empty_completed_returns_empty_text(): ...       # zero deltas + completed = OK
+def test_chat_once_raises_on_truncated_stream_with_deltas(): ...   # deltas but no completed = raise
+def test_chat_once_raises_on_response_error_event(): ...           # explicit error event = raise
+```
+
+**Reusable in**: Every SSE / streaming LLM integration. The same trap exists with WebSocket-based LLMs (e.g. Realtime API) — `connection.close()` without an explicit completion frame is truncation, not success. The general rule: **success requires an affirmative terminator event, not just stream EOF**.
+
+---
+
+## 14. Provider factory + user config deep-merge for zero-cost provider swap
+
+**Tags**: `provider-factory` `user-config-override` `deep-merge` `swap-defaults`
+
+**Problem**: You have multiple LLM provider options (e.g. paid Anthropic API for production, ChatGPT Plus OAuth for dev to cut cost — see playbook #11). Hardcoding `AnthropicProvider()` everywhere means swapping requires touching every callsite. Adding an env-var toggle (`if os.getenv("USE_CHATGPT"): ...`) sprinkles config logic into business code. Wrapping in a global singleton hides which provider a particular call uses.
+
+**Solution**: A pure factory function + user-overridable config file:
+
+```python
+# providers/llm.py
+def make_llm_provider(config: dict, *, model: str | None = None) -> LLMProvider:
+    llm_cfg = config.get("llm", {}) or {}
+    provider_name = (llm_cfg.get("provider") or "anthropic").lower()
+
+    if provider_name == "anthropic":
+        return AnthropicProvider(model=model or llm_cfg.get("anthropic_model", "claude-sonnet-4-5"))
+    if provider_name == "chatgpt_oauth":
+        return ChatGPTOAuthProvider(
+            model=model or llm_cfg.get("chatgpt_oauth_model", "gpt-5.5"),
+            reasoning_effort=llm_cfg.get("chatgpt_oauth_reasoning_effort", "low"),
+        )
+    raise ValueError(f"unknown llm.provider: {provider_name!r}")
+
+# runtime/preflight.py — load with deep-merge so user overrides defaults
+def load_config(path: Path | None = None) -> dict:
+    if path is not None:
+        return _check_required_keys(_load_yaml_file(path), path)  # explicit path = self-contained
+
+    defaults = _load_yaml_file(_repo_defaults_path())          # config/defaults.yaml
+    user = _load_yaml_file(_user_config_path(), allow_missing=True)  # ~/.event-intel/config.yaml
+    if user is not None:
+        defaults = _deep_merge(defaults, user)                 # user wins per-leaf
+    _check_required_keys(defaults, _repo_defaults_path())
+    return defaults
+```
+
+Then every orchestration layer calls `make_llm_provider(config)` once at the entry boundary, e.g.:
+
+```python
+# tools/build_event_tier_list.py
+from event_intel.providers import llm as _llm
+from event_intel.runtime import preflight as _preflight
+
+def build_event_tier_list(...):
+    config = _preflight.load_config()
+    provider = _llm.make_llm_provider(config)
+    ...
+```
+
+User now toggles by editing `~/.event-intel/config.yaml` (or setting `EVENT_INTEL_CONFIG` env var):
+
+```yaml
+llm:
+  provider: chatgpt_oauth   # was anthropic
+  chatgpt_oauth_reasoning_effort: medium
+```
+
+No code change. No env-var leaks into business logic. The defaults file in the repo stays the production-safe choice.
+
+**Why it works**:
+- Single decision point (factory) — readers see the full set of options in one file
+- Deep-merge preserves untouched defaults — user config can be a one-key file (only override what's needed)
+- `~/.event-intel/config.yaml` is per-machine and gitignored — accidentally checking in a dev preference can't happen
+- Module-reference call (`_llm.make_llm_provider(...)`) preserves monkeypatch testability (playbook #2)
+
+**Test pattern**:
+
+```python
+def test_factory_chatgpt_oauth_branch():
+    cfg = {"llm": {"provider": "chatgpt_oauth", "chatgpt_oauth_reasoning_effort": "medium"}}
+    p = make_llm_provider(cfg)
+    assert isinstance(p, ChatGPTOAuthProvider)
+    assert p._reasoning_effort == "medium"
+
+def test_factory_unknown_provider_raises():
+    with pytest.raises(ValueError, match="unknown llm.provider"):
+        make_llm_provider({"llm": {"provider": "azure"}})
+
+def test_user_override_deep_merge(tmp_path, monkeypatch):
+    # user file sets just one nested key — defaults preserved elsewhere
+    user_path = tmp_path / "config.yaml"
+    user_path.write_text("llm:\n  provider: chatgpt_oauth\n", encoding="utf-8")
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(user_path))
+    cfg = load_config()
+    assert cfg["llm"]["provider"] == "chatgpt_oauth"
+    assert cfg["extraction"]["max_chunks_per_event"] == 12  # from defaults, untouched
+```
+
+**Caveats**:
+- Deep-merge of *lists* is ambiguous (concat vs replace). Pick replace and document it — dict deep-merge + list replace is a common, predictable convention
+- Don't deep-merge secrets (`.env`) — those should stay layer-isolated. The 3-tier model (`.env` / `defaults.yaml` / `user.yaml`) keeps secrets separate from config knobs
+- Validate exhaustively in the factory (typos in `reasoning_effort` etc. should raise at construction, not at first SSE call). See `_ALLOWED_REASONING_EFFORTS` in `providers/llm.py`
+
+**Reusable in**: Any project with multiple equivalent backends (LLM / embedding / vectorstore / search / fetch) where the choice may vary per environment (dev / staging / prod) or per user (cost vs quality preference). The pattern scales — add a 3rd provider by adding one factory branch + one config key, no callsite changes.
 
 ---
 

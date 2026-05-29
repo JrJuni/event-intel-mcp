@@ -5,16 +5,18 @@
 ```
    ┌──────────────────────────────────────────────────────────┐
    │  Claude Desktop  (primary surface)                       │
-   │     └─ 5 MCP tools:                                      │
+   │     └─ 8 MCP tools:                                      │
    │         check_runtime / draft_capability_cards /         │
    │         validate_capability_cards /                      │
-   │         ingest_product_context / build_event_tier_list   │
+   │         ingest_product_context / build_event_tier_list / │
+   │         analyze_event_page / probe_exhibitor_endpoint /  │
+   │         acquire_exhibitor_source                         │
    └──────────────────────────┬───────────────────────────────┘
                               │  stdio JSON-RPC
                               ▼
    ┌──────────────────────────────────────────────────────────┐
    │  event_intel.mcp_server (FastMCP)                        │
-   │     └─ 5 tool handlers ───→ envelope-wrapped responses   │
+   │     └─ 8 tool handlers ───→ envelope-wrapped responses   │
    └──────────────────────────┬───────────────────────────────┘
                               │
         ┌─────────────────────┼──────────────────────────┐
@@ -26,10 +28,20 @@
    runtime/preflight     rag/{chunker,store,           scoring/{dimensions,
         │                retriever}                     rules,compute}
         │                     │                          │
-        └─────────────────────┼──────────────────────────┘
-                              ▼
+        └────┬────────────────┼──────────────────────────┘
+             │                ▼
+             │       acquisition/ (Phase 18T)
+             │         ├ analyzer.py         — verdict + hints (1 Sonnet call)
+             │         ├ probe.py            — XHR / embedded_json probe
+             │         ├ acquire.py          — orchestrator (5 verdict branches)
+             │         ├ url_safety.py       — validate_url + host_relation
+             │         ├ robots.py           — httpx-direct + status→policy
+             │         ├ raw_fetch.py        — shared UA, status=0 on transport fail
+             │         └ http_status_map.py  — HTTP → MCPError envelope
+             ▼
                      providers/ (ABC + default impl)
-                       ├ llm.py        — Anthropic Sonnet 4.6
+                       ├ llm.py        — AnthropicProvider | ChatGPTOAuthProvider
+                       │                  (factory: make_llm_provider(config))
                        ├ embedding.py  — bge-m3 (lazy)
                        ├ vectorstore.py— Chroma persistent (lazy)
                        ├ search.py     — Brave Web/News
@@ -37,6 +49,31 @@
 ```
 
 The MCP surface (Claude Desktop stdio) is the day-to-day driver. A thin CLI (`event-intel`) re-uses the same tool handlers for smoke / debug. No FastAPI, no Web UI, no DB — artifacts under `outputs/{workspace_id}/{event_slug}/` are the durable record.
+
+## Source acquisition layer (Phase 18T)
+
+```
+[URL]
+  │ analyze_event_page (1 Sonnet call + page fetch + regex pre-scan)
+  ▼
+verdict ∈ {static_html, xhr_endpoint, embedded_json, operator_capture_required, login_required}
+  │
+  │ if static_html         → fetch page → save as source.html
+  │ if xhr_endpoint        → probe_exhibitor_endpoint → winning candidate URL
+  │                          → fetch (max_pages=3 pagination) → save as source.html
+  │ if embedded_json       → extract via regex script_id/var_name + dotted key_path
+  │                          → save as source.txt (text_file source kind)
+  │ if operator_capture_required → return envelope with operator_action hint
+  │ if login_required      → return LOGIN_REQUIRED envelope
+  ▼
+~/.event-intel/artifacts/{workspace_id}/{event_slug}/source.{html,txt}
+                                                  + manifest.json (sha256 + verdict + meta)
+  │
+  ▼
+(source_kind, source_ref) → build_event_tier_list
+```
+
+Cache hit re-verifies sha256 from manifest. Corrupt artifact triggers refetch + warning. `EVENT_INTEL_ARTIFACTS_DIR` env override supported.
 
 ## Two-flow model
 
@@ -118,7 +155,15 @@ No separate ML worker (unlike bd-coldcall-agent). The complexity wasn't justifie
       product_{workspace_id}/        # capability cards chunks
       event_{workspace_id}_{slug}/   # per-event evidence chunks
   cache/
-    brave/{sha256(query+kind)}.json  # per-call Brave response cache
+    search/{ws}/{sha1(query+kind+lang)}.json  # per-call Brave response cache
+  artifacts/
+    {workspace_id}/{event_slug}/     # Phase 18T acquisition output
+      source.html | source.txt       # captured page or extracted JSON
+      manifest.json                  # sha256 + verdict + meta + fetch timestamp
+  resume/
+    {workspace_id}.jsonl             # per-row enrichment resume artifact
+  chatgpt_auth.json                  # ChatGPT OAuth tokens (refresh-rotated)
+  config.yaml                        # optional user overrides
 
 <repo>/outputs/
   {workspace_id}/
@@ -139,7 +184,7 @@ All Chroma collection names and filesystem paths pass through `storage/identifie
 
 ## Error model
 
-10 stable error_codes × 6 stages, defined in `event_intel/errors.py`. Every tool returns either `{"ok": True, ...}` or the `MCPError` envelope:
+14 stable error_codes × 7 stages, defined in `event_intel/errors.py` (Phase 18T added 4 codes — `ACQUISITION_AMBIGUOUS`, `LOGIN_REQUIRED`, `OPERATOR_CAPTURE_REQUIRED`, `ROBOTS_DISALLOWED` — and 1 stage — `acquisition`). Every tool returns either `{"ok": True, ...}` or the `MCPError` envelope:
 
 ```json
 {
@@ -156,10 +201,12 @@ The envelope is snapshot-tested (`tests/test_mcp_error_taxonomy.py`) so callers 
 
 ## Configuration
 
-3-tier:
-- **`.env`** — secrets only. `ANTHROPIC_API_KEY` + `BRAVE_API_KEY`. Gitignored.
-- **`config/defaults.yaml`** — shipped defaults (extraction caps, scoring weights, tier rules, model names).
-- **`~/.event-intel/config.yaml`** (optional) — user overrides per workspace. (Not in v0; loader added in S2/S4.)
+3-tier (deep-merged: user overrides defaults, both validated against required-key list):
+- **`.env`** — secrets only. `ANTHROPIC_API_KEY` (Anthropic path) or none (ChatGPT OAuth path) + `BRAVE_API_KEY`. Auto-loaded via `python-dotenv` at `cli.py` + `mcp_server.py` module top. Gitignored.
+- **`config/defaults.yaml`** — shipped defaults (extraction caps, scoring weights, tier rules, model names, `llm.provider: anthropic`).
+- **`~/.event-intel/config.yaml`** (optional, active) — user overrides per workspace. Deep-merged over defaults. Most common use: `llm.provider: chatgpt_oauth` to swap to subscription-based OAuth path for zero-cost experimentation. See playbook #14.
+
+LLM provider is selected via `make_llm_provider(config)` factory — caller passes the deep-merged config, factory branches on `llm.provider` (`anthropic | chatgpt_oauth`). Anthropic path is byte-for-byte unchanged from v0.1; ChatGPT OAuth path uses Codex backend protocol (playbook #11).
 
 ## What's deliberately not here
 
