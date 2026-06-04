@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -41,6 +42,9 @@ class BgeM3Provider(EmbeddingProvider):
     # build_event_tier_list calls reuse the in-memory model. Lazy import stays
     # inside _get_model, so module import remains cold-start safe.
     _MODEL_CACHE: dict[str, object] = {}
+    # Guards cache population so a background warm-up thread and a concurrent
+    # build() don't both construct the model. See runtime/warmup.py.
+    _CACHE_LOCK = threading.Lock()
 
     def __init__(self, *, cache_dir: str | Path | None = None):
         self.cache_dir = (
@@ -55,12 +59,17 @@ class BgeM3Provider(EmbeddingProvider):
             key = str(self.cache_dir)
             cached = BgeM3Provider._MODEL_CACHE.get(key)
             if cached is None:
-                from sentence_transformers import SentenceTransformer
+                with BgeM3Provider._CACHE_LOCK:
+                    # Double-check inside the lock: another thread may have loaded
+                    # it while we waited.
+                    cached = BgeM3Provider._MODEL_CACHE.get(key)
+                    if cached is None:
+                        from sentence_transformers import SentenceTransformer
 
-                cached = SentenceTransformer(
-                    self.MODEL_NAME, cache_folder=str(self.cache_dir)
-                )
-                BgeM3Provider._MODEL_CACHE[key] = cached
+                        cached = SentenceTransformer(
+                            self.MODEL_NAME, cache_folder=str(self.cache_dir)
+                        )
+                        BgeM3Provider._MODEL_CACHE[key] = cached
             self._model = cached
         return self._model
 

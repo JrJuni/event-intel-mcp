@@ -20,6 +20,7 @@ from event_intel.providers import embedding as _embedding
 from event_intel.providers import llm as _llm
 from event_intel.providers import search as _search
 from event_intel.providers import vectorstore as _vectorstore
+from event_intel.runtime import warmup as _warmup
 from event_intel.storage.identifiers import sanitize_slug
 
 if TYPE_CHECKING:
@@ -222,6 +223,7 @@ def run_preflight(
     *,
     require_product_context: bool = True,
     warm_up: bool = False,
+    warm_up_block: bool = False,
     config: dict | None = None,
     embedding_provider: "EmbeddingProvider | None" = None,
     vectorstore_provider: "VectorStoreProvider | None" = None,
@@ -356,11 +358,15 @@ def run_preflight(
         "chunks": int(pc_info.get("count", 0)),
     }
 
-    # Optional: load the embedding model into the process cache now (warm_up=True)
-    # so the first build_event_tier_list call doesn't pay the ~1.3 GB load. Runs
-    # only after all checks pass — bge-m3 cache is already confirmed present.
+    # Warm-up (non-blocking by default). bge-m3 takes ~10-20s to load; doing it
+    # synchronously inside an MCP tool call can hit Claude Desktop's request
+    # timeout. So warm_up=True only *starts* a background load and we always
+    # report the current state under checks.warm_up — the caller polls by
+    # calling check_runtime again. warm_up_block=True (terminal CLI) loads inline.
+    # See docs/lesson-learned.md 2026-06-04.
     if warm_up:
-        checks["warm_up"] = embedding_provider.warm_up()
+        _warmup.start(embedding_provider.warm_up, block=warm_up_block)
+    checks["warm_up"] = _warmup.status()
 
     elapsed_ms = int((time.monotonic() - start) * 1000)
     return {"ok": True, "checks": checks, "elapsed_ms": elapsed_ms}

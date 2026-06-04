@@ -126,6 +126,16 @@ def minimal_config():
     }
 
 
+@pytest.fixture(autouse=True)
+def _reset_warmup():
+    """Warm-up state is process-global — reset around every test for isolation."""
+    from event_intel.runtime import warmup
+
+    warmup.reset()
+    yield
+    warmup.reset()
+
+
 # ---------- Success path ----------
 
 
@@ -144,20 +154,33 @@ def test_preflight_success_with_all_ready(all_ready, minimal_config):
     assert isinstance(result["elapsed_ms"], int)
 
 
-def test_preflight_no_warm_up_by_default(all_ready, minimal_config):
-    """Without warm_up, the embedding model is NOT loaded and no warm_up check appears."""
+def test_preflight_no_warm_up_reports_not_started(all_ready, minimal_config):
+    """Without warm_up, the model isn't loaded; checks.warm_up reports not_started."""
     result = run_preflight("default", config=minimal_config, **all_ready)
     assert result["ok"] is True
     assert all_ready["embedding_provider"].warmed is False
-    assert "warm_up" not in result["checks"]
+    assert result["checks"]["warm_up"]["status"] == "not_started"
 
 
-def test_preflight_warm_up_loads_embedding_model(all_ready, minimal_config):
-    """warm_up=True calls embedding.warm_up() after checks pass and reports it."""
-    result = run_preflight("default", warm_up=True, config=minimal_config, **all_ready)
+def test_preflight_warm_up_block_loads_embedding_model(all_ready, minimal_config):
+    """warm_up + warm_up_block (terminal CLI) loads inline and reports ready."""
+    result = run_preflight(
+        "default", warm_up=True, warm_up_block=True, config=minimal_config, **all_ready
+    )
     assert result["ok"] is True
     assert all_ready["embedding_provider"].warmed is True
     assert result["checks"]["warm_up"]["status"] == "ready"
+
+
+def test_preflight_warm_up_async_never_blocks(all_ready, minimal_config):
+    """warm_up without block (MCP path) starts a background load and returns at once.
+
+    The fake warm_up is instant, so status is 'warming' or already 'ready' — both
+    are valid; the point is run_preflight returns a status dict without raising.
+    """
+    result = run_preflight("default", warm_up=True, config=minimal_config, **all_ready)
+    assert result["ok"] is True
+    assert result["checks"]["warm_up"]["status"] in ("warming", "ready")
 
 
 # ---------- Per-check failure paths ----------

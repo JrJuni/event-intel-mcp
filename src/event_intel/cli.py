@@ -45,13 +45,15 @@ def _print_json(payload: dict) -> None:
 def check_runtime_cmd(
     workspace: str = typer.Option("default", "--workspace", "-w", help="Workspace ID."),
     warm_up: bool = typer.Option(
-        False, "--warm-up", help="Also preload the bge-m3 model into memory after checks pass."
+        False, "--warm-up", help="Also load the bge-m3 model into memory (waits inline) after checks pass."
     ),
 ) -> None:
     """Run the 5-check runtime preflight for a workspace."""
     from event_intel.tools.check_runtime import check_runtime
 
-    result = check_runtime(workspace_id=workspace, warm_up=warm_up)
+    # Terminal: load inline (warm_up_block) so the user waits and sees load_seconds.
+    # The MCP server path stays non-blocking to respect the client timeout.
+    result = check_runtime(workspace_id=workspace, warm_up=warm_up, warm_up_block=warm_up)
     _print_json(result)
     raise typer.Exit(code=0 if result.get("ok") else 1)
 

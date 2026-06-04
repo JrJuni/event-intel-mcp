@@ -4,7 +4,7 @@ Turn exhibitor lists into evidence-backed BD target tier lists via MCP.
 
 ## Status
 
-Pre-alpha. v0 + acquisition layer (Phase 18T) + ChatGPT-OAuth install UX (Phase 18T.1) — 8 MCP tools live, 355/355 tests green. Real-exhibition smoke (≥2 verdicts) done; Claude Desktop registration via the `.mcpb` bundle (see `mcpb/`). See `docs/status.md` for stream-by-stream history.
+Pre-alpha. v0 + acquisition layer (Phase 18T) + ChatGPT-OAuth install UX (Phase 18T.1) — 8 MCP tools live, 361/361 tests green. Real-exhibition smoke (≥2 verdicts) done; Claude Desktop registration via the `.mcpb` bundle (see `mcpb/`). See `docs/status.md` for stream-by-stream history.
 
 ## Install
 
@@ -44,7 +44,10 @@ event-intel check-runtime           # verify model + vectorstore + APIs
 event-intel check-runtime --warm-up # also preload bge-m3 into memory (optional)
 ```
 
-**Avoiding first-build latency.** The bge-m3 model (~1.3 GB) loads on first use and is then cached for the life of the server process. To pay that cost up front instead of on your first `build_event_tier_list`, run `check_runtime` with warm-up — from the terminal (`--warm-up`) or, in Claude Desktop, call `check_runtime` with `warm_up: true`. (If the warm-up call itself times out, the server still finishes loading in the background, so the next call is fast.)
+**Avoiding first-build latency.** The bge-m3 model (~1.3 GB) loads on first use (~10–20s) and is then cached for the life of the server process. To pay that cost up front instead of on your first `build_event_tier_list`:
+
+- **Terminal:** `event-intel check-runtime --warm-up` loads the model inline and waits, reporting `warm_up.load_seconds`.
+- **Claude Desktop:** call `check_runtime` with `warm_up: true`. It returns *immediately* with `warm_up.status: "warming"` (it never blocks on the load, so it can't hit the MCP client timeout). Call `check_runtime` again after a minute — once `warm_up.status` reads `"ready"`, `build_event_tier_list` will reuse the cached model and run fast.
 
 ## Workflow (CLI)
 
@@ -180,7 +183,7 @@ Include `ANTHROPIC_API_KEY` only for the Anthropic path. Set `EVENT_INTEL_USE_CH
 
 | Tool | Purpose |
 |---|---|
-| `check_runtime` | Verify bge-m3 cache / Chroma / API keys / product context. Pass `warm_up: true` to also preload bge-m3 into the server process and avoid first-build latency. |
+| `check_runtime` | Verify bge-m3 cache / Chroma / API keys / product context. `warm_up: true` starts a *non-blocking* background model load (returns at once); `checks.warm_up.status` reports `not_started`/`warming`/`ready` — poll by calling again. |
 | `draft_capability_cards` | Draft a `capability_cards.yaml` from a source doc (md/txt/pdf) or inline text |
 | `validate_capability_cards` | Validate a hand-edited `capability_cards.yaml` against the pydantic schema (v1) |
 | `ingest_product_context` | Embed validated cards via bge-m3 → Chroma `product_{workspace_id}` collection |

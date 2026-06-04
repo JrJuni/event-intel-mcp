@@ -45,11 +45,16 @@ def _not_implemented(tool_name: str) -> dict:
 def check_runtime(workspace_id: str = "default", warm_up: bool = False) -> dict:
     """Verify embedding model / vectorstore / API keys / product context (S1).
 
-    Set warm_up=true to also preload the bge-m3 model into this server process,
-    so the first build_event_tier_list call avoids the one-time ~1.3 GB load.
+    Set warm_up=true to START loading the bge-m3 model in the background so the
+    first build_event_tier_list call is fast. The call returns immediately (it
+    will not block on the ~10-20s load). Check `checks.warm_up.status`: when it
+    reads "ready" the model is loaded. If it reads "warming", just call
+    check_runtime again in a minute to poll.
     """
     from event_intel.tools.check_runtime import check_runtime as _impl
 
+    # Always non-blocking on the MCP surface (warm_up_block stays False) — only
+    # the terminal CLI loads inline.
     return _impl(workspace_id=workspace_id, warm_up=warm_up)
 
 

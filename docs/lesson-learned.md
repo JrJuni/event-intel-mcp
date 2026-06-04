@@ -15,6 +15,25 @@ Append-only log of approaches tried, failure causes, and validated know-how, acc
 
 ---
 
+## [2026-06-04] 무거운 워밍업을 MCP tool 호출 안에서 *동기*로 하면 Claude app 자체 타임아웃에 걸린다
+
+**Tried**: Phase 18T.1에서 첫 `build_event_tier_list`의 bge-m3 콜드 로드(~10-20s) 지연을 줄이려 `check_runtime(warm_up=true)`가 **동기로** `embedding_provider.warm_up()`을 호출하도록 구현(`run_preflight` 본문에서 `checks["warm_up"] = embedding_provider.warm_up()`). 터미널 측정으론 풀 check_runtime이 ~12s라 "타임아웃 안에 들어오겠지" 가정.
+
+**Result**: 사용자가 즉시 지적 — **Claude Desktop의 MCP request 타임아웃 값은 환경마다 다르고 우리가 통제 못 함**. 콜드 디스크/리부트 직후엔 로드가 20s+로 늘어 client가 먼저 포기 → 서버는 아직 로딩 중인데 사용자에겐 opaque failure로 보임. 게다가 동기 warm은 "warm 호출이 build만큼 무거운 또 하나의 블로킹 호출"이 되어버려 문제를 옮긴 것에 불과.
+
+sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 결론은 동일했음: 무거운 준비작업은 tool 호출 안에서 동기로 하지 말고 — (1) 호출 시 백그라운드로 *시작*만 하고 "워밍업 중, 약 N분 후 준비됨"을 **보수적 ETA**와 함께 즉시 반환, (2) 사용자(또는 agent)가 나중에 다시 호출하면 **status를 폴링**하는 비동기 잡 패턴.
+
+**Lesson**:
+- **MCP tool은 client 타임아웃을 1급 제약으로 놓고 UX를 설계**한다. "우리 측정상 X초니까 괜찮다"는 금물 — client 타임아웃은 우리가 모르고, 디스크/네트워크 상태로 출렁인다. 수 초를 넘길 수 있는 작업은 **절대 tool 호출 본문에서 동기로 블로킹하지 말 것**.
+- **무거운 준비작업 = 비동기 잡 + status 폴링**. trigger 호출은 즉시 리턴(start만) + 보수적 ETA 메시지("보통 1분 이내, 최대 ~2분"처럼 실제보다 넉넉히). 같은 도구를 다시 부르면 `not_started → warming → ready/failed` 상태를 보고. 우리 구현: `runtime/warmup.py`(프로세스 전역 thread-safe 상태기계) + `check_runtime`이 항상 `checks.warm_up` 보고 + `warm_up=true`는 백그라운드 start.
+- **터미널 CLI와 MCP 서버의 적정 동작이 다르다**. CLI는 한 번 실행하고 끝나는 단명 프로세스라 백그라운드 스레드가 같이 죽는다 → CLI는 **inline blocking**(`warm_up_block=True`, 사용자가 터미널에서 대기)이 맞고, 장수하는 MCP 서버는 **비동기**가 맞다. 같은 코드 경로에 `block` 플래그로 분기.
+- **백그라운드 로드 + 동시 build = 캐시 중복 로드 위험** → 프로세스 모델 캐시(`BgeM3Provider._MODEL_CACHE`)를 `threading.Lock`으로 double-checked 보호. warm 스레드가 로딩 중이면 build는 같은 로드를 기다리고 재로드하지 않는다.
+- **검증**: trigger가 1.27s에 status=warming 반환, 14s 뒤 폴링에서 ready(load_seconds 14.1) 확인. tool 호출은 로드를 한 번도 블로킹하지 않음.
+
+**Related**: `src/event_intel/runtime/warmup.py` (신규), `runtime/preflight.py::run_preflight(warm_up=, warm_up_block=)`, `tools/check_runtime.py`, `providers/embedding.py::BgeM3Provider._CACHE_LOCK`. `tests/test_warmup.py` 5건 + `test_runtime_preflight.py` warm 3건. 361/361 green. (Phase 18T.1 후속, commit pending.)
+
+---
+
 ## [2026-05-29] ChatGPT OAuth → Codex backend 통합에서 5단계 누적 실패
 
 **Tried**: ChatGPT Plus 구독을 LLM provider로 끌어다 쓰기 위해 OAuth 경로 구현. Codex CLI / OpenClaw / Warp 가 같은 방식으로 인증한다는 사용자 정보 기반으로 `auth.openai.com` PKCE flow → access_token → `api.openai.com` Responses API 호출 시도.

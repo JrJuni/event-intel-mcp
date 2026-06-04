@@ -13,20 +13,21 @@
   - ✅ `cli.py` — `login-chatgpt` 명령 (module-reference import, envelope on failure).
   - ✅ `mcpb/manifest.json` — `use_chatgpt_oauth` boolean 체크박스 + `EVENT_INTEL_USE_CHATGPT_OAUTH` env 매핑 + anthropic desc 갱신 + **version 0.2.0 → 0.3.0**. `.mcpb` 재빌드(`mcpb validate` 통과, 4.2kB).
   - ✅ docs — README "Choosing an LLM provider" 섹션 + mcpb/README 설치 단계/버전.
-  - ✅ **모델 워밍업 (앱 내, 타임아웃 대응)** — 진단: `check_runtime`은 bge-m3를 로드하지 않음(`is_ready`는 캐시 존재만 확인). 무거운 비용은 매 `build_event_tier_list`가 새 `BgeM3Provider`로 ~1.3GB를 재로드하는 것(프로세스 캐시 부재). 해결:
-    - `BgeM3Provider._MODEL_CACHE` (cache_dir 키, 프로세스 수명) — instance 간 모델 재사용. import는 메서드 내부 유지(cold-start 안전).
-    - `BgeM3Provider.warm_up()` (+ ABC 기본 구현) — 모델 강제 로드 + `already_cached`/`load_seconds` 보고.
-    - `check_runtime(warm_up=true)` → preflight 통과 후 `checks.warm_up`로 로드. CLI `--warm-up`, MCP 서버 파라미터로 노출(manifest 변경 불필요).
-    - 좋은 성질: 워밍업 호출이 클라이언트 타임아웃에 걸려도 서버 프로세스가 로드를 끝내 캐시를 채움 → 다음 호출은 빠름.
-  - **테스트**: 355/355 green (+15: OAuth preflight 6 + cli 1 + oauth provider 3, warmup preflight 2 + embedding 3). cold-start 0 유지.
-  - **결정(사용자 확인)**: 체크박스 opt-in 전용(미체크가 기존 oauth 설정 안 깸) + CLI 명령 + lazy 폴백 / 워밍업은 check_runtime `warm_up` 플래그(신규 도구 대신).
+  - ✅ **모델 워밍업 — 비동기 패턴 (Claude app 타임아웃 대응)** — 진단: `check_runtime`은 bge-m3를 로드하지 않음(`is_ready`는 캐시 존재만 확인). 무거운 비용은 매 `build_event_tier_list`가 새 `BgeM3Provider`로 ~1.3GB(콜드 11~20s)를 재로드하는 것(프로세스 캐시 부재).
+    - **초안(동기 warm)은 폐기** — tool 호출 안에서 동기 로드 시 Claude app 자체 타임아웃에 걸림(coldcall 선례). `docs/lesson-learned.md` 2026-06-04 참조.
+    - `runtime/warmup.py` (신규) — 프로세스 전역 thread-safe 상태기계(`not_started/warming/ready/failed`) + `start(block=)` + `status()`. 보수적 ETA 메시지.
+    - `BgeM3Provider._MODEL_CACHE` + `_CACHE_LOCK` — instance 간 모델 재사용 + 백그라운드 로드/동시 build 중복 로드 방지.
+    - `check_runtime`는 **항상 `checks.warm_up` 상태 보고**. `warm_up=true`는 백그라운드 로드 *시작*만 하고 즉시 리턴(폴링 패턴). MCP=비동기, CLI `--warm-up`=inline blocking(`warm_up_block`). manifest 변경 불필요.
+    - 검증: trigger 1.27s 리턴(status=warming), 14s 후 폴링 ready(load_seconds 14.1).
+  - **테스트**: 361/361 green (+21: OAuth preflight 6 + cli 1 + oauth provider 3, warmup manager 5 + preflight warm 3 + embedding 3). cold-start 0 유지.
+  - **결정(사용자 확인)**: 체크박스 opt-in 전용(미체크가 기존 oauth 설정 안 깸) + CLI 명령 + lazy 폴백 / 워밍업은 **비동기 + status 폴링**(런타임 동기 금지).
 
 - **Phase 18T Done When 잔여 항목 (2026-05-29)**
   - ✅ Done When #4 — 실 전시회 smoke ≥2 verdicts 확보 (2026-05-29):
     - `operator_capture_required`: smarttechkorea.com x2, tbse26.mapyourshow.com, directory.conexpoconagg.com (Vue 감지 시 analyzer가 capture로 분류 — Map Your Show `/ajax/remote-proxy.cfm` endpoint를 페이지 본문에 명시함에도 보수적으로 capture 권고. → backlog #11에서 해소)
     - `static_html` (0.98 confidence): simtos.org → acquire-source까지 OK + build-event 풀 파이프라인 e2e (20 candidates → 10 enriched → tier_list.md/yaml C tier 10건, machine tool 회사들이라 Mobilint NPU fit 약함 — 점수 분포 정상)
   - ✅ Done When #13 — Claude Desktop `.mcpb` 0.3.0 설치 → 8 tools 노출/호출 확인 (2026-06-04, 사용자 스크린샷 검증). **→ Phase 18T 완전 종료.**
-  - **Done When #1–13 모두 완료** (cold-start 0, 14×7=98 envelope, core lock clean). 테스트 수치는 18T.1 기준 350/350.
+  - **Done When #1–13 모두 완료** (cold-start 0, 14×7=98 envelope, core lock clean). 테스트 수치는 18T.1 기준 361/361.
 
 - **Phase 18U (별도 plan — 18T 마감 후 진입)**
   - Streamable HTTP transport + OAuth 2.1 PKCE + ChatGPT App 등록. 상세: `docs/backlog.md`.
@@ -176,7 +177,7 @@
 
 1. ✅ Phase 18S (S0~S6) — v0 surface 완성 (173/173 green)
 2. ✅ Phase 18T (T0~T3) — acquisition layer 완성 (290/290 green)
-3. ✅ Phase 18T.1 — ChatGPT OAuth 설치 UX + `.mcpb` 0.3.0 (350/350 green)
+3. ✅ Phase 18T.1 — ChatGPT OAuth 설치 UX + 비동기 워밍업 + `.mcpb` 0.3.0 (361/361 green)
 4. ✅ Phase 18T 마감 — `.mcpb` 0.3.0 Claude Desktop 8 tools 노출 확인 (Done When #13, 2026-06-04)
 5. **Phase 18U** (별도 plan 작성 필요) — Streamable HTTP + OAuth 2.1 PKCE + ChatGPT App 등록
 
