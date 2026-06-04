@@ -46,9 +46,11 @@ event-intel check-runtime --warm-up # also preload bge-m3 into memory (optional)
 
 **Avoiding first-build latency.** The bge-m3 model (~1.3 GB) loads on first use and is then cached for the life of the server process. To pay that cost up front instead of on your first `build_event_tier_list`, run `check_runtime` with warm-up — from the terminal (`--warm-up`) or, in Claude Desktop, call `check_runtime` with `warm_up: true`. (If the warm-up call itself times out, the server still finishes loading in the background, so the next call is fast.)
 
-## Workflow
+## Workflow (CLI)
 
-1. **Draft Product Context**
+Two flows. The **Product Context lifecycle** (step 1) runs once per product to teach the system what you sell; the **Event pipeline** (steps 2–4) runs per exhibitor list. The same operations are available as MCP tools in Claude Desktop (see [Use it in Claude Desktop](#use-it-in-claude-desktop)).
+
+1. **Draft Product Context** *(one-time per product)*
    ```powershell
    event-intel draft-cards --source docs/product.md --workspace default
    # Hand-edit outputs/default/capability_cards.draft.yaml → save as capability_cards.yaml
@@ -128,7 +130,29 @@ JS-heavy exhibitor pages (infinite scroll, login-walled) are not auto-crawled in
 
 All three feed into `build-event` via `--html-file` / `--csv-file` / `--text-file`.
 
-## MCP integration
+## Use it in Claude Desktop
+
+### Option A — `.mcpb` bundle (recommended)
+
+The repo ships a Claude Desktop extension bundle, so you install through a UI form instead of hand-editing JSON. It's ~4 KB and points at your live repo + interpreter (it does not bundle the Python source or the ~3 GB ML deps).
+
+1. Build the bundle (needs `npm i -g @anthropic-ai/mcpb`):
+   ```powershell
+   cd mcpb
+   mcpb pack . event-intel-mcp-0.3.0.mcpb
+   ```
+2. Claude Desktop → **Settings → Extensions** → drag the `.mcpb` onto the pane (or "Install from file").
+3. Fill the form:
+   - **Python interpreter path** — your env's python (e.g. `…\miniconda3\envs\event-intel\python.exe`)
+   - **Repo path** — this repo's folder (the one containing `pyproject.toml`)
+   - **Brave Search API key** — required for `build_event_tier_list` enrichment
+   - **Use ChatGPT Plus/Pro subscription** — check to use ChatGPT OAuth instead of an Anthropic key (then run `event-intel login-chatgpt` once in a terminal); leave unchecked for the Anthropic path
+   - **Anthropic API key** — required only when the ChatGPT box is unchecked
+4. Restart Claude Desktop → the 8 tools appear in the tool picker.
+
+Details in [`mcpb/README.md`](mcpb/README.md).
+
+### Option B — manual config
 
 Add to `claude_desktop_config.json`:
 
@@ -137,24 +161,40 @@ Add to `claude_desktop_config.json`:
   "mcpServers": {
     "event-intel": {
       "command": "C:/Users/.../miniconda3/envs/event-intel/python.exe",
-      "args": ["-m", "event_intel.mcp_server"]
+      "args": ["-m", "event_intel.mcp_server"],
+      "env": {
+        "BRAVE_API_KEY": "...",
+        "ANTHROPIC_API_KEY": "...",
+        "EVENT_INTEL_USE_CHATGPT_OAUTH": "true"
+      }
     }
   }
 }
 ```
 
-8 tools become available:
+Include `ANTHROPIC_API_KEY` only for the Anthropic path. Set `EVENT_INTEL_USE_CHATGPT_OAUTH=true` to opt into ChatGPT OAuth (then run `event-intel login-chatgpt` once); omit it otherwise.
+
+### The 8 tools
+
+**Product Context lifecycle** — one-time per product:
 
 | Tool | Purpose |
 |---|---|
-| `check_runtime` | Verify bge-m3 cache, Chroma, API keys, product context |
-| `draft_capability_cards` | Draft capability_cards.yaml from a source doc (Sonnet) |
-| `validate_capability_cards` | Validate YAML against pydantic schema |
-| `ingest_product_context` | Embed cards → Chroma `product_{workspace_id}` collection |
-| `analyze_event_page` | Classify exhibitor page URL into 5 verdicts |
-| `probe_exhibitor_endpoint` | Deterministic HTTP probe given analyzer hints |
-| `acquire_exhibitor_source` | Orchestrate analyze → probe → artifact (URL → source_ref) |
-| `build_event_tier_list` | Run the full pipeline on a captured source |
+| `check_runtime` | Verify bge-m3 cache / Chroma / API keys / product context. Pass `warm_up: true` to also preload bge-m3 into the server process and avoid first-build latency. |
+| `draft_capability_cards` | Draft a `capability_cards.yaml` from a source doc (md/txt/pdf) or inline text |
+| `validate_capability_cards` | Validate a hand-edited `capability_cards.yaml` against the pydantic schema (v1) |
+| `ingest_product_context` | Embed validated cards via bge-m3 → Chroma `product_{workspace_id}` collection |
+
+**Event pipeline** — per exhibitor list:
+
+| Tool | Purpose |
+|---|---|
+| `analyze_event_page` | Classify an exhibitor-page URL into one of 5 verdicts + return acquisition hints |
+| `probe_exhibitor_endpoint` | Deterministic HTTP probe of the analyzer's candidate endpoints (0 LLM) |
+| `acquire_exhibitor_source` | Orchestrate analyze → probe → fetch → artifact + manifest (URL → `source_ref`) |
+| `build_event_tier_list` | Run capture → extraction → enrichment → scoring → `tier_list.md` + `tier_list.yaml` |
+
+In Claude Desktop you don't invoke these by hand — ask in natural language (e.g. *"analyze this exhibitor page: &lt;url&gt;"*, *"build a tier list from this CSV against my default workspace"*) and Claude calls the tools for you. The CLI commands below are the same code paths for terminal use.
 
 ## Troubleshooting — `error_code` → fix
 
