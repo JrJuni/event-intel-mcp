@@ -97,3 +97,20 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 **Related**: `tests/test_mcp_cold_start.py` (commit 13178e2 에서 fixture 재작성). 같은 부류를 향후 어떤 헬퍼에 또 넣고 싶을 때는 `docs/playbook.md#3` 의 cold-start guard 섹션 마지막 단락 (fixture 함정 주의) 참조.
 
+---
+
+## Blind Review 판정 누적
+
+### Phase 18T.2 (무마찰 .mcpb 설치) 라운드 1 — 2026-06-04
+
+| # | 카테고리 | 점수 | Novelty | 판정 | 사유 |
+|---|---|---|---|---|---|
+| 1 | architecture | 80% | 3(R1) | accepted | warm-on-start를 18T.2와 분리 커밋 (c9b8f1a / cf19080). 단, 리뷰어가 "timeout 진단 섞임"이라 한 건 부정확 — 진단은 코드 0줄, 섞인 건 warm-on-start 기능 |
+| 2 | corner-case | 72% | 3(R1) | accepted | boolean form env가 .env를 shadow → "폼 체크박스 authoritative" 정책 명시(`_env.py` 주석) + 회귀 테스트(`test_form_boolean_is_authoritative_over_dotenv`). 실해는 낮음(opt-in no-op + 이 .env엔 boolean 키 없음) |
+| 3 | documentation | 68% | 3(R1) | accepted | plan 스니펫의 둘째 `load_dotenv()` cwd search 제거(코드와 정합) |
+| 4 | documentation | 64% | 3(R1) | accepted | 번들 버전 ≠ 패키지 버전(별도 트랙)을 `mcpb/README` 버전-범프 섹션에 명시 |
+
+**메타**: 총평 71%. **Factual 우수**(전 항목 5점 — 외부 AI가 실제 코드 file:line 정확 인용). **Context 약함**(opt-in no-op 중립화 + 의도적 버전 분리를 모름). nit/over-engineering 0건 — 건강한 리뷰.
+**종료 판정**: D(정상 다음 라운드 가능)이나 4건 모두 accept/doc·논쟁 0이라 **적용 후 종료**. Skeptic(7.5)은 A/B에서만 트리거 → 미실행. echo chamber 신호 없음(라운드 1).
+**Keep 신호(외부 AI에 전달 시)**: corner-case(#2)·architecture(#1) 환영. Context 차원 보강 요청 — 다음 packet에 "opt-in env 중립화" 같은 설계 의도를 명시하면 Context 점수 향상 예상.
+

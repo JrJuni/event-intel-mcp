@@ -12,8 +12,9 @@
   - ✅ `python_path`에 `${HOME}/miniconda3/envs/event-intel/python.exe` **기본값** — 폼 pre-fill(확인만). (Claude Desktop이 ${HOME} 확장 — 다음 설치 때 실확인 필요.)
   - ✅ `src/event_intel/_env.py::load_project_env` — 패키지 위치로 repo 루트 역산 후 `<repo>/.env` 로드. 빈 폼키(`""`)는 pop 후 .env로 채움(override=False), 비어있지 않은 폼키는 우선. `mcp_server.py` + `cli.py`가 사용. → API 키 폼 **optional**(brave required:false).
   - ✅ manifest `.mcpb` **0.5.0** 재빌드(validate 통과), 0.4.0 제거. launcher 메시지 갱신.
-  - **테스트**: 371/371 green (+7: env_loading 3 + mcpb_manifest 4). cold-start 0(`_env`는 os/pathlib/dotenv만).
-  - **결정(사용자 확인)**: 경로+.env 키 자동로드 풀스코프 / 설치 UX를 타임아웃 진단보다 먼저.
+  - ✅ **blind review R1 반영**(avg 71%, 4건 전부 accept): boolean form env authoritative 정책+테스트(#2), plan/코드 정합(#3), 번들↔패키지 버전 별도 트랙 문서화(#4). 커밋 분리(#1): warm-on-start(`c9b8f1a`) / 18T.2 install(`cf19080`). 타임아웃 진단은 코드 0줄로 deferred 유지.
+  - **테스트**: 372/372 green (+8: env_loading 4 + mcpb_manifest 4). cold-start 0(`_env`는 os/pathlib/dotenv만).
+  - **결정(사용자 확인)**: 경로+.env 키 자동로드 풀스코프 / 설치 UX를 타임아웃 진단보다 먼저 / blind review 엄격 커밋 분리.
   - ⏭️ **다음(미해결)**: `check_runtime(warm_up=true)` Claude Desktop **4분 타임아웃** 진단 — 재시작해도 재현. 유력 가설 C2(모델 로드 stdout 출력이 stdio JSON-RPC 오염). plan `snoopy-weaving-robin.md` deferred 섹션에 진단 테스트 셋(T-A~T-D) 설계됨. **추정 fix 금지, 테스트로 원인 close 먼저.**
 
 - **Phase 18T.1 — ChatGPT OAuth 설치 UX (2026-06-04, plan `snoopy-weaving-robin.md`)**
