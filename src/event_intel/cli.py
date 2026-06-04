@@ -53,6 +53,40 @@ def check_runtime_cmd(
     raise typer.Exit(code=0 if result.get("ok") else 1)
 
 
+@app.command("login-chatgpt")
+def login_chatgpt_cmd(
+    force: bool = typer.Option(
+        False, "--force", help="Re-authenticate even if a valid token is cached."
+    ),
+) -> None:
+    """Authenticate the ChatGPT OAuth LLM provider (opens a browser, one-time).
+
+    Run this once in a terminal when using the ChatGPT subscription path so the
+    PKCE browser flow does not block lazily mid-tool-call. Token is cached at
+    ~/.event-intel/chatgpt_auth.json and auto-refreshed thereafter.
+    """
+    from event_intel.errors import Stage, envelope_from_exception
+    from event_intel.providers import llm as _llm
+    from event_intel.runtime.preflight import load_config
+
+    try:
+        config = load_config()
+        provider = _llm.make_llm_provider(config)
+        if not isinstance(provider, _llm.ChatGPTOAuthProvider):
+            typer.echo(
+                "Note: llm.provider is not 'chatgpt_oauth'. Logging in anyway; set "
+                "EVENT_INTEL_USE_CHATGPT_OAUTH=true (or check the box in the .mcpb form) "
+                "to actually use ChatGPT OAuth at runtime.",
+                err=True,
+            )
+            provider = _llm.ChatGPTOAuthProvider()
+        result = provider.login(force=force)
+    except Exception as exc:
+        _print_json(envelope_from_exception(exc, stage=Stage.PREFLIGHT))
+        raise typer.Exit(code=1) from exc
+    _print_json(result)
+
+
 @models_app.command("prepare")
 def models_prepare_cmd(
     cache_dir: str | None = typer.Option(

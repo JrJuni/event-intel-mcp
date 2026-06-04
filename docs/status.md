@@ -6,15 +6,26 @@
 
 ## 진행 중
 
+- **Phase 18T.1 — ChatGPT OAuth 설치 UX (2026-06-04, plan `snoopy-weaving-robin.md`)**
+  - **목표.** `.mcpb` 설치 폼에서 ChatGPT OAuth를 바로 선택 가능하게 — 기존엔 config.yaml 손편집이 유일 경로라 "OAuth 쓰기 너무 어려움" 피드백.
+  - ✅ `runtime/preflight.py::load_config` — `_apply_llm_provider_env_override` 추가. precedence: `EVENT_INTEL_LLM_PROVIDER`(명시, 양방향 authoritative, invalid→CONFIG_ERROR) > `EVENT_INTEL_USE_CHATGPT_OAUTH`(opt-in boolean: truthy→oauth, falsey/empty→**no-op**). `path is None` 분기에서만 적용(테스트 호환 분기 불변).
+  - ✅ `providers/llm.py::ChatGPTOAuthProvider.login(force=)` — 터미널 주도 PKCE 로그인 public 메서드. `ping()` not_logged_in fix 문자열을 `event-intel login-chatgpt`로 갱신 → `check_runtime`이 자동 노출.
+  - ✅ `cli.py` — `login-chatgpt` 명령 (module-reference import, envelope on failure).
+  - ✅ `mcpb/manifest.json` — `use_chatgpt_oauth` boolean 체크박스 + `EVENT_INTEL_USE_CHATGPT_OAUTH` env 매핑 + anthropic desc 갱신 + **version 0.2.0 → 0.3.0**. `.mcpb` 재빌드(`mcpb validate` 통과, 4.2kB).
+  - ✅ docs — README "Choosing an LLM provider" 섹션 + mcpb/README 설치 단계/버전.
+  - **테스트**: 350/350 green (+10: preflight 6 + cli 1 + oauth provider 3). cold-start 0 유지.
+  - **결정(사용자 확인)**: 체크박스 opt-in 전용(미체크가 기존 oauth 설정 안 깸) + CLI 명령 + lazy 폴백.
+
 - **Phase 18T Done When 잔여 항목 (2026-05-29)**
   - ✅ Done When #4 — 실 전시회 smoke ≥2 verdicts 확보 (2026-05-29):
-    - `operator_capture_required`: smarttechkorea.com x2, tbse26.mapyourshow.com, directory.conexpoconagg.com (Vue 감지 시 analyzer가 capture로 분류 — Map Your Show `/ajax/remote-proxy.cfm` endpoint를 페이지 본문에 명시함에도 보수적으로 capture 권고. analyzer prompt 튜닝 backlog 후보)
+    - `operator_capture_required`: smarttechkorea.com x2, tbse26.mapyourshow.com, directory.conexpoconagg.com (Vue 감지 시 analyzer가 capture로 분류 — Map Your Show `/ajax/remote-proxy.cfm` endpoint를 페이지 본문에 명시함에도 보수적으로 capture 권고. → backlog #11에서 해소)
     - `static_html` (0.98 confidence): simtos.org → acquire-source까지 OK + build-event 풀 파이프라인 e2e (20 candidates → 10 enriched → tier_list.md/yaml C tier 10건, machine tool 회사들이라 Mobilint NPU fit 약함 — 점수 분포 정상)
-  - ❌ Done When #13 — Claude Desktop `claude_desktop_config.json` reload (8 tools 노출 확인).
-  - **Done When #1–12 모두 완료** (326/326 green, cold-start 0, 14×7=98 envelope, core lock clean).
+  - ✅ Done When #13 — Claude Desktop `.mcpb` 0.3.0 설치 → 8 tools 노출/호출 확인 (2026-06-04, 사용자 스크린샷 검증). **→ Phase 18T 완전 종료.**
+  - **Done When #1–13 모두 완료** (cold-start 0, 14×7=98 envelope, core lock clean). 테스트 수치는 18T.1 기준 350/350.
 
-- **Phase 18U (별도 plan — 18T smoke 완료 후 진입)**
+- **Phase 18U (별도 plan — 18T 마감 후 진입)**
   - Streamable HTTP transport + OAuth 2.1 PKCE + ChatGPT App 등록. 상세: `docs/backlog.md`.
+  - 후보 묶음: manifest provider 선택을 18U의 원격 OAuth 작업과 통합 검토.
 
 ---
 
@@ -160,7 +171,8 @@
 
 1. ✅ Phase 18S (S0~S6) — v0 surface 완성 (173/173 green)
 2. ✅ Phase 18T (T0~T3) — acquisition layer 완성 (290/290 green)
-3. **Phase 18T Done When 마무리** — 실 전시회 smoke ≥2 verdicts (user "go" 후) + Claude Desktop reload
-4. **Phase 18U** (별도 plan 작성 필요) — Streamable HTTP + OAuth 2.1 PKCE + ChatGPT App 등록
+3. ✅ Phase 18T.1 — ChatGPT OAuth 설치 UX + `.mcpb` 0.3.0 (350/350 green)
+4. ✅ Phase 18T 마감 — `.mcpb` 0.3.0 Claude Desktop 8 tools 노출 확인 (Done When #13, 2026-06-04)
+5. **Phase 18U** (별도 plan 작성 필요) — Streamable HTTP + OAuth 2.1 PKCE + ChatGPT App 등록
 
-세션 간 재개: `docs/status.md` + `~/.claude/plans/tender-mixing-badger.md` 먼저 읽기.
+세션 간 재개: `docs/status.md` + `~/.claude/plans/tender-mixing-badger.md` 먼저 읽기. 18T.1 plan: `~/.claude/plans/snoopy-weaving-robin.md`.

@@ -18,8 +18,8 @@ This trades self-containment for a much smaller bundle that always tracks the us
 ```bash
 cd mcpb
 mcpb validate manifest.json          # schema check
-mcpb pack . event-intel-mcp-0.2.0.mcpb
-mcpb info event-intel-mcp-0.2.0.mcpb # confirm size + contents
+mcpb pack . event-intel-mcp-0.3.0.mcpb
+mcpb info event-intel-mcp-0.3.0.mcpb # confirm size + contents
 ```
 
 The `.mcpb` output is gitignored (it's a build artifact, version-stamped in the filename).
@@ -34,7 +34,8 @@ The `.mcpb` output is gitignored (it's a build artifact, version-stamped in the 
    - **Python interpreter path** — e.g. `C:\Users\<you>\miniconda3\envs\event-intel\python.exe`
    - **Repo path** — e.g. `C:\Users\<you>\Downloads\event-intel-mcp`
    - **Brave Search API key** — required for `build_event_tier_list`
-   - **Anthropic API key** — required only if `llm.provider=anthropic` (default). Leave empty if you've switched to `chatgpt_oauth` in `~/.event-intel/config.yaml`.
+   - **Use ChatGPT Plus/Pro subscription** — check this to drive the LLM with your ChatGPT subscription (OAuth) instead of an Anthropic API key. If checked, run `event-intel login-chatgpt` once in a terminal after install to authenticate (browser login, one-time).
+   - **Anthropic API key** — required only if the ChatGPT box above is unchecked (the default Anthropic path). Leave empty if you checked it.
 4. Restart Claude Desktop
 5. Verify the 8 tools appear in the tool picker: `check_runtime`, `draft_capability_cards`, `validate_capability_cards`, `ingest_product_context`, `build_event_tier_list`, `analyze_event_page`, `probe_exhibitor_endpoint`, `acquire_exhibitor_source`
 

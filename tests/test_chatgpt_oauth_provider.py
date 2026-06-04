@@ -349,3 +349,58 @@ def test_payload_carries_required_headers():
     assert headers["OpenAI-Beta"] == "responses=experimental"
     assert headers["originator"] == "codex_cli_rs"
     assert headers["accept"] == "text/event-stream"
+
+
+# ---------- public login() + login-aware ping() hint (Phase 18T.1) ----------
+
+
+def test_login_calls_ensure_token_no_browser(monkeypatch):
+    """Non-force login() defers to _ensure_token and must NOT trigger the PKCE flow."""
+    p = ChatGPTOAuthProvider()
+    called: dict = {}
+
+    def _fake_ensure():
+        called["ensure"] = True
+        return "tok"
+
+    def _no_browser():
+        raise AssertionError("the PKCE browser flow must not run in the non-force path")
+
+    monkeypatch.setattr(p, "_ensure_token", _fake_ensure)
+    monkeypatch.setattr(p, "_pkce_login", _no_browser)
+
+    result = p.login()
+    assert called.get("ensure") is True
+    assert result["status"] == "ok"
+    assert result["model"] == p.model
+    assert "token_path" in result
+
+
+def test_login_force_runs_pkce_and_saves(monkeypatch):
+    """force=True bypasses the cache: runs _pkce_login and persists the tokens."""
+    p = ChatGPTOAuthProvider()
+    fake_tokens = {"access_token": "x", "refresh_token": "y", "expires_at": 9_999_999_999}
+    saved: dict = {}
+
+    def _must_not_run():
+        raise AssertionError("force=True must bypass _ensure_token")
+
+    monkeypatch.setattr(p, "_pkce_login", lambda: fake_tokens)
+    monkeypatch.setattr(p, "_save_tokens", lambda t: saved.update(t))
+    monkeypatch.setattr(p, "_ensure_token", _must_not_run)
+
+    result = p.login(force=True)
+    assert result["status"] == "ok"
+    assert saved == fake_tokens
+    assert p._tokens == fake_tokens
+
+
+def test_ping_not_logged_in_hint_points_to_cli(tmp_path, monkeypatch):
+    """check_runtime surfaces ping()['fix']; it must point users at `login-chatgpt`."""
+    p = ChatGPTOAuthProvider()
+    # Point the token path at a non-existent file → not_logged_in branch.
+    monkeypatch.setattr(p, "_TOKEN_PATH", tmp_path / "no_token.json")
+
+    status = p.ping()
+    assert status["status"] == "not_logged_in"
+    assert "login-chatgpt" in status["fix"]

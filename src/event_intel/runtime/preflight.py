@@ -74,6 +74,50 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
+# LLM providers selectable via env. Mirrors providers.llm.make_llm_provider.
+_VALID_LLM_PROVIDERS: tuple[str, ...] = ("anthropic", "chatgpt_oauth")
+
+
+def _truthy_env(val: str) -> bool:
+    return val.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _apply_llm_provider_env_override(data: dict) -> None:
+    """Override ``data['llm']['provider']`` from the environment, in place.
+
+    Precedence (highest first):
+      1. ``EVENT_INTEL_LLM_PROVIDER`` — explicit, authoritative both ways. Invalid
+         value raises ``MCPError(CONFIG_ERROR)``.
+      2. ``EVENT_INTEL_USE_CHATGPT_OAUTH`` — opt-in boolean (the .mcpb checkbox).
+         Truthy → force ``chatgpt_oauth``. Falsey / empty / unset → **no-op**, so
+         an unchecked box never clobbers an existing ``config.yaml`` provider.
+
+    Called only on the merged-config path, after deep-merge and before the
+    required-key check. Never imports a provider module (cold-start safe).
+    """
+    explicit = os.environ.get("EVENT_INTEL_LLM_PROVIDER")
+    if explicit and explicit.strip():
+        v = explicit.strip()
+        if v not in _VALID_LLM_PROVIDERS:
+            raise MCPError(
+                error_code=ErrorCode.CONFIG_ERROR,
+                stage=Stage.PREFLIGHT,
+                message=f"invalid EVENT_INTEL_LLM_PROVIDER: {v!r}",
+                hint={
+                    "env_var": "EVENT_INTEL_LLM_PROVIDER",
+                    "allowed": list(_VALID_LLM_PROVIDERS),
+                    "fix": "Set EVENT_INTEL_LLM_PROVIDER to one of: anthropic, chatgpt_oauth",
+                },
+                retryable=False,
+            )
+        data.setdefault("llm", {})["provider"] = v
+        return
+
+    use_oauth = os.environ.get("EVENT_INTEL_USE_CHATGPT_OAUTH")
+    if use_oauth and _truthy_env(use_oauth):  # opt-in only; falsey/empty = no-op
+        data.setdefault("llm", {})["provider"] = "chatgpt_oauth"
+
+
 def _load_yaml_file(path: Path, *, allow_missing: bool = False) -> dict | None:
     """Load a yaml file as a mapping. Raises CONFIG_ERROR on parse failure.
 
@@ -162,6 +206,8 @@ def load_config(path: Path | None = None) -> dict:
     user_data = _load_yaml_file(user_path, allow_missing=True)
     if user_data is not None:
         data = _deep_merge(data, user_data)
+
+    _apply_llm_provider_env_override(data)
 
     _check_required_keys(data, defaults_path)
     return data

@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "event-intel-mcp",
   "display_name": "Event Intelligence MCP",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Turn exhibitor lists (URL / HTML / CSV / text) into evidence-backed BD target tier lists. 8 MCP tools, local mini-RAG (bge-m3 + Chroma).",
   "long_description": "event-intel-mcp scores exhibitor companies against a product context (capability cards) using a 7-dimension scoring model with an evidence-floor lifecycle (has_url + has_news ceiling). Two flows: (1) product context lifecycle — draft, validate, ingest capability cards into a local Chroma collection; (2) event pipeline — URL/HTML/CSV → source acquisition → extraction → enrichment (Brave web/news) → fit retrieval (event evidence → product collection) → scoring → tier_list.md + tier_list.yaml. Supports Anthropic Claude or ChatGPT Plus OAuth as LLM backends.",
   "author": {
@@ -47,10 +47,17 @@
       "sensitive": true,
       "required": true
     },
+    "use_chatgpt_oauth": {
+      "type": "boolean",
+      "title": "Use ChatGPT Plus/Pro subscription instead of an Anthropic API key",
+      "description": "Check this to drive the LLM with your ChatGPT subscription (OAuth) instead of an Anthropic API key. After installing, run `event-intel login-chatgpt` once in a terminal to authenticate. Leave unchecked to use the Anthropic API key below.",
+      "default": false,
+      "required": false
+    },
     "anthropic_api_key": {
       "type": "string",
       "title": "Anthropic API key",
-      "description": "Required only if you keep llm.provider=anthropic (default). Leave empty if you switched to chatgpt_oauth in ~/.event-intel/config.yaml.",
+      "description": "Required only if the 'Use ChatGPT' box above is unchecked (the default Anthropic path). Leave empty if you checked that box.",
       "sensitive": true,
       "required": false
     }
@@ -64,6 +71,7 @@
       "env": {
         "ANTHROPIC_API_KEY": "${user_config.anthropic_api_key}",
         "BRAVE_API_KEY": "${user_config.brave_api_key}",
+        "EVENT_INTEL_USE_CHATGPT_OAUTH": "${user_config.use_chatgpt_oauth}",
         "PYTHONPATH": "${user_config.repo_path}/src",
         "PYTHONIOENCODING": "utf-8"
       }

@@ -4,7 +4,7 @@ Turn exhibitor lists into evidence-backed BD target tier lists via MCP.
 
 ## Status
 
-Pre-alpha. v0 + acquisition layer (Phase 18T) — 8 MCP tools live, 290/290 tests green. Awaiting real-exhibition smoke (≥2 verdicts) + Claude Desktop registration. See `docs/status.md` for stream-by-stream history.
+Pre-alpha. v0 + acquisition layer (Phase 18T) + ChatGPT-OAuth install UX (Phase 18T.1) — 8 MCP tools live, 350/350 tests green. Real-exhibition smoke (≥2 verdicts) done; Claude Desktop registration via the `.mcpb` bundle (see `mcpb/`). See `docs/status.md` for stream-by-stream history.
 
 ## Install
 
@@ -13,6 +13,28 @@ conda create -n event-intel python=3.11 -y
 conda activate event-intel
 pip install -e .
 ```
+
+## Choosing an LLM provider
+
+The LLM (used for capability-card drafting, exhibitor extraction, page analysis, and S/A rationales) runs through one of two providers. Pick one:
+
+**Option 1 — Anthropic API key (default).** Put `ANTHROPIC_API_KEY=...` in `.env` (or supply it in the `.mcpb` install form). Nothing else to do.
+
+**Option 2 — ChatGPT Plus/Pro subscription (OAuth).** No API key. Authenticate once with a browser, then tokens are cached at `~/.event-intel/chatgpt_auth.json` and auto-refreshed.
+
+```powershell
+# Turn it on (choose one):
+#   - check "Use ChatGPT Plus/Pro subscription" in the .mcpb install form, OR
+#   - set the env var:           $env:EVENT_INTEL_USE_CHATGPT_OAUTH = "true"
+#   - or in ~/.event-intel/config.yaml:   llm: { provider: chatgpt_oauth }
+
+event-intel login-chatgpt          # one-time browser login (run again with --force to re-auth)
+```
+
+Notes:
+- `EVENT_INTEL_USE_CHATGPT_OAUTH` is **opt-in only** — a falsey/empty value never overrides an existing config; it just leaves your `config.yaml` / `.env` choice in place.
+- Power users can set `EVENT_INTEL_LLM_PROVIDER=anthropic|chatgpt_oauth` for an explicit, authoritative override (an invalid value fails fast with `CONFIG_ERROR`).
+- The OAuth path uses an unofficial Codex-CLI client and is intended for **personal local use only** — do not deploy it as a shared server.
 
 ## First-time setup
 

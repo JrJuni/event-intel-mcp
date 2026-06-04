@@ -320,6 +320,20 @@ class ChatGPTOAuthProvider(LLMProvider):
         self._save_tokens(self._tokens)
         return self._tokens["access_token"]
 
+    def login(self, *, force: bool = False) -> dict:
+        """Deliberate, terminal-driven OAuth login. Populates the token cache.
+
+        Intended for `event-intel login-chatgpt` so the browser PKCE flow runs in
+        a terminal rather than lazily mid-tool-call. Returns a small status dict
+        (no secrets). ``force=True`` re-authenticates even with a valid cached token.
+        """
+        if force:
+            self._tokens = self._pkce_login()
+            self._save_tokens(self._tokens)
+        else:
+            self._ensure_token()  # loads/refreshes, or runs _pkce_login on miss
+        return {"status": "ok", "model": self.model, "token_path": str(self._TOKEN_PATH)}
+
     # ---- JWT account_id extraction ----
 
     @staticmethod
@@ -506,14 +520,14 @@ class ChatGPTOAuthProvider(LLMProvider):
             return {
                 "status": "not_logged_in",
                 "message": "ChatGPT OAuth not authenticated",
-                "fix": "First use will open a browser for ChatGPT login",
+                "fix": "Run `event-intel login-chatgpt` once in a terminal to authenticate.",
             }
         if self._is_token_valid(tokens) or tokens.get("refresh_token"):
             return {"status": "ok", "model": self.model}
         return {
             "status": "not_logged_in",
             "message": "ChatGPT OAuth token expired and no refresh token",
-            "fix": "Delete ~/.event-intel/chatgpt_auth.json and retry",
+            "fix": "Run `event-intel login-chatgpt --force` to re-authenticate.",
         }
 
 

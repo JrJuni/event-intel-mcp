@@ -27,6 +27,7 @@ def test_root_help_lists_all_subcommands():
     out = res.stdout
     for sub in (
         "check-runtime",
+        "login-chatgpt",
         "draft-cards",
         "validate",
         "ingest",
@@ -35,6 +36,34 @@ def test_root_help_lists_all_subcommands():
         "models",
     ):
         assert sub in out, f"`{sub}` missing from `event-intel --help`:\n{out}"
+
+
+def test_login_chatgpt_invokes_provider_login(tmp_path, monkeypatch):
+    """`login-chatgpt` builds the OAuth provider and calls login() — no browser/network.
+
+    Config is forced to chatgpt_oauth via the env opt-in so make_llm_provider returns a
+    real ChatGPTOAuthProvider; its login() is monkeypatched to avoid the PKCE flow.
+    """
+    from event_intel.providers import llm as _llm
+
+    missing = tmp_path / "no_such.yaml"  # isolate from the real ~/.event-intel/config.yaml
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+    monkeypatch.setenv("EVENT_INTEL_USE_CHATGPT_OAUTH", "true")
+    monkeypatch.delenv("EVENT_INTEL_LLM_PROVIDER", raising=False)
+
+    calls: dict = {}
+
+    def _fake_login(self, *, force=False):
+        calls["force"] = force
+        return {"status": "ok", "model": self.model, "token_path": "/tmp/tok.json"}
+
+    monkeypatch.setattr(_llm.ChatGPTOAuthProvider, "login", _fake_login)
+
+    res = runner.invoke(app, ["login-chatgpt"])
+    assert res.exit_code == 0, res.stdout
+    payload = json.loads(res.stdout)
+    assert payload["status"] == "ok"
+    assert calls.get("force") is False
 
 
 def test_build_event_rejects_multiple_source_flags():

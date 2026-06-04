@@ -309,6 +309,82 @@ def test_user_config_partial_file_does_not_trigger_required_key_check(tmp_path, 
     assert data["schema_version"] == 1
 
 
+# ---------- LLM provider env override (.mcpb checkbox / power-user) ----------
+
+
+def test_env_use_chatgpt_oauth_truthy_overrides_config(tmp_path, monkeypatch):
+    """EVENT_INTEL_USE_CHATGPT_OAUTH=true forces chatgpt_oauth over a config that says anthropic."""
+    user_cfg = tmp_path / "user.yaml"
+    user_cfg.write_text(yaml.safe_dump({"llm": {"provider": "anthropic"}}), encoding="utf-8")
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(user_cfg))
+    monkeypatch.setenv("EVENT_INTEL_USE_CHATGPT_OAUTH", "true")
+    monkeypatch.delenv("EVENT_INTEL_LLM_PROVIDER", raising=False)
+
+    data = load_config()
+    assert data["llm"]["provider"] == "chatgpt_oauth"
+    # Sibling llm keys from defaults survive the override
+    assert data["llm"]["draft_cards_model"] == "claude-sonnet-4-6"
+
+
+def test_env_use_chatgpt_oauth_falsey_is_noop(tmp_path, monkeypatch):
+    """Opt-in semantics: =false does NOT clobber an existing chatgpt_oauth config."""
+    user_cfg = tmp_path / "user.yaml"
+    user_cfg.write_text(yaml.safe_dump({"llm": {"provider": "chatgpt_oauth"}}), encoding="utf-8")
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(user_cfg))
+    monkeypatch.setenv("EVENT_INTEL_USE_CHATGPT_OAUTH", "false")
+    monkeypatch.delenv("EVENT_INTEL_LLM_PROVIDER", raising=False)
+
+    data = load_config()
+    assert data["llm"]["provider"] == "chatgpt_oauth"
+
+
+def test_env_use_chatgpt_oauth_empty_string_is_noop(tmp_path, monkeypatch):
+    """Unchecked .mcpb box injects an empty string — must be a no-op (default stands)."""
+    missing = tmp_path / "no_such.yaml"  # isolate from the real ~/.event-intel/config.yaml
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+    monkeypatch.setenv("EVENT_INTEL_USE_CHATGPT_OAUTH", "")
+    monkeypatch.delenv("EVENT_INTEL_LLM_PROVIDER", raising=False)
+
+    data = load_config()
+    assert data["llm"]["provider"] == "anthropic"  # defaults.yaml value, untouched
+
+
+def test_env_llm_provider_explicit_wins_over_boolean(tmp_path, monkeypatch):
+    """EVENT_INTEL_LLM_PROVIDER (explicit) takes precedence over the boolean sugar."""
+    missing = tmp_path / "no_such.yaml"
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+    monkeypatch.setenv("EVENT_INTEL_LLM_PROVIDER", "anthropic")
+    monkeypatch.setenv("EVENT_INTEL_USE_CHATGPT_OAUTH", "true")
+
+    data = load_config()
+    assert data["llm"]["provider"] == "anthropic"
+
+
+def test_env_llm_provider_invalid_raises_config_error(tmp_path, monkeypatch):
+    """An unknown provider in the explicit env var fails loud as CONFIG_ERROR."""
+    missing = tmp_path / "no_such.yaml"
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+    monkeypatch.setenv("EVENT_INTEL_LLM_PROVIDER", "gemini")
+
+    with pytest.raises(MCPError) as exc:
+        load_config()
+    assert exc.value.error_code == ErrorCode.CONFIG_ERROR
+    hint = exc.value.hint
+    assert isinstance(hint, dict)
+    assert hint["env_var"] == "EVENT_INTEL_LLM_PROVIDER"
+    assert "chatgpt_oauth" in hint["allowed"]
+
+
+def test_env_override_not_applied_in_explicit_path_branch(repo_root: Path, monkeypatch):
+    """load_config(explicit_path) is the test-compat branch — env override must NOT apply."""
+    monkeypatch.setenv("EVENT_INTEL_USE_CHATGPT_OAUTH", "true")
+    monkeypatch.setenv("EVENT_INTEL_LLM_PROVIDER", "chatgpt_oauth")
+
+    data = load_config(repo_root / "config" / "defaults.yaml")
+    # defaults.yaml says anthropic; the explicit-path branch ignores env entirely
+    assert data["llm"]["provider"] == "anthropic"
+
+
 # ---------- Tool boundary ----------
 
 
