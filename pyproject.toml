@@ -51,7 +51,12 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra -q"
+# Exclude slow integration tests (real model load / subprocess MCP server) by
+# default; run them explicitly with `pytest -m slow`.
+addopts = "-ra -q -m 'not slow'"
+markers = [
+    "slow: integration tests that load the real bge-m3 model or spawn the MCP server subprocess",
+]
 
 [tool.ruff]
 line-length = 100

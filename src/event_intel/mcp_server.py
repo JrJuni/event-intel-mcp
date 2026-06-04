@@ -185,8 +185,41 @@ def acquire_exhibitor_source(
     )
 
 
+def _preimport_heavy_deps() -> None:
+    """Import heavy native deps on the MAIN thread before serving.
+
+    FastMCP runs sync tool handlers in a worker thread. The first import of
+    chromadb inside that worker thread hangs indefinitely in the Claude Desktop
+    stdio server — reproduced 2026-06-04: a cold `check_runtime` got NO response
+    in 240s, while pre-importing chromadb on the main thread first made the same
+    call return in ~1.8s. (A plain asyncio+executor harness does NOT reproduce it,
+    so the trigger is specific to FastMCP's execution context, not "any off-main
+    import".) The exact mechanism is unconfirmed, but the fix is proven: do the
+    import on the main thread once, at startup, so no tool-call worker thread ever
+    performs the first import.
+
+    sentence_transformers is pre-imported defensively against the identical failure
+    mode in build/ingest, whose embed path lazily imports it in a worker thread too.
+
+    Best-effort: a failed import is logged to stderr and left for the tool to
+    surface as a proper MCPError, not crash startup. MUST run in main() (NOT at
+    module import) so the cold-start contract (test_mcp_cold_start) still holds.
+    """
+    import sys
+
+    for mod in ("chromadb", "sentence_transformers"):
+        try:
+            __import__(mod)
+        except Exception as exc:  # noqa: BLE001 — defer real failures to the tool boundary
+            sys.stderr.write(f"event-intel: startup pre-import of {mod} failed: {exc}\n")
+
+
 def main() -> None:
     """Entrypoint for `python -m event_intel.mcp_server`."""
+    # Pre-import heavy native deps on the MAIN thread (chromadb deadlocks if first
+    # imported in a FastMCP worker thread). See _preimport_heavy_deps docstring.
+    _preimport_heavy_deps()
+
     # Opt-in background warm-up (EVENT_INTEL_WARM_ON_START). No-op unless enabled
     # AND bge-m3 is already cached. Non-blocking — never delays server boot.
     from event_intel.runtime import warmup as _warmup

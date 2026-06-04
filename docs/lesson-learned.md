@@ -15,6 +15,26 @@ Append-only log of approaches tried, failure causes, and validated know-how, acc
 
 ---
 
+## [2026-06-04] `check_runtime` 4분 타임아웃의 진짜 원인 = FastMCP worker thread에서의 첫 `import chromadb` 행 (warm-up/stdout 아님)
+
+**Tried**: Claude Desktop에서 `check_runtime(warm_up=true)`가 4분 타임아웃("서버 무응답"). 재시작해도 재현. 초기 유력 가설 2개: (C2) bge-m3 로드가 stdout을 오염시켜 stdio JSON-RPC를 깨뜨림, (warm-up) 비동기 워밍업이 응답을 막음. 외부 AI도 "warm-up 아니라 첫 호출 문제 + Chroma cold path" 방향으로 동의(코드 기반).
+
+**Result**: 프로브로 가설을 하나씩 닫으니 **3번 뒤집힘**:
+1. stdout/stderr 분리 측정 → 모델 로드 출력("Loading weights"+HF 경고)은 **전부 stderr**, stdout 0 bytes. **C2 반증.**
+2. subprocess로 실 MCP 서버 stdio 관측 → 비-JSON 줄 0개(스트림 깨끗)인데 응답이 **안 옴**. C2 프로토콜 레벨도 반증.
+3. **단일 콜드 `warm_up=false`도 240s 무응답** (모델 로드 0). → warm-up 무관. stderr 타임라인: Brave ping 200 OK 직후 침묵 = 다음 단계인 **product_context check(첫 `import chromadb` + `PersistentClient`)에서 행**.
+4. **확정 실험**: 서버를 메인 스레드에서 `import chromadb` 먼저 한 뒤 띄우니 같은 콜드 호출이 **240s 행 → 1.8s**. 한편 단독(메인 스레드) `collection_info("product_smoke")`는 0.81s(빠름), 단순 asyncio+executor 하니스의 worker import도 정상(0.78s) — **즉 "느림"도 "아무 worker import"도 아니고, FastMCP가 sync tool을 실행하는 worker-thread 맥락 특유의 조건에서만 첫 chromadb import가 데드락**.
+
+**Lesson**:
+- **FastMCP sync tool 핸들러는 worker thread에서 실행된다.** 무거운 native dep(chromadb/onnxruntime 등)의 **첫 import를 worker thread에서** 하면 stdio 서버에서 행할 수 있다. → **무거운 deps는 `main()`에서 `app.run()` 전에 메인 스레드에서 pre-import**. (cold-start 계약은 모듈-top import 검사이므로 main() 런타임 pre-import는 위반 아님.)
+- **추정으로 고치지 말 것의 교과서 사례.** 가장 그럴듯했던 stdout 오염·warm-up 가설이 둘 다 틀렸고, 진짜 원인은 "worker-thread 첫 import 행"이었다. 프로브로 하나씩 close하지 않았으면 엉뚱한 fix(타임아웃 ↑, 백그라운드 cold-init — 둘 다 worker thread라 무효)를 했을 것.
+- **재현 환경이 충실해야 한다.** 단독 `collection_info` 측정(메인 스레드, 0.81s)이나 단순 asyncio 하니스(0.78s)는 데드락을 **재현 못 함 → false negative**. 유일하게 충실한 재현은 **실제 `python -m event_intel.mcp_server` subprocess**. 회귀 테스트도 반드시 subprocess로.
+- **WHY 불완전해도 FIX는 확정 가능.** 데드락의 정확한 메커니즘(import lock vs onnxruntime 스레드 vs anyio)은 미확정이지만, 메인 스레드 pre-import가 고친다는 건 3중으로 실증됨. 완벽한 근본원인 규명보다 실증된 fix + 회귀 가드를 우선.
+
+**Related**: `src/event_intel/mcp_server.py::_preimport_heavy_deps` (main()에서 chromadb + sentence_transformers pre-import; ST는 build/ingest 동일 실패모드 방어용). `tests/test_stdio_integrity.py` (subprocess 콜드 check_runtime 응답 회귀 가드, `slow`). 진단 프로브는 일회성(scratch, 삭제).
+
+---
+
 ## [2026-06-04] 무거운 워밍업을 MCP tool 호출 안에서 *동기*로 하면 Claude app 자체 타임아웃에 걸린다
 
 **Tried**: Phase 18T.1에서 첫 `build_event_tier_list`의 bge-m3 콜드 로드(~10-20s) 지연을 줄이려 `check_runtime(warm_up=true)`가 **동기로** `embedding_provider.warm_up()`을 호출하도록 구현(`run_preflight` 본문에서 `checks["warm_up"] = embedding_provider.warm_up()`). 터미널 측정으론 풀 check_runtime이 ~12s라 "타임아웃 안에 들어오겠지" 가정.
@@ -113,4 +133,17 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 **메타**: 총평 71%. **Factual 우수**(전 항목 5점 — 외부 AI가 실제 코드 file:line 정확 인용). **Context 약함**(opt-in no-op 중립화 + 의도적 버전 분리를 모름). nit/over-engineering 0건 — 건강한 리뷰.
 **종료 판정**: D(정상 다음 라운드 가능)이나 4건 모두 accept/doc·논쟁 0이라 **적용 후 종료**. Skeptic(7.5)은 A/B에서만 트리거 → 미실행. echo chamber 신호 없음(라운드 1).
 **Keep 신호(외부 AI에 전달 시)**: corner-case(#2)·architecture(#1) 환영. Context 차원 보강 요청 — 다음 packet에 "opt-in env 중립화" 같은 설계 의도를 명시하면 Context 점수 향상 예상.
+
+### check_runtime 4분 타임아웃 진단 라운드 1 — 2026-06-04
+
+| # | 카테고리 | 점수 | Novelty | 판정 | 사유 |
+|---|---|---|---|---|---|
+| 1 | architecture | 84% | 3(R1) | accepted | "warm_up 아니라 첫 호출 문제" — 내 실험과 일치(warm_up=false도 행). 검증됨 |
+| 2 | corner-case | 84% | 3(R1) | accepted | Chroma cold path(`collection_info`→`PersistentClient`) 지목 = 수정 타겟 확정 |
+| 3 | architecture | 56% | 3(R1) | refined | "worker/event-loop 경합=보조가설·근거부족" → 실은 **주 메커니즘**(worker-thread chromadb import 행, 실증). 코드-only라 저평가 |
+| 4 | corner-case | 48% | 3(R1) | refined | "collection_info 단독 측정 >30s면 범인" → 메인 스레드라 0.81s **false negative**. 올바른 판별자는 subprocess(worker) — 정정 후 채택 |
+
+**메타**: 총평 68%. **위치(WHERE) 정확**(Chroma cold path, warm_up 아님 — 둘 다 실험 일치) / **Calibration 약함**(실증된 주 메커니즘을 보조로 저평가 + false-negative 테스트 제안). "fresh server + single-call" 권고는 정확.
+**종료 판정**: D이나 진단은 리뷰가 아니라 **실험으로 closed** → 수정 진입. Skeptic 미실행(A/B 아님). 수정: `_preimport_heavy_deps`(commit), 회귀 가드: `test_stdio_integrity.py`.
+**핵심 교훈(외부 AI 협업)**: 코드-only 리뷰는 "WHERE"는 잘 짚지만 "HOW(데드락 vs 느림)"는 실험 없이 못 가른다. 리뷰어의 false-negative 테스트 제안을 그대로 따랐으면 chromadb를 무죄방면할 뻔 — **제안 테스트도 1:1 검증 대상**.
 
