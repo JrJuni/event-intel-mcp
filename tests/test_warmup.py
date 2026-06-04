@@ -98,3 +98,47 @@ def test_failed_status_then_retry_allowed():
 
     res = warmup.start(ok, block=True)
     assert res["status"] == "ready"
+
+
+# ---------- maybe_warm_on_start (opt-in server-startup hook) ----------
+
+
+class _FakeProvider:
+    def __init__(self, *, ready: bool = True):
+        self._ready = ready
+        self.warmed = False
+
+    def is_ready(self) -> dict:
+        return {"status": "ready" if self._ready else "missing"}
+
+    def warm_up(self) -> dict:
+        self.warmed = True
+        return {"load_seconds": 0.0}
+
+
+def test_maybe_warm_on_start_skips_when_env_unset(monkeypatch):
+    monkeypatch.delenv("EVENT_INTEL_WARM_ON_START", raising=False)
+    p = _FakeProvider(ready=True)
+    res = warmup.maybe_warm_on_start(p)
+    assert res["status"] == "skipped"
+    assert p.warmed is False
+    assert warmup.status()["status"] == "not_started"
+
+
+def test_maybe_warm_on_start_skips_when_model_not_cached(monkeypatch):
+    """Opt-in but model not downloaded → skip (never trigger a surprise download)."""
+    monkeypatch.setenv("EVENT_INTEL_WARM_ON_START", "true")
+    p = _FakeProvider(ready=False)
+    res = warmup.maybe_warm_on_start(p)
+    assert res["status"] == "skipped"
+    assert p.warmed is False
+    assert warmup.status()["status"] == "not_started"
+
+
+def test_maybe_warm_on_start_warms_when_enabled_and_cached(monkeypatch):
+    monkeypatch.setenv("EVENT_INTEL_WARM_ON_START", "true")
+    p = _FakeProvider(ready=True)
+    res = warmup.maybe_warm_on_start(p)
+    assert res["status"] in ("warming", "ready")
+    _poll_until("ready")
+    assert p.warmed is True

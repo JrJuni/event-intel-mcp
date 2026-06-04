@@ -186,6 +186,11 @@ def acquire_exhibitor_source(
 
 def main() -> None:
     """Entrypoint for `python -m event_intel.mcp_server`."""
+    # Opt-in background warm-up (EVENT_INTEL_WARM_ON_START). No-op unless enabled
+    # AND bge-m3 is already cached. Non-blocking — never delays server boot.
+    from event_intel.runtime import warmup as _warmup
+
+    _warmup.maybe_warm_on_start()
     app.run()
 
 

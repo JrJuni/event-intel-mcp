@@ -130,6 +130,39 @@ def start(warm_fn: Callable[[], dict], *, block: bool = False) -> dict:
     return status()
 
 
+def maybe_warm_on_start(embedding_provider=None) -> dict:
+    """Server-startup hook: warm in the background iff opted in AND the model is cached.
+
+    Opt-in via ``EVENT_INTEL_WARM_ON_START`` (the .mcpb checkbox maps to it).
+    Default off. We require the bge-m3 cache to already exist (``is_ready``) so
+    enabling the flag never triggers a surprise ~2 GB download at launch — if the
+    model isn't downloaded yet we skip and the user runs ``models prepare`` first.
+
+    Non-blocking: delegates to :func:`start` (daemon thread), so it never delays
+    server boot. Returns a small status dict (``skipped`` with a reason, or the
+    warm-up status).
+    """
+    import os
+
+    val = os.environ.get("EVENT_INTEL_WARM_ON_START")
+    if not (val and val.strip().lower() in {"1", "true", "yes", "on"}):
+        return {"status": "skipped", "reason": "EVENT_INTEL_WARM_ON_START not enabled"}
+
+    if embedding_provider is None:
+        from event_intel.providers import embedding as _embedding
+
+        embedding_provider = _embedding.BgeM3Provider()
+
+    ready = embedding_provider.is_ready()
+    if ready.get("status") != "ready":
+        return {
+            "status": "skipped",
+            "reason": "bge-m3 not cached; run `event-intel models prepare` first",
+        }
+
+    return start(embedding_provider.warm_up, block=False)
+
+
 def _run(warm_fn: Callable[[], dict]) -> None:
     """Body of the warm-up. Records ready/failed under the lock."""
     try:
