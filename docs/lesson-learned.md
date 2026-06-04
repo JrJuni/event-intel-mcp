@@ -30,7 +30,7 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 - **백그라운드 로드 + 동시 build = 캐시 중복 로드 위험** → 프로세스 모델 캐시(`BgeM3Provider._MODEL_CACHE`)를 `threading.Lock`으로 double-checked 보호. warm 스레드가 로딩 중이면 build는 같은 로드를 기다리고 재로드하지 않는다.
 - **검증**: trigger가 1.27s에 status=warming 반환, 14s 뒤 폴링에서 ready(load_seconds 14.1) 확인. tool 호출은 로드를 한 번도 블로킹하지 않음.
 
-**Related**: `src/event_intel/runtime/warmup.py` (신규), `runtime/preflight.py::run_preflight(warm_up=, warm_up_block=)`, `tools/check_runtime.py`, `providers/embedding.py::BgeM3Provider._CACHE_LOCK`. `tests/test_warmup.py` 5건 + `test_runtime_preflight.py` warm 3건. 361/361 green. (Phase 18T.1 후속, commit pending.)
+**Related**: `src/event_intel/runtime/warmup.py` (신규), `runtime/preflight.py::run_preflight(warm_up=, warm_up_block=)`, `tools/check_runtime.py`, `providers/embedding.py::BgeM3Provider._CACHE_LOCK`. `tests/test_warmup.py` 8건(매니저 5 + 시작 훅 3) + `test_runtime_preflight.py` warm 3건. 364/364 green. (Phase 18T.1 후속.)
 
 ---
 

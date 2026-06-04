@@ -17,11 +17,12 @@ for _stream in (sys.stdout, sys.stderr):
         except (ValueError, AttributeError):
             pass
 
-from dotenv import load_dotenv  # noqa: E402
+from event_intel._env import load_project_env  # noqa: E402
 
-# Load .env (project root) so API keys are available to provider modules.
-# Silent no-op if .env is absent — env vars already set by Claude Desktop win.
-load_dotenv()
+# Load the repo's .env so API keys are available regardless of the cwd Claude
+# Desktop spawns us in. Non-empty env (e.g. .mcpb form keys) wins; blank form
+# fields fall back to .env. Silent no-op if .env is absent.
+load_project_env()
 
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 

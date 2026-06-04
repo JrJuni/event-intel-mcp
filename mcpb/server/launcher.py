@@ -21,9 +21,9 @@ def main() -> None:
         sys.stderr.write(
             "event-intel-mcp launcher: cannot import event_intel.mcp_server.\n"
             f"  ImportError: {exc}\n"
-            "  Configure the MCPB user_config:\n"
-            "    - python_path: path to a Python interpreter with `pip install -e .` run\n"
-            "    - repo_path:   the event-intel-mcp repo directory (containing pyproject.toml)\n"
+            "  Set the MCPB user_config 'python_path' to a Python interpreter that has run\n"
+            "  `pip install -e .` against this repo (the editable install makes event_intel\n"
+            "  importable without PYTHONPATH).\n"
         )
         raise SystemExit(1)
     _main()

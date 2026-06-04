@@ -21,11 +21,12 @@ for _stream in (sys.stdout, sys.stderr):
 import json  # noqa: E402
 
 import typer  # noqa: E402
-from dotenv import load_dotenv  # noqa: E402
 
-# Load .env (project root) so API keys are available to provider modules.
-# Silent no-op if .env is absent — env vars already in the shell win.
-load_dotenv()
+from event_intel._env import load_project_env  # noqa: E402
+
+# Load the repo's .env so API keys are available (same loader as the MCP server).
+# Non-empty shell/form env wins; blank values fall back to .env.
+load_project_env()
 
 app = typer.Typer(
     no_args_is_help=True,

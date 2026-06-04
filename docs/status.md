@@ -6,6 +6,16 @@
 
 ## 진행 중
 
+- **Phase 18T.2 — 무마찰 `.mcpb` 설치 (2026-06-04, plan `snoopy-weaving-robin.md`)**
+  - **목표.** 재설치마다 경로/키를 다시 입력하는 마찰 제거. (사용자 피드백: "path는 자동으로 못 찾나")
+  - ✅ `repo_path`/`PYTHONPATH` **제거** — `event_intel`이 editable 설치라 PYTHONPATH 없이 `python -m event_intel.mcp_server` import됨. 경로 입력 1개 소거.
+  - ✅ `python_path`에 `${HOME}/miniconda3/envs/event-intel/python.exe` **기본값** — 폼 pre-fill(확인만). (Claude Desktop이 ${HOME} 확장 — 다음 설치 때 실확인 필요.)
+  - ✅ `src/event_intel/_env.py::load_project_env` — 패키지 위치로 repo 루트 역산 후 `<repo>/.env` 로드. 빈 폼키(`""`)는 pop 후 .env로 채움(override=False), 비어있지 않은 폼키는 우선. `mcp_server.py` + `cli.py`가 사용. → API 키 폼 **optional**(brave required:false).
+  - ✅ manifest `.mcpb` **0.5.0** 재빌드(validate 통과), 0.4.0 제거. launcher 메시지 갱신.
+  - **테스트**: 371/371 green (+7: env_loading 3 + mcpb_manifest 4). cold-start 0(`_env`는 os/pathlib/dotenv만).
+  - **결정(사용자 확인)**: 경로+.env 키 자동로드 풀스코프 / 설치 UX를 타임아웃 진단보다 먼저.
+  - ⏭️ **다음(미해결)**: `check_runtime(warm_up=true)` Claude Desktop **4분 타임아웃** 진단 — 재시작해도 재현. 유력 가설 C2(모델 로드 stdout 출력이 stdio JSON-RPC 오염). plan `snoopy-weaving-robin.md` deferred 섹션에 진단 테스트 셋(T-A~T-D) 설계됨. **추정 fix 금지, 테스트로 원인 close 먼저.**
+
 - **Phase 18T.1 — ChatGPT OAuth 설치 UX (2026-06-04, plan `snoopy-weaving-robin.md`)**
   - **목표.** `.mcpb` 설치 폼에서 ChatGPT OAuth를 바로 선택 가능하게 — 기존엔 config.yaml 손편집이 유일 경로라 "OAuth 쓰기 너무 어려움" 피드백.
   - ✅ `runtime/preflight.py::load_config` — `_apply_llm_provider_env_override` 추가. precedence: `EVENT_INTEL_LLM_PROVIDER`(명시, 양방향 authoritative, invalid→CONFIG_ERROR) > `EVENT_INTEL_USE_CHATGPT_OAUTH`(opt-in boolean: truthy→oauth, falsey/empty→**no-op**). `path is None` 분기에서만 적용(테스트 호환 분기 불변).
@@ -19,7 +29,8 @@
     - `BgeM3Provider._MODEL_CACHE` + `_CACHE_LOCK` — instance 간 모델 재사용 + 백그라운드 로드/동시 build 중복 로드 방지.
     - `check_runtime`는 **항상 `checks.warm_up` 상태 보고**. `warm_up=true`는 백그라운드 로드 *시작*만 하고 즉시 리턴(폴링 패턴). MCP=비동기, CLI `--warm-up`=inline blocking(`warm_up_block`). manifest 변경 불필요.
     - 검증: trigger 1.27s 리턴(status=warming), 14s 후 폴링 ready(load_seconds 14.1).
-  - **테스트**: 361/361 green (+21: OAuth preflight 6 + cli 1 + oauth provider 3, warmup manager 5 + preflight warm 3 + embedding 3). cold-start 0 유지.
+    - **opt-in 시작 워밍업** (`warmup.maybe_warm_on_start`) — `EVENT_INTEL_WARM_ON_START` truthy AND `is_ready()`(캐시 존재)일 때만 서버 부팅 시 백그라운드 워밍. 기본 off. 캐시 없으면 다운로드 방지 위해 skip. `mcp_server.main()`에서 호출(논블로킹). manifest `warm_on_start` 체크박스 + env, **`.mcpb` 0.4.0**.
+  - **테스트**: 364/364 green (+24: OAuth preflight 6 + cli 1 + oauth provider 3, warmup manager 5+3 + preflight warm 3 + embedding 3). cold-start 0 유지.
   - **결정(사용자 확인)**: 체크박스 opt-in 전용(미체크가 기존 oauth 설정 안 깸) + CLI 명령 + lazy 폴백 / 워밍업은 **비동기 + status 폴링**(런타임 동기 금지).
 
 - **Phase 18T Done When 잔여 항목 (2026-05-29)**
@@ -27,7 +38,7 @@
     - `operator_capture_required`: smarttechkorea.com x2, tbse26.mapyourshow.com, directory.conexpoconagg.com (Vue 감지 시 analyzer가 capture로 분류 — Map Your Show `/ajax/remote-proxy.cfm` endpoint를 페이지 본문에 명시함에도 보수적으로 capture 권고. → backlog #11에서 해소)
     - `static_html` (0.98 confidence): simtos.org → acquire-source까지 OK + build-event 풀 파이프라인 e2e (20 candidates → 10 enriched → tier_list.md/yaml C tier 10건, machine tool 회사들이라 Mobilint NPU fit 약함 — 점수 분포 정상)
   - ✅ Done When #13 — Claude Desktop `.mcpb` 0.3.0 설치 → 8 tools 노출/호출 확인 (2026-06-04, 사용자 스크린샷 검증). **→ Phase 18T 완전 종료.**
-  - **Done When #1–13 모두 완료** (cold-start 0, 14×7=98 envelope, core lock clean). 테스트 수치는 18T.1 기준 361/361.
+  - **Done When #1–13 모두 완료** (cold-start 0, 14×7=98 envelope, core lock clean). 테스트 수치는 18T.1 기준 364/364.
 
 - **Phase 18U (별도 plan — 18T 마감 후 진입)**
   - Streamable HTTP transport + OAuth 2.1 PKCE + ChatGPT App 등록. 상세: `docs/backlog.md`.
@@ -177,8 +188,9 @@
 
 1. ✅ Phase 18S (S0~S6) — v0 surface 완성 (173/173 green)
 2. ✅ Phase 18T (T0~T3) — acquisition layer 완성 (290/290 green)
-3. ✅ Phase 18T.1 — ChatGPT OAuth 설치 UX + 비동기 워밍업 + `.mcpb` 0.3.0 (361/361 green)
-4. ✅ Phase 18T 마감 — `.mcpb` 0.3.0 Claude Desktop 8 tools 노출 확인 (Done When #13, 2026-06-04)
+3. ✅ Phase 18T.1 — ChatGPT OAuth 설치 UX + 비동기 워밍업 + opt-in 시작 워밍업 (364/364 green)
+   ✅ Phase 18T.2 — 무마찰 `.mcpb` 설치(repo_path 제거 + python_path 기본값 + .env 키 자동로드) + `.mcpb` 0.5.0 (371/371 green)
+4. ✅ Phase 18T 마감 — `.mcpb` Claude Desktop 8 tools 노출 확인 (Done When #13, 2026-06-04)
 5. **Phase 18U** (별도 plan 작성 필요) — Streamable HTTP + OAuth 2.1 PKCE + ChatGPT App 등록
 
 세션 간 재개: `docs/status.md` + `~/.claude/plans/tender-mixing-badger.md` 먼저 읽기. 18T.1 plan: `~/.claude/plans/snoopy-weaving-robin.md`.

@@ -4,7 +4,7 @@ Turn exhibitor lists into evidence-backed BD target tier lists via MCP.
 
 ## Status
 
-Pre-alpha. v0 + acquisition layer (Phase 18T) + ChatGPT-OAuth install UX (Phase 18T.1) — 8 MCP tools live, 361/361 tests green. Real-exhibition smoke (≥2 verdicts) done; Claude Desktop registration via the `.mcpb` bundle (see `mcpb/`). See `docs/status.md` for stream-by-stream history.
+Pre-alpha. v0 + acquisition layer (Phase 18T) + ChatGPT-OAuth install UX (18T.1) + zero-friction `.mcpb` install (18T.2) — 8 MCP tools live, 371/371 tests green. Real-exhibition smoke (≥2 verdicts) done; Claude Desktop registration via the `.mcpb` bundle (see `mcpb/`). See `docs/status.md` for stream-by-stream history.
 
 ## Install
 
@@ -48,6 +48,7 @@ event-intel check-runtime --warm-up # also preload bge-m3 into memory (optional)
 
 - **Terminal:** `event-intel check-runtime --warm-up` loads the model inline and waits, reporting `warm_up.load_seconds`.
 - **Claude Desktop:** call `check_runtime` with `warm_up: true`. It returns *immediately* with `warm_up.status: "warming"` (it never blocks on the load, so it can't hit the MCP client timeout). Call `check_runtime` again after a minute — once `warm_up.status` reads `"ready"`, `build_event_tier_list` will reuse the cached model and run fast.
+- **Automatic (opt-in):** set `EVENT_INTEL_WARM_ON_START=true` (or check "Preload the embedding model when Claude Desktop starts" in the `.mcpb` form) to warm in the background the moment the server starts — zero-touch. Off by default; only runs if the model is already downloaded, and adds ~1.3 GB resident memory for the session.
 
 ## Workflow (CLI)
 
@@ -142,16 +143,18 @@ The repo ships a Claude Desktop extension bundle, so you install through a UI fo
 1. Build the bundle (needs `npm i -g @anthropic-ai/mcpb`):
    ```powershell
    cd mcpb
-   mcpb pack . event-intel-mcp-0.3.0.mcpb
+   mcpb pack . event-intel-mcp-0.5.0.mcpb
    ```
 2. Claude Desktop → **Settings → Extensions** → drag the `.mcpb` onto the pane (or "Install from file").
-3. Fill the form:
-   - **Python interpreter path** — your env's python (e.g. `…\miniconda3\envs\event-intel\python.exe`)
-   - **Repo path** — this repo's folder (the one containing `pyproject.toml`)
-   - **Brave Search API key** — required for `build_event_tier_list` enrichment
-   - **Use ChatGPT Plus/Pro subscription** — check to use ChatGPT OAuth instead of an Anthropic key (then run `event-intel login-chatgpt` once in a terminal); leave unchecked for the Anthropic path
-   - **Anthropic API key** — required only when the ChatGPT box is unchecked
+3. Fill the form — most fields are pre-filled or optional:
+   - **Python interpreter path** — pre-filled with `${HOME}/miniconda3/envs/event-intel/python.exe`; just confirm or adjust. (Must be an interpreter that ran `pip install -e .`; the editable install means no repo path / `PYTHONPATH` is needed.)
+   - **Brave Search API key** — optional; leave blank to use `BRAVE_API_KEY` from the repo's `.env`.
+   - **Use ChatGPT Plus/Pro subscription** — check to use ChatGPT OAuth instead of an Anthropic key (then run `event-intel login-chatgpt` once in a terminal); leave unchecked for the Anthropic path.
+   - **Anthropic API key** — optional; leave blank to use `ANTHROPIC_API_KEY` from `.env` (or if you checked the ChatGPT box).
+   - **Preload model on start** — optional; see "Avoiding first-build latency" above.
 4. Restart Claude Desktop → the 8 tools appear in the tool picker.
+
+The server loads API keys from the repo's `.env` automatically (it derives the repo root from the editable install), so blank form keys fall back to `.env`; a key typed into the form wins over `.env`.
 
 Details in [`mcpb/README.md`](mcpb/README.md).
 
