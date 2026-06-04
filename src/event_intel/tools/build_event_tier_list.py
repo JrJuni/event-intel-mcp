@@ -46,11 +46,25 @@ if TYPE_CHECKING:
 _DEFAULT_TOP_K = 5
 
 
-def _resolve_output_dir(workspace_id: str, event_slug: str) -> Path:
+def _outputs_base() -> Path:
+    """Base dir for tier-list outputs — cwd-INDEPENDENT.
+
+    The MCP server is spawned by Claude Desktop with an arbitrary cwd (e.g.
+    Program Files) where a relative ``outputs`` is unwritable → PermissionError
+    (WinError 5). Derive ``<repo>/outputs`` from the package location instead
+    (same cwd-independence fix as event_intel._env for .env). EVENT_INTEL_OUTPUT_DIR
+    overrides for users who want outputs elsewhere.
+    """
     base_env = os.environ.get("EVENT_INTEL_OUTPUT_DIR")
-    base = Path(base_env).expanduser() if base_env else Path("outputs")
+    if base_env:
+        return Path(base_env).expanduser()
+    # <repo>/src/event_intel/tools/build_event_tier_list.py → parents[3] == <repo>
+    return Path(__file__).resolve().parents[3] / "outputs"
+
+
+def _resolve_output_dir(workspace_id: str, event_slug: str) -> Path:
     date_tag = datetime.now(timezone.utc).strftime("%Y%m%d")
-    return base / workspace_id / f"{event_slug}_{date_tag}"
+    return _outputs_base() / workspace_id / f"{event_slug}_{date_tag}"
 
 
 def _load_cards_if_available(workspace_id: str) -> "CapabilityCards | None":
@@ -58,9 +72,10 @@ def _load_cards_if_available(workspace_id: str) -> "CapabilityCards | None":
     without cards (rationale just becomes generic). We try the two standard
     paths and silently give up — the preflight already proved the *RAG*
     side is ingested."""
+    base = _outputs_base()
     candidates = [
-        Path("outputs") / workspace_id / "capability_cards.yaml",
-        Path("outputs") / workspace_id / "capability_cards.draft.yaml",
+        base / workspace_id / "capability_cards.yaml",
+        base / workspace_id / "capability_cards.draft.yaml",
     ]
     for path in candidates:
         if path.is_file():

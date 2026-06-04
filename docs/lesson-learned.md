@@ -15,6 +15,21 @@ Append-only log of approaches tried, failure causes, and validated know-how, acc
 
 ---
 
+## [2026-06-04] MCP 서버는 임의의 cwd로 spawn된다 — 모든 파일 경로는 절대경로여야 (cwd 상대 금지, 두 번 물림)
+
+**Tried**: `build_event_tier_list`이 출력을 `Path("outputs")`(cwd 상대)에 썼다. 터미널 CLI는 cwd=repo라 `repo/outputs`에 잘 써졌음.
+
+**Result**: Claude Desktop에서 build 호출 시 `PermissionError: [WinError 5] 액세스가 거부되었습니다: 'outputs'`. Claude Desktop은 MCP 서버를 **repo가 아닌 임의 cwd**(예: Program Files)로 spawn하는데, 거기서 상대 `outputs` mkdir이 권한 거부됨. (같은 세션에서 `.env` 로딩도 동일 원인 — cwd 의존 → 패키지 위치 역산으로 이미 수정했었음. **같은 클래스에 두 번 물림.**)
+
+**Lesson**:
+- **MCP stdio 서버의 cwd는 통제 불가**(클라이언트가 정함). CLI(cwd=repo)에선 안 드러나고 Claude Desktop에서만 터진다. → **서버가 만지는 모든 파일 경로는 절대경로**여야: (a) 패키지 위치 역산(`Path(__file__).resolve().parents[N]`, `.env`/`outputs`가 채택) 또는 (b) `~/.event-intel/`(chroma/artifacts/cache/resume가 채택) 또는 (c) env override. **cwd 상대 `Path("...")`는 서버 코드에서 금지.**
+- **CLI 통과 ≠ MCP 통과.** 같은 핸들러라도 실행 환경(cwd, 메인 vs worker 스레드)이 달라 CLI에서 멀쩡한 게 Claude Desktop에서 터진다. 검증은 반드시 실제 MCP 경로 또는 최소한 foreign-cwd에서.
+- **회귀 가드**: `monkeypatch.chdir(tmp_path)`로 foreign cwd 흉내 → 경로가 cwd 밑이 아님을 단언(`tests/test_output_path.py`). 같은 패턴을 새 파일-쓰기 코드마다 적용.
+
+**Related**: `src/event_intel/tools/build_event_tier_list.py::_outputs_base` (패키지 역산 repo/outputs + EVENT_INTEL_OUTPUT_DIR override). `src/event_intel/_env.py` (동일 클래스 선례). `tests/test_output_path.py` 3건.
+
+---
+
 ## [2026-06-04] `check_runtime` 4분 타임아웃의 진짜 원인 = FastMCP worker thread에서의 첫 `import chromadb` 행 (warm-up/stdout 아님)
 
 **Tried**: Claude Desktop에서 `check_runtime(warm_up=true)`가 4분 타임아웃("서버 무응답"). 재시작해도 재현. 초기 유력 가설 2개: (C2) bge-m3 로드가 stdout을 오염시켜 stdio JSON-RPC를 깨뜨림, (warm-up) 비동기 워밍업이 응답을 막음. 외부 AI도 "warm-up 아니라 첫 호출 문제 + Chroma cold path" 방향으로 동의(코드 기반).
