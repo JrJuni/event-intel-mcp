@@ -4,7 +4,7 @@ Turn exhibitor lists into evidence-backed BD target tier lists via MCP.
 
 ## Status
 
-Pre-alpha. v0 + acquisition layer (Phase 18T) + ChatGPT-OAuth install UX (Phase 18T.1) — 8 MCP tools live, 350/350 tests green. Real-exhibition smoke (≥2 verdicts) done; Claude Desktop registration via the `.mcpb` bundle (see `mcpb/`). See `docs/status.md` for stream-by-stream history.
+Pre-alpha. v0 + acquisition layer (Phase 18T) + ChatGPT-OAuth install UX (Phase 18T.1) — 8 MCP tools live, 355/355 tests green. Real-exhibition smoke (≥2 verdicts) done; Claude Desktop registration via the `.mcpb` bundle (see `mcpb/`). See `docs/status.md` for stream-by-stream history.
 
 ## Install
 
@@ -39,9 +39,12 @@ Notes:
 ## First-time setup
 
 ```powershell
-event-intel models prepare        # download bge-m3 (~1.3 GB, one-time)
-event-intel check-runtime         # verify model + vectorstore + APIs
+event-intel models prepare          # download bge-m3 (~1.3 GB, one-time)
+event-intel check-runtime           # verify model + vectorstore + APIs
+event-intel check-runtime --warm-up # also preload bge-m3 into memory (optional)
 ```
+
+**Avoiding first-build latency.** The bge-m3 model (~1.3 GB) loads on first use and is then cached for the life of the server process. To pay that cost up front instead of on your first `build_event_tier_list`, run `check_runtime` with warm-up — from the terminal (`--warm-up`) or, in Claude Desktop, call `check_runtime` with `warm_up: true`. (If the warm-up call itself times out, the server still finishes loading in the background, so the next call is fast.)
 
 ## Workflow
 

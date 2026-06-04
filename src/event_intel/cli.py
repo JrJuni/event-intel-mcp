@@ -44,11 +44,14 @@ def _print_json(payload: dict) -> None:
 @app.command("check-runtime")
 def check_runtime_cmd(
     workspace: str = typer.Option("default", "--workspace", "-w", help="Workspace ID."),
+    warm_up: bool = typer.Option(
+        False, "--warm-up", help="Also preload the bge-m3 model into memory after checks pass."
+    ),
 ) -> None:
     """Run the 5-check runtime preflight for a workspace."""
     from event_intel.tools.check_runtime import check_runtime
 
-    result = check_runtime(workspace_id=workspace)
+    result = check_runtime(workspace_id=workspace, warm_up=warm_up)
     _print_json(result)
     raise typer.Exit(code=0 if result.get("ok") else 1)
 

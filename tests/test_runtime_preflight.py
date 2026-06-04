@@ -26,11 +26,16 @@ from event_intel.tools.check_runtime import check_runtime as check_runtime_tool
 class FakeEmbedding:
     def __init__(self, *, ready: bool = True):
         self._ready = ready
+        self.warmed = False
 
     def is_ready(self) -> dict:
         if self._ready:
             return {"status": "ready", "path": "/fake/bge-m3", "size_mb": 1320}
         return {"status": "missing", "path": "/fake/bge-m3"}
+
+    def warm_up(self) -> dict:
+        self.warmed = True
+        return {"status": "ready", "already_cached": False, "load_seconds": 0.0}
 
     def embed(self, texts):  # pragma: no cover - not used by preflight
         raise NotImplementedError
@@ -137,6 +142,22 @@ def test_preflight_success_with_all_ready(all_ready, minimal_config):
     assert checks["product_context"]["collection"] == "product_default"
     assert checks["product_context"]["chunks"] == 12
     assert isinstance(result["elapsed_ms"], int)
+
+
+def test_preflight_no_warm_up_by_default(all_ready, minimal_config):
+    """Without warm_up, the embedding model is NOT loaded and no warm_up check appears."""
+    result = run_preflight("default", config=minimal_config, **all_ready)
+    assert result["ok"] is True
+    assert all_ready["embedding_provider"].warmed is False
+    assert "warm_up" not in result["checks"]
+
+
+def test_preflight_warm_up_loads_embedding_model(all_ready, minimal_config):
+    """warm_up=True calls embedding.warm_up() after checks pass and reports it."""
+    result = run_preflight("default", warm_up=True, config=minimal_config, **all_ready)
+    assert result["ok"] is True
+    assert all_ready["embedding_provider"].warmed is True
+    assert result["checks"]["warm_up"]["status"] == "ready"
 
 
 # ---------- Per-check failure paths ----------

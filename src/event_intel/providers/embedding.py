@@ -12,6 +12,19 @@ class EmbeddingProvider(ABC):
     @abstractmethod
     def is_ready(self) -> dict: ...
 
+    def warm_up(self) -> dict:
+        """Force any lazy model load now. Default: a single throwaway embed.
+
+        Lets callers (e.g. check_runtime warm_up) pay the load cost deliberately
+        instead of on the first real request. Subclasses may override to report
+        richer status. Cheap for providers with no lazy load.
+        """
+        import time
+
+        t0 = time.perf_counter()
+        self.embed(["warmup"])
+        return {"status": "ready", "load_seconds": round(time.perf_counter() - t0, 2)}
+
 
 class BgeM3Provider(EmbeddingProvider):
     """Default EmbeddingProvider using bge-m3 via sentence_transformers.
@@ -20,6 +33,14 @@ class BgeM3Provider(EmbeddingProvider):
     """
 
     MODEL_NAME = "BAAI/bge-m3"
+
+    # Process-level model cache, keyed by str(cache_dir). The bge-m3 load is
+    # ~1.3 GB and several seconds; without this every tool call (each of which
+    # constructs a fresh BgeM3Provider) would reload from scratch. With it, a
+    # one-time warm_up persists for the life of the MCP server process so later
+    # build_event_tier_list calls reuse the in-memory model. Lazy import stays
+    # inside _get_model, so module import remains cold-start safe.
+    _MODEL_CACHE: dict[str, object] = {}
 
     def __init__(self, *, cache_dir: str | Path | None = None):
         self.cache_dir = (
@@ -31,12 +52,35 @@ class BgeM3Provider(EmbeddingProvider):
 
     def _get_model(self):
         if self._model is None:
-            from sentence_transformers import SentenceTransformer
+            key = str(self.cache_dir)
+            cached = BgeM3Provider._MODEL_CACHE.get(key)
+            if cached is None:
+                from sentence_transformers import SentenceTransformer
 
-            self._model = SentenceTransformer(
-                self.MODEL_NAME, cache_folder=str(self.cache_dir)
-            )
+                cached = SentenceTransformer(
+                    self.MODEL_NAME, cache_folder=str(self.cache_dir)
+                )
+                BgeM3Provider._MODEL_CACHE[key] = cached
+            self._model = cached
         return self._model
+
+    def warm_up(self) -> dict:
+        """Load bge-m3 into the process cache now and report timing.
+
+        Reports ``already_cached`` so the caller can tell an instant warm-up
+        (model already resident) from a cold ~1.3 GB load.
+        """
+        import time
+
+        key = str(self.cache_dir)
+        already = key in BgeM3Provider._MODEL_CACHE
+        t0 = time.perf_counter()
+        self.embed(["warmup"])  # forces _get_model load + a real encode
+        return {
+            "status": "ready",
+            "already_cached": already,
+            "load_seconds": round(time.perf_counter() - t0, 2),
+        }
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:

@@ -13,8 +13,13 @@
   - ✅ `cli.py` — `login-chatgpt` 명령 (module-reference import, envelope on failure).
   - ✅ `mcpb/manifest.json` — `use_chatgpt_oauth` boolean 체크박스 + `EVENT_INTEL_USE_CHATGPT_OAUTH` env 매핑 + anthropic desc 갱신 + **version 0.2.0 → 0.3.0**. `.mcpb` 재빌드(`mcpb validate` 통과, 4.2kB).
   - ✅ docs — README "Choosing an LLM provider" 섹션 + mcpb/README 설치 단계/버전.
-  - **테스트**: 350/350 green (+10: preflight 6 + cli 1 + oauth provider 3). cold-start 0 유지.
-  - **결정(사용자 확인)**: 체크박스 opt-in 전용(미체크가 기존 oauth 설정 안 깸) + CLI 명령 + lazy 폴백.
+  - ✅ **모델 워밍업 (앱 내, 타임아웃 대응)** — 진단: `check_runtime`은 bge-m3를 로드하지 않음(`is_ready`는 캐시 존재만 확인). 무거운 비용은 매 `build_event_tier_list`가 새 `BgeM3Provider`로 ~1.3GB를 재로드하는 것(프로세스 캐시 부재). 해결:
+    - `BgeM3Provider._MODEL_CACHE` (cache_dir 키, 프로세스 수명) — instance 간 모델 재사용. import는 메서드 내부 유지(cold-start 안전).
+    - `BgeM3Provider.warm_up()` (+ ABC 기본 구현) — 모델 강제 로드 + `already_cached`/`load_seconds` 보고.
+    - `check_runtime(warm_up=true)` → preflight 통과 후 `checks.warm_up`로 로드. CLI `--warm-up`, MCP 서버 파라미터로 노출(manifest 변경 불필요).
+    - 좋은 성질: 워밍업 호출이 클라이언트 타임아웃에 걸려도 서버 프로세스가 로드를 끝내 캐시를 채움 → 다음 호출은 빠름.
+  - **테스트**: 355/355 green (+15: OAuth preflight 6 + cli 1 + oauth provider 3, warmup preflight 2 + embedding 3). cold-start 0 유지.
+  - **결정(사용자 확인)**: 체크박스 opt-in 전용(미체크가 기존 oauth 설정 안 깸) + CLI 명령 + lazy 폴백 / 워밍업은 check_runtime `warm_up` 플래그(신규 도구 대신).
 
 - **Phase 18T Done When 잔여 항목 (2026-05-29)**
   - ✅ Done When #4 — 실 전시회 smoke ≥2 verdicts 확보 (2026-05-29):

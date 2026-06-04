@@ -221,6 +221,7 @@ def run_preflight(
     workspace_id: str = "default",
     *,
     require_product_context: bool = True,
+    warm_up: bool = False,
     config: dict | None = None,
     embedding_provider: "EmbeddingProvider | None" = None,
     vectorstore_provider: "VectorStoreProvider | None" = None,
@@ -354,6 +355,12 @@ def run_preflight(
         "collection": collection,
         "chunks": int(pc_info.get("count", 0)),
     }
+
+    # Optional: load the embedding model into the process cache now (warm_up=True)
+    # so the first build_event_tier_list call doesn't pay the ~1.3 GB load. Runs
+    # only after all checks pass — bge-m3 cache is already confirmed present.
+    if warm_up:
+        checks["warm_up"] = embedding_provider.warm_up()
 
     elapsed_ms = int((time.monotonic() - start) * 1000)
     return {"ok": True, "checks": checks, "elapsed_ms": elapsed_ms}
