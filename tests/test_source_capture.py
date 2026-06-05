@@ -27,6 +27,34 @@ def test_html_file_capture_strips_chrome(repo_root):
     assert "<head" not in cap.text.lower()
 
 
+def test_html_directory_preserves_heading_and_href():
+    """Directory-like HTML (>= 3 links) keeps company headings AND the href URL.
+
+    Regression for the 2026-06-05 identity bug: trafilatura dropped both the
+    <h2> name and the <a href>, so the extractor saw only the bare domain anchor
+    text and named rows after the domain (e.g. "llamaindex.ai") with url=None.
+    """
+    html = (
+        "<html><body><h1>Expo Directory</h1>"
+        '<div><h2>LlamaIndex</h2><p>Data framework for LLM and RAG apps.</p>'
+        '<a href="https://www.llamaindex.ai">llamaindex.ai</a></div>'
+        '<div><h2>Snowflake</h2><p>Cloud data warehouse.</p>'
+        '<a href="https://www.snowflake.com">snowflake.com</a></div>'
+        '<div><h2>ClickHouse</h2><p>OLAP database.</p>'
+        '<a href="https://clickhouse.com">clickhouse.com</a></div>'
+        "</body></html>"
+    )
+    cap = capture_source(source_kind="html_text", source_ref=html)
+    # Heading names survive (not just the domain).
+    assert "LlamaIndex" in cap.text
+    assert "Snowflake" in cap.text
+    # Full href URLs survive so the extractor can fill `url`.
+    assert "https://www.llamaindex.ai" in cap.text
+    assert "https://www.snowflake.com" in cap.text
+    # Heading lands on its own line — not glued to the previous entry.
+    assert "\nLlamaIndex\n" in ("\n" + cap.text + "\n")
+
+
 def test_csv_file_capture_parses_rows(repo_root):
     path = _fixture_path(repo_root, "sample_exhibitors.csv")
     cap = capture_source(source_kind="csv_file", source_ref=str(path))

@@ -41,6 +41,17 @@ _MIN_CAPTURED_CHARS = 40
 _TRAFILATURA_MIN_RATIO = 0.02
 _TRAFILATURA_FALLBACK_MAX_CHARS = 1000
 
+# Directory routing: exhibitor lists carry identity in headings (<h2>) and the
+# official URL in <a href>. trafilatura (an article extractor) discards both as
+# boilerplate — verified on trafilatura 2.0.0: headings AND links are dropped
+# regardless of include_links/output_format. So a page with several hyperlinks
+# is treated as a directory and routed through a structure-preserving strip that
+# keeps headings on their own line and renders links as "text (url)".
+_DIRECTORY_MIN_LINKS = 3
+_HREF_RE = re.compile(r'<a\b[^>]*?\bhref=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.I | re.S)
+_BLOCK_OPEN_RE = re.compile(r'<(?:h[1-6]|p|div|li|tr|br|section|article)\b[^>]*>', re.I)
+_BLOCK_CLOSE_RE = re.compile(r'</(?:h[1-6]|p|div|li|tr|section|article|ul|ol|table)>', re.I)
+
 
 @dataclass
 class SourceCapture:
@@ -87,16 +98,57 @@ def _stdlib_strip_html(html: str) -> str:
     return s
 
 
+def _count_links(html: str) -> int:
+    return len(re.findall(r'<a\b[^>]*\bhref=', html, flags=re.I))
+
+
+def _structured_strip_html(html: str) -> str:
+    """Structure-preserving HTML → text for exhibitor directories.
+
+    Keeps the company identity trafilatura throws away: headings land on their
+    own line and ``<a href="URL">text</a>`` becomes ``text (URL)`` so the
+    extractor sees both the display name and the official URL. Block-level tags
+    become newlines so adjacent entries don't glue together.
+    """
+    s = re.sub(r"<script[\s\S]*?</script>", " ", html, flags=re.I)
+    s = re.sub(r"<style[\s\S]*?</style>", " ", s, flags=re.I)
+
+    def _anchor(m: "re.Match[str]") -> str:
+        href = (m.group(1) or "").strip()
+        text = _htmllib.unescape(re.sub(r"<[^>]+>", " ", m.group(2))).strip()
+        if not href:
+            return text
+        return f"{text} ({href})" if text else href
+
+    s = _HREF_RE.sub(_anchor, s)
+    s = _BLOCK_CLOSE_RE.sub("\n", s)
+    s = _BLOCK_OPEN_RE.sub("\n", s)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = _htmllib.unescape(s)
+    s = re.sub(r"[ \t]+", " ", s)
+    s = re.sub(r"[ \t]*\n[ \t]*", "\n", s)
+    s = re.sub(r"\n{2,}", "\n", s)
+    return s.strip()
+
+
 def _strip_html(html: str) -> str:
-    """trafilatura main_text extraction with a stdlib fallback for list pages.
+    """HTML → text for the extractor.
 
     Decision tree:
-      1. Run trafilatura with recall-favoring settings.
+      0. If the page is directory-like (>= _DIRECTORY_MIN_LINKS hyperlinks),
+         use the structure-preserving strip — trafilatura discards the headings
+         and links that carry exhibitor identity (name + official URL).
+      1. Otherwise run trafilatura with recall-favoring settings.
       2. If output is None OR (< 1000 chars AND < 2% of input length) → the
          page is likely list-heavy / boilerplate-rich and trafilatura
          stripped real content. Fall back to stdlib regex strip.
       3. Otherwise trust trafilatura.
     """
+    if _count_links(html) >= _DIRECTORY_MIN_LINKS:
+        structured = _structured_strip_html(html)
+        if structured:
+            return structured
+
     import trafilatura  # lazy
 
     cleaned = trafilatura.extract(

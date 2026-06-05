@@ -15,6 +15,21 @@ Append-only log of approaches tried, failure causes, and validated know-how, acc
 
 ---
 
+## [2026-06-05] trafilatura는 전시회 디렉터리에서 헤딩·링크를 버린다 (회사명=도메인, url=None의 진짜 원인) + 캐시는 버전을 가져야
+
+**Tried**: HTML 출품사 리스트를 `source_capture._strip_html`(trafilatura `extract(..., favor_recall=True)`)로 텍스트화. 회사명은 `<h2>`, 공식 URL은 `<a href>`에 있었다.
+
+**Result**: 추출된 name이 **도메인**("llamaindex.ai")이고 `url=None`. 원인 = trafilatura 2.0.0이 **article 본문 추출기**라 헤딩과 링크를 boilerplate로 간주해 **둘 다 버린다**(`include_links=True`/`output_format="markdown"`/xml/html 다 시도 — 전부 `<p>`만 남김). GTC 34곳 페이지에선 trafilatura가 `<p>` + 앵커 텍스트(도메인)만 남겨, 회사 식별 토큰이 도메인뿐 → LLM이 도메인을 name으로 집음. 동시에 news 쿼리가 `"llamaindex.ai"`(도메인) 정확구문이라 recall도 바닥(166 vs 도메인 9). 추가로 **검색 캐시 키에 버전 성분이 없어**(`sha1("{kind}|{lang}|{query}")`) news 파서를 고쳐도 옛 빈-news JSON이 재사용될 위험.
+
+**Lesson**:
+- **도구를 용도에 맞게.** trafilatura는 기사용 — 디렉터리/리스트(헤딩=이름, 링크=URL이 곧 콘텐츠)엔 부적합. 링크가 여럿(`_DIRECTORY_MIN_LINKS`)이면 **구조보존 stdlib strip**으로 라우팅: 헤딩을 자기 줄로, `<a href>`를 `text (url)`로 보존. 블록 태그→개행으로 인접 항목이 붙지 않게.
+- **identity(이름/URL)가 깨지면 하류 전부 오염**: news recall↓, 공식 URL을 웹검색으로 추정(엉뚱한 하위페이지), 점수 변별 불가. **튜닝(가중치/penalty)은 identity 정정 후에.**
+- **on-disk 캐시·resume는 파싱 의미 버전을 키/행에 담을 것.** `ENRICH_CACHE_VERSION` prefix + resume 행 stamp → 파서 bump 시 stale 자동 무효(수동 rm 의존 제거).
+
+**Related**: `events/source_capture.py::_structured_strip_html`/`_strip_html`(링크 라우팅), `events/extraction.py` 프롬프트(헤딩명·url), `events/enrichment.py::ENRICH_CACHE_VERSION`+`_SearchCache._key`+`load_done`. 테스트: `test_source_capture.py`(헤딩/href 보존), `test_enrichment.py`(캐시버전·비-기사 드롭·published_at). Phase 18U Step 2.
+
+---
+
 ## [2026-06-05] Brave `/news/search`는 결과가 최상위 `results` — web 모양 가정 파서가 전원 news=0 (가짜 provider 테스트가 버그 통과시킴)
 
 **Tried**: `providers/search.py::BraveSearchProvider._parse`가 news/web 공용으로 `data.get(kind, {}).get("results", [])` (news는 `data["news"]["results"]`)를 읽었다. 실사용 검증(MongoDB×GTC 34곳)에서 **전원 `news_count=0`**.

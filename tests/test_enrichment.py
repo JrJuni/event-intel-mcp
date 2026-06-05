@@ -13,6 +13,7 @@ import pytest
 
 from event_intel.errors import ErrorCode, MCPError
 from event_intel.events.enrichment import (
+    ENRICH_CACHE_VERSION,
     EnrichedExhibitor,
     enrich_exhibitors,
 )
@@ -206,6 +207,7 @@ def test_resume_skips_done_rows_and_only_retries_remaining(tmp_path):
             "extraction_confidence": 1.0,
             "enrichment_status": "enriched",
             "enrichment_warnings": [],
+            "_cache_version": ENRICH_CACHE_VERSION,
         }) + "\n")
         f.write(json.dumps({
             "name": "NeuroDrive Inc.",
@@ -215,6 +217,7 @@ def test_resume_skips_done_rows_and_only_retries_remaining(tmp_path):
             "extraction_confidence": 1.0,
             "enrichment_status": "enriched",
             "enrichment_warnings": [],
+            "_cache_version": ENRICH_CACHE_VERSION,
         }) + "\n")
 
     search = _wire_fake_search()
@@ -280,3 +283,38 @@ def test_official_url_threshold_filters_low_score_hits(tmp_path):
     ).rows[0]
     assert row.official_url is None
     assert any("official-site" in w for w in row.enrichment_warnings), row.enrichment_warnings
+
+
+def test_news_drops_non_article_pages_and_carries_published_at(tmp_path):
+    """Utility/non-article news pages (login/docs/privacy) are dropped by path;
+    real articles keep their published_at (carried from SearchResult)."""
+    from datetime import datetime, timezone
+
+    cands = [ExhibitorCandidate(name="Acme AI", source_snippet="AI agents platform", url="https://acme.example")]
+    search = FakeSearch()
+    search.news_by_name["Acme AI"] = [
+        _SR(title="Acme raises Series B", url="https://news.example.com/acme-series-b",
+            snippet="funding", published_at=datetime(2026, 6, 1, tzinfo=timezone.utc)),
+        _SR(title="Acme privacy policy", url="https://acme.example/privacy", snippet="legal"),
+        _SR(title="Acme docs", url="https://acme.example/docs/start", snippet="how-to"),
+    ]
+    row = enrich_exhibitors(
+        candidates=cands, workspace_id="tnews", lang="en", config=_config(),
+        search_provider=search,
+        cache_dir=tmp_path / "cache", resume_path=tmp_path / "r.jsonl",
+    ).rows[0]
+    # Only the real article survives; privacy + docs are dropped by path.
+    assert len(row.news_signals) == 1
+    assert row.news_signals[0].title == "Acme raises Series B"
+    assert row.news_signals[0].published_at == "2026-06-01T00:00:00+00:00"
+
+
+def test_cache_key_includes_version(monkeypatch):
+    """A ENRICH_CACHE_VERSION bump changes the cache key so stale entries
+    (e.g. v1's empty news) are never reused."""
+    import event_intel.events.enrichment as enr
+
+    k1 = enr._SearchCache._key("Acme AI", "news", "en")
+    monkeypatch.setattr(enr, "ENRICH_CACHE_VERSION", ENRICH_CACHE_VERSION + 1)
+    k2 = enr._SearchCache._key("Acme AI", "news", "en")
+    assert k1 != k2

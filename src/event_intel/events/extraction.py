@@ -72,16 +72,21 @@ SYSTEM_PROMPT_EN = (
     "conference page) and emit a JSON array of candidate companies you can see "
     "in this fragment.\n\n"
     "Output strictly a JSON array. Each item must have:\n"
-    '  - "name" (string, required): the company name as it appears\n'
+    '  - "name" (string, required): the company\'s display name (usually a '
+    "heading/title line). Do NOT use a bare domain or URL (e.g. "
+    '"example.com") as the name when a real name is present.\n'
     '  - "source_snippet" (string, required): a verbatim substring (>= 20 chars) '
     "from the fragment that proves the company is listed there\n"
-    '  - "url" (string, optional): exhibitor link if present in the fragment\n'
+    '  - "url" (string, optional): the company link if present. Links may appear '
+    'inline as "text (https://...)" — put the URL here, not in the name.\n'
     '  - "description" (string, optional): one-line description if present\n'
     '  - "extraction_confidence" (float 0..1, optional): your confidence the '
     "row is a real exhibitor and not a navigation item / sponsor placeholder\n\n"
     "Rules:\n"
     "- Do not invent names that are not in the fragment.\n"
-    "- Do not output navigation labels, page headings, or session titles.\n"
+    "- Do not output navigation labels, the overall page/section title, or "
+    "session titles — but a per-company name IS a real exhibitor even when it "
+    "appears as a heading line.\n"
     "- If the fragment contains zero exhibitors, return [].\n"
     "- Output JSON only — no prose, no markdown fences."
 )
@@ -90,15 +95,18 @@ SYSTEM_PROMPT_KO = (
     "당신은 전시회/컨퍼런스 페이지의 일부분을 읽고, 그 안에 보이는 후보 회사를 "
     "JSON 배열로 출력합니다.\n\n"
     "엄격히 JSON 배열만 출력하세요. 각 항목은 다음을 가집니다:\n"
-    '  - "name" (문자열, 필수): 등장한 그대로의 회사명\n'
+    '  - "name" (문자열, 필수): 회사의 표시명(보통 제목/헤딩 줄). 실제 회사명이 '
+    '있으면 맨 도메인/URL(예: "example.com")을 name 으로 쓰지 마세요.\n'
     '  - "source_snippet" (문자열, 필수): 해당 회사가 거기 있다는 증거가 되는 '
     "fragment 내 원문 부분문자열 (>= 20자)\n"
-    '  - "url" (문자열, 선택)\n'
+    '  - "url" (문자열, 선택): 회사 링크가 있으면. 링크는 "텍스트 (https://...)" '
+    "형태로 인라인 등장할 수 있음 — URL 은 name 이 아니라 여기에.\n"
     '  - "description" (문자열, 선택)\n'
     '  - "extraction_confidence" (0~1 float, 선택)\n\n'
     "규칙:\n"
     "- fragment 에 없는 회사를 만들어내지 마세요.\n"
-    "- 네비게이션/제목/세션명은 제외.\n"
+    "- 네비게이션/전체 페이지·섹션 제목/세션명은 제외 — 단, 회사별 이름은 헤딩 "
+    "줄로 나와도 실제 참가사임.\n"
     "- 후보가 없으면 빈 배열 [] 만 출력.\n"
     "- JSON 만 출력 — 산문/마크다운 금지."
 )

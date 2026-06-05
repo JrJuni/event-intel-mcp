@@ -36,6 +36,27 @@ if TYPE_CHECKING:
     from event_intel.providers.search import SearchProvider, SearchResult
 
 
+# Bump when enrichment parsing/filtering semantics change so stale on-disk
+# search cache + resume rows are invalidated instead of silently reused.
+#   v1 → original.
+#   v2 → Brave news parser fix (top-level results) + published_at + non-article
+#        news path filter (Phase 18U). Old v1 entries cached empty news.
+ENRICH_CACHE_VERSION = 2
+
+# News results whose URL path is a utility/non-article page are dropped — they
+# are not real buying signals. We filter by PATH, not domain, so a company's own
+# newsroom press release (launch/funding/partnership) is kept (review #2 P2-6).
+_NON_ARTICLE_PATH_RE = re.compile(
+    r"/(login|sign[-_]?in|sign[-_]?up|signup|status|privacy|terms|tos|"
+    r"docs?|documentation|changelog|cookies?|legal|pricing)(/|$|\?|#)",
+    re.I,
+)
+
+
+def _is_article_like(url: str) -> bool:
+    return not _NON_ARTICLE_PATH_RE.search(url or "")
+
+
 # ---------- public dataclasses ----------
 
 
@@ -45,6 +66,7 @@ class NewsSignal:
     url: str
     snippet: str
     source: str | None = None
+    published_at: str | None = None       # ISO 8601 string, best-effort
 
 
 @dataclass
@@ -81,7 +103,11 @@ class _SearchCache:
 
     @staticmethod
     def _key(query: str, kind: str, lang: str) -> str:
-        h = hashlib.sha1(f"{kind}|{lang}|{query}".encode("utf-8")).hexdigest()
+        # Version prefix → a parser/semantics bump (ENRICH_CACHE_VERSION) yields
+        # new keys, so stale entries (e.g. v1's empty news) are never reused.
+        h = hashlib.sha1(
+            f"v{ENRICH_CACHE_VERSION}|{kind}|{lang}|{query}".encode("utf-8")
+        ).hexdigest()
         return h
 
     def get(self, query: str, *, kind: str, lang: str) -> list[dict] | None:
@@ -129,6 +155,10 @@ class _ResumeStore:
                     row = json.loads(line)
                 except json.JSONDecodeError:
                     continue  # partial write — skip
+                # Resume rows from an older enrichment version carry stale
+                # parsing (e.g. v1's empty news) — drop them so they re-enrich.
+                if row.get("_cache_version") != ENRICH_CACHE_VERSION:
+                    continue
                 name = row.get("name")
                 if name:
                     done[name] = row
@@ -224,17 +254,28 @@ def _searchresult_to_dict(r: "SearchResult") -> dict:
         "url": r.url,
         "snippet": r.snippet,
         "source": r.source,
+        "published_at": r.published_at.isoformat() if r.published_at else None,
     }
 
 
 def _dict_to_searchresult(d: dict) -> "SearchResult":
+    from datetime import datetime
+
     from event_intel.providers.search import SearchResult
 
+    published_at = None
+    raw = d.get("published_at")
+    if raw:
+        try:
+            published_at = datetime.fromisoformat(raw)
+        except (ValueError, TypeError):
+            published_at = None
     return SearchResult(
         title=d.get("title", ""),
         url=d.get("url", ""),
         snippet=d.get("snippet", ""),
         source=d.get("source"),
+        published_at=published_at,
     )
 
 
@@ -246,12 +287,14 @@ def _to_dict(row: EnrichedExhibitor) -> dict:
         "official_url": row.official_url,
         "description": row.description,
         "news_signals": [
-            {"title": n.title, "url": n.url, "snippet": n.snippet, "source": n.source}
+            {"title": n.title, "url": n.url, "snippet": n.snippet,
+             "source": n.source, "published_at": n.published_at}
             for n in row.news_signals
         ],
         "extraction_confidence": row.extraction_confidence,
         "enrichment_status": row.enrichment_status,
         "enrichment_warnings": row.enrichment_warnings,
+        "_cache_version": ENRICH_CACHE_VERSION,
     }
 
 
@@ -268,6 +311,7 @@ def _from_dict(d: dict) -> EnrichedExhibitor:
                 url=n.get("url", ""),
                 snippet=n.get("snippet", ""),
                 source=n.get("source"),
+                published_at=n.get("published_at"),
             )
             for n in d.get("news_signals", [])
         ],
@@ -384,8 +428,16 @@ def enrich_exhibitors(
         else:
             cache_misses += 1
         for hit in news_hits["results"]:
+            # Drop utility/non-article pages (login/docs/privacy…) — not real
+            # buying signals. Filter by path, so newsroom press releases stay.
+            if not _is_article_like(hit.url):
+                continue
             row.news_signals.append(
-                NewsSignal(title=hit.title, url=hit.url, snippet=hit.snippet, source=hit.source)
+                NewsSignal(
+                    title=hit.title, url=hit.url, snippet=hit.snippet,
+                    source=hit.source,
+                    published_at=hit.published_at.isoformat() if hit.published_at else None,
+                )
             )
 
         # raw_extraction → enriched promotion check
