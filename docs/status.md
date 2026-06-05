@@ -15,6 +15,8 @@
   - ✅ **blind review R1 반영**(avg 71%, 4건 전부 accept): boolean form env authoritative 정책+테스트(#2), plan/코드 정합(#3), 번들↔패키지 버전 별도 트랙 문서화(#4). 커밋 분리(#1): warm-on-start(`c9b8f1a`) / 18T.2 install(`cf19080`). 타임아웃 진단은 코드 0줄로 deferred 유지.
   - **테스트**: 372/372 green (+8: env_loading 4 + mcpb_manifest 4). cold-start 0(`_env`는 os/pathlib/dotenv만).
   - **결정(사용자 확인)**: 경로+.env 키 자동로드 풀스코프 / 설치 UX를 타임아웃 진단보다 먼저 / blind review 엄격 커밋 분리.
+  - ✅ **cwd 상대 output 경로 버그 수정 (2026-06-05)**: build가 `Path("outputs")`(cwd 상대)에 써서 Claude Desktop(임의 cwd)에서 `PermissionError WinError 5`. 패키지 위치로 repo-root 역산(`_outputs_base`, EVENT_INTEL_OUTPUT_DIR override). `.env`에 이은 동일 cwd-의존성 클래스 — lesson-learned 기록. 회귀 테스트 3건(`test_output_path.py`). commit `81c395e`.
+  - ✅ **Claude Desktop 풀 e2e 검증 완료 (2026-06-05)**: 두 MCP-런타임 버그(worker-thread chromadb 데드락 + cwd output) 수정 후, Claude Desktop에서 `check_runtime`(smoke ok:true) → `build_event_tier_list`(smoke, simtos) → tier_list.md/yaml 정상 기록. worker-thread 경로 최종 검증. (C tier 5건 = product_smoke[AI/NPU] vs 공작기계 전시회 = 정상적 약-fit 판별.)
   - ✅ **4분 타임아웃 진단·수정 완료 (2026-06-04)**: 가설이 3번 뒤집힘 — C2(stdout 오염)·warm-up 둘 다 **반증**(프로브: stdout 0 bytes, warm_up=false도 240s 행). **진짜 원인: FastMCP worker thread에서의 첫 `import chromadb` 데드락**(메인 스레드 pre-import 시 240s행→1.8s, 3중 실증). 단독 collection_info(0.81s)·단순 asyncio 하니스(0.78s)는 재현 못 함 → 충실한 재현은 실 MCP subprocess뿐. **수정**: `mcp_server._preimport_heavy_deps`(main()에서 chromadb+sentence_transformers 메인 스레드 pre-import; 서버 시작 ~7s↑, tool은 즉시). **회귀 가드**: `tests/test_stdio_integrity.py`(slow). blind review R1(avg 68%)이 WHERE는 확인, false-negative 테스트 제안은 정정 후 채택. 상세: `docs/lesson-learned.md` 2026-06-04.
 
 - **Phase 18T.1 — ChatGPT OAuth 설치 UX (2026-06-04, plan `snoopy-weaving-robin.md`)**
