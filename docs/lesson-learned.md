@@ -15,6 +15,21 @@ Append-only log of approaches tried, failure causes, and validated know-how, acc
 
 ---
 
+## [2026-06-05] Brave `/news/search`는 결과가 최상위 `results` — web 모양 가정 파서가 전원 news=0 (가짜 provider 테스트가 버그 통과시킴)
+
+**Tried**: `providers/search.py::BraveSearchProvider._parse`가 news/web 공용으로 `data.get(kind, {}).get("results", [])` (news는 `data["news"]["results"]`)를 읽었다. 실사용 검증(MongoDB×GTC 34곳)에서 **전원 `news_count=0`**.
+
+**Result**: 실패. Brave `/web/search`는 `{"web": {"results": [...]}}`이지만 `/news/search`는 **`{"type":"news","query":..,"results":[...]}` — 결과가 최상위 `results`**. 파서가 `data["news"]`를 찾으니 항상 `[]`. 단독 프로브로 확인: `q="Snowflake"` news 5건 정상인데 파이프라인은 0건. news=0 → evidence_floor가 2(url+news)에 못 미쳐 **S 티어 원천 불가**, A도 buying_signal 0으로 점수 미달. 수정(news=최상위 `results`, web=중첩) 후 동일 데이터 news 0→166, A 0→21.
+
+**Lesson**:
+- **외부 API 응답 모양은 엔드포인트마다 다르다 — 추측 말고 실제 payload로 단언하는 contract 테스트를 둘 것.** `tests/test_search_provider.py`는 실제 Brave news/web 응답 모양을 sample payload로 박아 `_parse`를 검증(네트워크·키 불필요).
+- **가짜 provider만 쓰는 통합 테스트는 실제 파싱 모양을 검증하지 못한다.** enrichment 테스트가 `SearchProvider`를 monkeypatch한 가짜로 돌려서 진짜 `_parse`가 한 번도 실 응답 모양과 대조되지 않았고, 버그가 출시까지 통과했다. → 외부 경계(파서/직렬화)는 가짜 뒤에 숨기지 말고 별도 단위로 고정.
+- **버그가 다른 단계의 천장으로 위장된다.** "S가 안 나온다"는 스코어링 문제처럼 보였지만 원인은 enrichment 파서였다. tier 분포 이상은 상류(파서/추출)부터 의심.
+
+**Related**: `src/event_intel/providers/search.py::_parse` (+ `_parse_published`). `tests/test_search_provider.py` 4건. Phase 18U Step 1.
+
+---
+
 ## [2026-06-04] MCP 서버는 임의의 cwd로 spawn된다 — 모든 파일 경로는 절대경로여야 (cwd 상대 금지, 두 번 물림)
 
 **Tried**: `build_event_tier_list`이 출력을 `Path("outputs")`(cwd 상대)에 썼다. 터미널 CLI는 cwd=repo라 `repo/outputs`에 잘 써졌음.

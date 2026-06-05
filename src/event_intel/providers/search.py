@@ -85,9 +85,15 @@ class BraveSearchProvider(SearchProvider):
     @staticmethod
     def _parse(data: dict, kind: str) -> list[SearchResult]:
         results: list[SearchResult] = []
-        bucket = data.get(kind, {}).get("results", []) if kind == "news" else data.get(
-            "web", {}
-        ).get("results", [])
+        # Brave response shapes differ by endpoint:
+        #   /web/search  → {"web": {"results": [...]}}
+        #   /news/search → {"type": "news", "results": [...]}   (top-level, NOT nested)
+        # Reading data["news"]["results"] for news silently yields [] → news_count
+        # always 0 → evidence_floor never reaches 2 → S tier unreachable. (bug fixed 2026-06-05)
+        if kind == "news":
+            bucket = data.get("results", [])
+        else:
+            bucket = data.get("web", {}).get("results", [])
         for item in bucket:
             results.append(
                 SearchResult(
@@ -95,10 +101,26 @@ class BraveSearchProvider(SearchProvider):
                     url=item.get("url", ""),
                     snippet=item.get("description", "") or item.get("snippet", ""),
                     source=item.get("source") or item.get("meta_url", {}).get("hostname"),
+                    published_at=BraveSearchProvider._parse_published(item),
                     extra={k: v for k, v in item.items() if k not in {"title", "url"}},
                 )
             )
         return results
+
+    @staticmethod
+    def _parse_published(item: dict) -> datetime | None:
+        """Best-effort published timestamp from a Brave news item (`page_age`/`age`).
+
+        Returns None on any parse failure — published_at is advisory; the evidence
+        floor only cares whether news exists, not exactly when.
+        """
+        raw = item.get("page_age") or item.get("age")
+        if not raw or not isinstance(raw, str):
+            return None
+        try:
+            return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return None
 
     def ping(self) -> dict:
         """Lightweight health check. Returns quota if header is present, else null."""
