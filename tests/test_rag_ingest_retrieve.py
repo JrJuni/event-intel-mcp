@@ -115,8 +115,9 @@ def test_retrieve_averages_topk_similarity_and_breakdown():
     )
     assert len(results) == 1
     r = results[0]
-    # sims = [0.9, 0.8, 0.7, 0.6, 0.5] → avg 0.7
-    assert r.capability_fit == pytest.approx(0.7, abs=1e-6)
+    # capability_fit averages ONLY the 3 capability-kind hits (dist 0.2/0.4/1.0
+    # → sims 0.9/0.8/0.5). product_summary + ideal_customer are excluded.
+    assert r.capability_fit == pytest.approx((0.9 + 0.8 + 0.5) / 3, abs=1e-6)
     assert r.capability_fit_breakdown["Quantization-aware compile"] == 2
     assert r.capability_fit_breakdown["Cross-vendor NPU backend"] == 1
 
@@ -139,6 +140,32 @@ def test_retrieve_counts_competitor_and_bad_fit_hits():
     assert fit.competitor_hits == 1
     assert fit.bad_fit_hits == 1
     assert fit.capability_fit_breakdown == {"X": 1}
+    # capability_fit comes from the single capability hit only (dist 0.5 → 0.75),
+    # NOT diluted/inflated by the competitor + bad_fit chunks.
+    assert fit.capability_fit == pytest.approx(0.75, abs=1e-6)
+
+
+def test_retrieve_all_competitor_hits_yield_zero_capability_fit():
+    """A row whose top-k is entirely competitor chunks (semantically a
+    competitor) gets capability_fit 0.0 — the contamination fix."""
+    rows = [_row("Snowflake-like")]
+    vs = FakeVS()
+    vs.hits_per_query = [[
+        {"id": "competitor:0", "document": "...", "distance": 0.1,
+         "metadata": {"kind": "competitor", "competitor_name": "Snowflake"}},
+        {"id": "competitor:1", "document": "...", "distance": 0.2,
+         "metadata": {"kind": "competitor", "competitor_name": "ClickHouse"}},
+        {"id": "bad_fit:0", "document": "...", "distance": 0.3,
+         "metadata": {"kind": "bad_fit"}},
+    ]]
+    fit = retrieve_fit_event_to_product(
+        exhibitors=rows, workspace_id="acme",
+        embedding_provider=FakeEmbed(), vectorstore_provider=vs, top_k=3,
+    )[0]
+    assert fit.capability_fit == 0.0
+    assert fit.competitor_hits == 2
+    assert fit.bad_fit_hits == 1
+    assert fit.capability_fit_breakdown == {}
 
 
 def test_retrieve_only_queries_product_collection_not_event_collection():

@@ -94,21 +94,29 @@ def retrieve_fit_event_to_product(
 
     results: list[FitResult] = []
     for exh, hits in zip(exhibitors, hits_batch, strict=True):
-        sims = [_similarity_from_distance(h.get("distance")) for h in hits]
-        avg = sum(sims) / len(sims) if sims else 0.0
         breakdown: dict[str, int] = {}
         competitor_hits = 0
         bad_fit_hits = 0
+        cap_sims: list[float] = []
         for h in hits:
             md = h.get("metadata") or {}
             kind = md.get("kind", "")
             if kind == "capability":
                 cap_name = md.get("capability_name", "?")
                 breakdown[cap_name] = breakdown.get(cap_name, 0) + 1
+                cap_sims.append(_similarity_from_distance(h.get("distance")))
             elif kind == "competitor":
                 competitor_hits += 1
             elif kind == "bad_fit":
                 bad_fit_hits += 1
+        # capability_fit averages ONLY capability-kind hits. Averaging all kinds
+        # let a company sitting next to its own `competitor:<name>` chunk inflate
+        # its fit (e.g. Snowflake 0.62 > LlamaIndex 0.56) — exactly backwards for
+        # BD. A row whose top-k is crowded by competitor/bad_fit chunks now gets
+        # a LOW capability_fit, and the hit counts drive the penalties.
+        # NOTE: a 1-capability-hit average and a 3-hit average are treated with
+        # equal confidence here — count-weighting is deferred (see backlog).
+        avg = sum(cap_sims) / len(cap_sims) if cap_sims else 0.0
         results.append(
             FitResult(
                 name=exh.name,

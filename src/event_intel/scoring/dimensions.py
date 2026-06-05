@@ -76,10 +76,41 @@ def score_buying_signal(
     return base
 
 
+# Tokenizer for category_fit only. Splits on whitespace + common punctuation
+# (incl. hyphens/parens) so "generative-AI" → {"generative", "ai"}.
+_CATEGORY_TOKEN_SPLIT = re.compile(r"[\s,;/()\[\]\-–—.|:&]+")
+
+# Dropped regardless of length — function words that matched everything under
+# the old substring logic.
+_CATEGORY_STOPWORDS = {
+    "a", "an", "and", "or", "the", "for", "of", "to", "in", "on", "with",
+    "by", "at", "as", "is", "are", "be", "this", "that", "from", "into", "per",
+}
+# Short (<3 char) tokens are dropped UNLESS whitelisted — keeps meaningful tech
+# and geo acronyms (review #2 P2-5: a blanket len<3 cut would delete these).
+_SHORT_TOKEN_WHITELIST = {
+    "ai", "ml", "db", "bi", "ar", "vr", "xr", "5g", "6g", "io", "os", "ui",
+    "ux", "us", "eu", "kr", "jp", "cn", "uk", "de", "fr", "sg",
+}
+
+
 def _tokens_lower(text: str) -> set[str]:
     if not text:
         return set()
-    return {t for t in re.split(r"[\s,;/]+", text.lower()) if t}
+    return {t for t in _CATEGORY_TOKEN_SPLIT.split(text.lower()) if t}
+
+
+def _category_needles(*groups: list[str]) -> set[str]:
+    """Build the matchable needle set: drop stopwords; drop <3-char tokens
+    unless whitelisted (acronyms/geo)."""
+    needles: set[str] = set()
+    for group in groups:
+        for tok in _tokens_lower(", ".join(group)):
+            if tok in _CATEGORY_STOPWORDS:
+                continue
+            if len(tok) >= 3 or tok in _SHORT_TOKEN_WHITELIST:
+                needles.add(tok)
+    return needles
 
 
 def score_category_fit(
@@ -95,19 +126,18 @@ def score_category_fit(
     if cards is None:
         return 0.0
     ic = cards.ideal_customer
-    needles_industry = _tokens_lower(", ".join(ic.industries))
-    needles_geo = _tokens_lower(", ".join(ic.geo)) if ic.geo else set()
-    needles_signals = _tokens_lower(", ".join(ic.company_signals))
+    needles = _category_needles(ic.industries, ic.company_signals, ic.geo or [])
+    if not needles:
+        return 0.0
     haystack_parts = [row.description or ""]
     for n in row.news_signals:
         haystack_parts.append(n.title or "")
         haystack_parts.append(n.snippet or "")
-    haystack = " ".join(haystack_parts).lower()
-
-    def _count(needles: set[str]) -> int:
-        return sum(1 for n in needles if n and n in haystack)
-
-    hits = _count(needles_industry) + _count(needles_geo) + _count(needles_signals)
+    # Token-boundary match via set intersection — NOT substring. The old
+    # `needle in haystack` matched "us" inside "business", "ai" inside "chair",
+    # and every stopword, inflating category_fit for unrelated companies.
+    hay_tokens = _tokens_lower(" ".join(haystack_parts))
+    hits = len(needles & hay_tokens)
     if hits == 0:
         return 0.0
     return hits / (hits + 1.0)

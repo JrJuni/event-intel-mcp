@@ -15,6 +15,22 @@ Append-only log of approaches tried, failure causes, and validated know-how, acc
 
 ---
 
+## [2026-06-05] capability_fit가 모든 top-k kind를 평균 → 경쟁사가 자기 competitor 청크와 가까워 fit이 부풀었다 + category_fit substring 오탐
+
+**Tried**: `rag/retriever.py`가 `capability_fit = avg(top_k 전체 히트의 cosine)`. `scoring/dimensions.py::score_category_fit`는 needle 토큰을 `n in haystack`(부분문자열)로 카운트.
+
+**Result**: 둘 다 변별을 망침.
+1. capability_fit: 단방향 검색 top-k는 capability뿐 아니라 competitor/bad_fit/summary 청크도 포함. 경쟁사(Snowflake)는 제품 카드의 `competitor:Snowflake` 청크와 의미적으로 매우 가까워, 그 높은 유사도가 평균에 섞여 **capability_fit 0.62(최상위)**. 정작 진짜 타깃 LlamaIndex는 capability 청크 2개로 0.56. **경쟁사 > 타깃**.
+2. category_fit: needles에 geo "us", 산업 토큰 "ai" 등 짧은 토큰이 있는데 substring 매칭이라 "us"⊂"business", "ai"⊂"chair"처럼 무관 텍스트에 적중 + 불용어(and/or/the) 전부 매칭 → category_fit이 거의 모두에게 과대.
+
+**Lesson**:
+- **유사도 평균은 같은 종류(kind)끼리만.** capability_fit은 `kind=="capability"` 히트만 평균(없으면 0). competitor/bad_fit는 카운트로 penalty에만 기여. 그래야 "경쟁사 청크에 가까움"이 fit을 올리지 않고 penalty로 간다. (1-hit vs 3-hit 평균 동급 취급하는 표본수 편향은 알려진 한계 — count-weighting deferred.)
+- **토큰 매칭은 substring 아니라 토큰 경계(집합 교집합).** 짧은 토큰은 불용어 제거 + 약어/지역 whitelist(ai/ml/us/eu…)로만 허용 — 길이<3 일괄삭제는 AI/ML/5G/US를 날리므로 금지.
+
+**Related**: `rag/retriever.py`(capability-only 평균), `scoring/dimensions.py::_category_needles`/`score_category_fit`(토큰경계+불용어/whitelist). 테스트: `test_rag_ingest_retrieve.py`(capability-only 평균·전부-competitor→0), `test_scoring.py`(substring/불용어 오탐 방지·약어 매칭). Phase 18U Step 3.
+
+---
+
 ## [2026-06-05] trafilatura는 전시회 디렉터리에서 헤딩·링크를 버린다 (회사명=도메인, url=None의 진짜 원인) + 캐시는 버전을 가져야
 
 **Tried**: HTML 출품사 리스트를 `source_capture._strip_html`(trafilatura `extract(..., favor_recall=True)`)로 텍스트화. 회사명은 `<h2>`, 공식 URL은 `<a href>`에 있었다.

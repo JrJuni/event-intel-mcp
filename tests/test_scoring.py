@@ -126,6 +126,27 @@ def test_category_fit_increases_with_industry_overlap(repo_root):
     assert score_category_fit(matching, cards=cards) > score_category_fit(nonmatch, cards=cards)
 
 
+def test_category_fit_no_substring_or_stopword_false_positive(repo_root):
+    """Token-boundary match: geo 'US' must NOT match 'business', and stopwords
+    must not match at all. Under the old `needle in haystack` substring logic
+    this row scored > 0 from 'us'⊂'business'; now it must be 0."""
+    cards = load_and_validate(repo_root / "tests" / "fixtures" / "cards" / "sample_cards.yaml")
+    row = _row(
+        "X",
+        description="A business platform for retail chains in our local region",
+        news_signals=[],
+    )
+    assert score_category_fit(row, cards=cards) == 0.0
+
+
+def test_category_fit_matches_short_acronym_token(repo_root):
+    """Whitelisted short tokens (geo 'US', tech 'AR'/'VR') still match as whole
+    tokens — a blanket len<3 drop would have deleted them."""
+    cards = load_and_validate(repo_root / "tests" / "fixtures" / "cards" / "sample_cards.yaml")
+    row = _row("X", description="AR and VR devices built in the US", news_signals=[])
+    assert score_category_fit(row, cards=cards) > 0.0
+
+
 # ---------- rules ----------
 
 
