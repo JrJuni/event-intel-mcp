@@ -26,8 +26,8 @@ scoring:
     buying_signal: 0.15
     website_verification: 0.10
     category_fit: 0.15
-    competitor_penalty: -0.10
-    bad_fit_penalty: -0.10
+    competitor_penalty: -0.35
+    bad_fit_penalty: -0.25
 
   tier_rules:
     # Floor: has_official_url + has_news_signals (0/1/2). snippet always present after extraction.

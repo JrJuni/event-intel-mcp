@@ -23,6 +23,15 @@
 - 340/340 tests green (+8 신규: 7 regex pattern 검증 + 4 prompt construction 검증)
 - 이전 verdict 분류 회귀 없음 (FakeLLM parametrize 4 verdicts 그대로 통과)
 
+### #12 Phase 18V — 범용 exhibition intelligence (MVP→일반화)
+
+Phase 18U(스코어링 변별력)는 **MongoDB×GTC 단일 use-case 기준 MVP**로 합격(경쟁사 S/A=0, 타깃 median 5위 vs 경쟁사 25위). 모든 전시회·제품에 범용으로 쓰려면 별도 phase 필요 — blind review 2·3라운드에서 반복 도출, 사용자가 4항목 모두 중요 표시(2026-06-05):
+
+- **evidence_types 확장 (P1)** — evidence floor를 news 외 `official_url`/`product_page`/`press_release`/`partner_page`/`docs`로 확장. 뉴스 적은 소규모·비상장·지역 타깃이 구조적으로 S/A 못 가는 문제 해소. evidence floor 재설계 동반.
+- **target_mode 정책 (P1)** — `customer`/`partner`/`ecosystem` 모드로 경쟁사 처리 전환. 현재는 카드 `bad_fit`/`competitors` 선언이 정책 레이어(파트너 타깃이면 카드에서 빼면 됨)지만, "고객이자 경쟁사" 겹침 케이스용 명시 모드.
+- **다중도메인 labeled eval matrix (P1)** — 제품(DB/부품/B2B서비스) × 행사(AI/제조/일반) labeled set 10~20곳 + 지표 Precision@10 / competitor leakage rate / target-vs-bad-fit median rank / evidence false-positive rate. 현 acceptance가 단일 gold set 과적합이라는 한계 보완.
+- **news 관련성·최근성 + retrieval pool 분리 (P1/P2)** — 뉴스 회사 일치도·기사 유형 판별·발행일(published_at 이미 보존) recency 가중. capability retrieval과 competitor/bad_fit retrieval을 별도 풀로 분리(현재 단일 top-k에서 kind별 분류). CJK/약어 토크나이저(한·일 토큰화 + 영문 약어 whitelist 확장).
+
 ---
 
 ## P2 — v0.4+ 영역

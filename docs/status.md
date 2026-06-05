@@ -6,6 +6,17 @@
 
 ## 진행 중
 
+- **Phase 18U — 스코어링 변별력 복구 (2026-06-05, plan `snoopy-weaving-robin.md`)**
+  - **계기.** 실사용 검증(제품=MongoDB Atlas 카드, 이벤트=NVIDIA GTC 2026 실참가사 34곳)에서 티어가 전부 B로 뭉치고 경쟁사가 A에 섞임. 3라운드 blind review로 "입력/신호 오염 상태에서 penalty만 튜닝하면 과적합" 리스크 도출 → **순서 고정**: 입력 identity → 신호 정확성 → 마지막에 penalty.
+  - ✅ **S1 news 파서 버그** (`782a64c`) — Brave `/news/search`는 최상위 `results`인데 파서가 `data["news"]["results"]`를 읽어 전원 news=0 → S 원천 불가. 수정 후 news 0→156. contract 테스트 `test_search_provider.py`.
+  - ✅ **S2 입력 identity** (`7e92f3e`) — trafilatura가 디렉터리에서 `<h2>`·href를 버려 회사명이 도메인·url=None이던 문제: 링크 많은 페이지를 구조보존 strip(헤딩 자기줄 + `text (url)`)으로 라우팅 + 프롬프트 헤딩명/url. 캐시 키에 `ENRICH_CACHE_VERSION`(파서 bump 시 stale 무효). news published_at 보존 + 비-기사 path 드롭.
+  - ✅ **S3 신호 정확성** (`93d8965`) — capability_fit를 **capability 청크만** 평균(경쟁사가 자기 competitor 청크와 가까워 fit 부풀던 것 제거). category_fit substring→토큰경계 집합교집합 + 불용어 + 약어 whitelist(AI/ML/US…).
+  - ✅ **S4 penalty 튜닝** — competitor_penalty -0.1→-0.35, bad_fit_penalty -0.1→-0.25 (`config/defaults.yaml`).
+  - **실측 검증 (HTML 경로, GTC 34곳, S 0 / A 7 / B 23 / C 4)**: 경쟁사 5곳 **S/A=0**(Vespa B#19·Activeloop B#23·PlanetScale B#25·Snowflake B#26·ClickHouse B#28), 타깃 median rank **5위** vs 경쟁사 **25위**. 상위 A 7개 전부 진짜 타깃/개발자도구. MaxLinear(반도체) capfit 0.00→C(약fit→저티어 회귀 속성 유지). **→ 경쟁사 hard-cap 불필요: penalty+신호정확성으로 충분(R2 결정 실증).**
+  - **테스트**: 전체 green (+신규: search_provider 4, source_capture 디렉터리 보존, enrichment 캐시버전·비기사·published_at, retriever capability-only·전부-competitor→0, scoring category 토큰경계/약어).
+  - **blind review 3라운드**: R1(입력 정렬 순서·category_fit·캐시버전 도출), R2(범용엔진 vs MVP 범위 — 사용자 MVP 선택, 4개 일반화 항목 backlog), R3(**stale 스냅샷** — 지적 5개 중 4개 이미 S2/S3서 수정; "A=Vespa"는 수정 전 상태, 현재 Vespa B#19). 상세 `lesson-learned.md`.
+  - **남은 갭(비-blocking, Phase 18V backlog)**: news 회사일치도·기사판별·recency, retrieval pool 분리, target_mode, evidence_types, 다중도메인 eval.
+
 - **Phase 18T.2 — 무마찰 `.mcpb` 설치 (2026-06-04, plan `snoopy-weaving-robin.md`)**
   - **목표.** 재설치마다 경로/키를 다시 입력하는 마찰 제거. (사용자 피드백: "path는 자동으로 못 찾나")
   - ✅ `repo_path`/`PYTHONPATH` **제거** — `event_intel`이 editable 설치라 PYTHONPATH 없이 `python -m event_intel.mcp_server` import됨. 경로 입력 1개 소거.

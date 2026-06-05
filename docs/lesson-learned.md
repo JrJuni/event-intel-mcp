@@ -182,6 +182,16 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 ## Blind Review 판정 누적
 
+### Phase 18U (스코어링 변별력) 라운드 1~3 — 2026-06-05
+
+| 라운드 | 핵심 | 판정 |
+|---|---|---|
+| R1 | penalty 튜닝을 입력/신호 오염 상태에서 하면 과적합 → 순서 재배치(입력 identity→신호→penalty), category_fit substring·캐시버전·news품질 범위 추가, 수치 acceptance 도입 | 대부분 accepted, plan v2 |
+| R2 | "범용 엔진"으로 확장(target_mode/evidence_types/다중도메인 eval/CJK) 주장 | **범위 결정은 사용자 몫** — MVP 선택, 4항목 backlog #12. echo 아님(Novelty 높음)이나 over-scope |
+| R3 | **stale 스냅샷**(S1 직후) — 5개 지적 중 4개(도메인추출·category substring·capability 혼입·일부 news)는 이미 S2(`7e92f3e`)·S3(`93d8965`)서 수정됨. "A=Vespa, 랭킹 신뢰 불가"는 수정 전 상태 | Novelty≈0.7. **실측이 반증**: 현재 Vespa B#19, 경쟁사 S/A=0, 타깃 median 5 vs 경쟁사 25 |
+
+**메타**: R3는 같은 외부 AI가 옛 코드를 재지적한 stale/echo 케이스. **교훈**: 외부 리뷰는 어느 커밋 기준인지부터 확인 — 이미 고친 걸 다시 만지거나 deferred 결정을 뒤집지 말 것. 반복 등장한 두 축(경쟁사 결정성·news 품질)은 진짜 약점이었으나 전자는 penalty+신호정확성으로 해결(hard-cap 불필요 실증), 후자는 backlog. **stale 리뷰 판별 = "주장이 현재 코드/실측과 일치하는가"를 Factual 차원에서 먼저 검증**.
+
 ### Phase 18T.2 (무마찰 .mcpb 설치) 라운드 1 — 2026-06-04
 
 | # | 카테고리 | 점수 | Novelty | 판정 | 사유 |
