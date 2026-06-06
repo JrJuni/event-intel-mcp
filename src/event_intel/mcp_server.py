@@ -120,6 +120,7 @@ def build_event_tier_list(
     source_ref: str = "",
     lang: str = "en",
     max_companies: int | None = None,
+    refresh: bool = False,
     enrichment_enabled: bool = True,
     resume_from: str | None = None,
     run_rationale: bool = True,
@@ -142,6 +143,7 @@ def build_event_tier_list(
         max_companies=max_companies,
         enrichment_enabled=enrichment_enabled,
         resume_from=resume_from,
+        refresh=refresh,
         run_rationale=run_rationale,
         target_mode=target_mode,
     )

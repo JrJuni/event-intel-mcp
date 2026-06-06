@@ -25,6 +25,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -43,7 +44,60 @@ if TYPE_CHECKING:
 #        news path filter (Phase 18U). Old v1 entries cached empty news.
 #   v3 → typed evidence (official_url/product_page/docs/partner_page/press_release/
 #        news) + canonical dedupe + UTC-aware published_at (Phase 18V item 1).
-ENRICH_CACHE_VERSION = 3
+#   v4 → cache payload wrapped with `cached_at` (TTL freshness) + resume rows carry
+#        `enriched_at` + `input_fp` so changed name/url/snippet/confidence/config
+#        re-enrich instead of being skipped forever (Phase 18W P2-1).
+ENRICH_CACHE_VERSION = 4
+
+
+def _is_fresh(timestamp_raw: str | None, *, now: datetime, ttl_days: int | None) -> bool:
+    """Shared TTL freshness check for the search cache + resume rows.
+
+    Contract (Phase 18W P2-1):
+      - ttl_days None or < 0 → infinite (always fresh).
+      - ttl_days == 0        → always stale (never reuse).
+      - ttl_days > 0         → fresh iff age <= ttl_days.
+    Unparseable or future timestamps are treated as stale (conservative — re-fetch
+    rather than trust a bad clock)."""
+    if ttl_days is None or ttl_days < 0:
+        return True
+    if ttl_days == 0:
+        return False
+    from event_intel.timeutil import normalize_utc, parse_iso_utc
+
+    dt = parse_iso_utc(timestamp_raw)
+    if dt is None:
+        return False
+    age_days = (normalize_utc(now) - dt).total_seconds() / 86400.0
+    if age_days < 0:
+        return False
+    return age_days <= ttl_days
+
+
+def _config_fingerprint(enrichment_cfg: dict) -> str:
+    """Hash ONLY the enrichment-affecting config fields (review r2 #3). A scoring
+    weight change must NOT invalidate cached Brave enrichment — only fields that
+    change what we fetch/keep belong here."""
+    relevant = {
+        "max_companies": enrichment_cfg.get("max_companies"),
+        "brave_count_web": enrichment_cfg.get("brave_count_web"),
+        "brave_count_news": enrichment_cfg.get("brave_count_news"),
+        "news_days_back": enrichment_cfg.get("news_days_back"),
+        "official_url_levenshtein_threshold": enrichment_cfg.get(
+            "official_url_levenshtein_threshold"
+        ),
+        "evidence_queries": enrichment_cfg.get("evidence_queries", {}) or {},
+    }
+    blob = json.dumps(relevant, sort_keys=True, default=str)
+    return hashlib.sha1(blob.encode()).hexdigest()[:16]
+
+
+def _input_fingerprint(name: str, url: str | None, snippet: str,
+                       confidence: float, config_fp: str) -> str:
+    """Per-row fingerprint: changed name/url/snippet/confidence/config → re-enrich
+    regardless of resume TTL (review r2 #3)."""
+    raw = f"{name}|{url or ''}|{snippet}|{confidence}|{config_fp}"
+    return hashlib.sha1(raw.encode()).hexdigest()[:16]
 
 # News results whose URL path is a utility/non-article page are dropped — they
 # are not real buying signals. We filter by PATH, not domain, so a company's own
@@ -101,10 +155,15 @@ class _SearchCache:
     """Lightweight on-disk cache. One JSON file per (query, kind, lang, count,
     days) hash. count/days are part of the key (review #4): a news query for the
     last 30 days must NOT serve a cached 180-day result, and a count=5 request
-    must not return a count=20 payload."""
+    must not return a count=20 payload.
 
-    def __init__(self, root: Path):
+    Each file is `{"cached_at": iso, "results": [...]}` (v4) so `ttl_days` can
+    expire stale Brave answers — a cached "last 180 days" result reused months
+    later silently misses everything published since (review r2 #2)."""
+
+    def __init__(self, root: Path, *, ttl_days: int | None = None):
         self.root = root
+        self.ttl_days = ttl_days
         self.root.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
@@ -117,25 +176,36 @@ class _SearchCache:
         return h
 
     def get(
-        self, query: str, *, kind: str, lang: str, count: int = 0, days: int | None = None
+        self, query: str, *, kind: str, lang: str, count: int = 0,
+        days: int | None = None, now: datetime,
     ) -> list[dict] | None:
         path = self.root / f"{self._key(query, kind, lang, count, days)}.json"
         if not path.is_file():
             return None
         try:
             with path.open(encoding="utf-8") as f:
-                return json.load(f)
+                payload = json.load(f)
         except (json.JSONDecodeError, OSError):
             return None
+        # v4 wrapper only. A bare list (pre-v4) can't reach here anyway because the
+        # version is in the key, but guard defensively → stale.
+        if not isinstance(payload, dict):
+            return None
+        if not _is_fresh(payload.get("cached_at"), now=now, ttl_days=self.ttl_days):
+            return None
+        return payload.get("results")
 
     def put(
         self, query: str, *, kind: str, lang: str, results: list[dict],
-        count: int = 0, days: int | None = None,
+        count: int = 0, days: int | None = None, now: datetime,
     ) -> None:
+        from event_intel.timeutil import normalize_utc
+
         path = self.root / f"{self._key(query, kind, lang, count, days)}.json"
+        payload = {"cached_at": normalize_utc(now).isoformat(), "results": results}
         try:
             with path.open("w", encoding="utf-8") as f:
-                json.dump(results, f, ensure_ascii=False)
+                json.dump(payload, f, ensure_ascii=False)
         except OSError:
             pass  # cache is best-effort; ignore disk hiccups
 
@@ -285,7 +355,9 @@ def _dict_to_searchresult(d: dict) -> SearchResult:
     )
 
 
-def _to_dict(row: EnrichedExhibitor) -> dict:
+def _to_dict(
+    row: EnrichedExhibitor, *, input_fp: str | None = None, enriched_at: str | None = None
+) -> dict:
     return {
         "name": row.name,
         "source_snippet": row.source_snippet,
@@ -306,6 +378,8 @@ def _to_dict(row: EnrichedExhibitor) -> dict:
         "enrichment_status": row.enrichment_status,
         "enrichment_warnings": row.enrichment_warnings,
         "_cache_version": ENRICH_CACHE_VERSION,
+        "input_fp": input_fp,
+        "enriched_at": enriched_at,
     }
 
 
@@ -357,12 +431,20 @@ def enrich_exhibitors(
     cache_dir: Path | None = None,
     resume_path: Path | None = None,
     max_companies: int | None = None,
+    refresh: bool = False,
+    now: datetime | None = None,
 ) -> EnrichmentResult:
     """Enrich a list of extracted candidates with official URL + news.
 
     `cache_dir` defaults to `~/.event-intel/cache/search/{workspace_id}/`.
     `resume_path` defaults to `~/.event-intel/resume/{workspace_id}.jsonl`.
+
+    `refresh=True` bypasses BOTH the resume artifact and the search cache reads —
+    a real refresh, not just resume (review r2 #3). Fresh results are still
+    written back to the cache. `now` (default `datetime.now(UTC)`) is injected so
+    TTL freshness is deterministic in tests.
     """
+    now = now or datetime.now(UTC)
     try:
         enrichment_cfg = config["enrichment"]
         max_default = int(enrichment_cfg["max_companies"])
@@ -371,6 +453,11 @@ def enrich_exhibitors(
         news_days = int(enrichment_cfg["news_days_back"])
         cache_enabled = bool(enrichment_cfg.get("cache_enabled", True))
         url_threshold = float(enrichment_cfg["official_url_levenshtein_threshold"])
+        # TTL freshness (Phase 18W P2-1). None → infinite; 0 → always stale.
+        cache_ttl_days = enrichment_cfg.get("cache_ttl_days")
+        resume_ttl_days = enrichment_cfg.get("resume_ttl_days")
+        cache_ttl_days = int(cache_ttl_days) if cache_ttl_days is not None else None
+        resume_ttl_days = int(resume_ttl_days) if resume_ttl_days is not None else None
         # Extra evidence-type queries (Phase 18V item 1). Default OFF when the key
         # is absent so existing callers/tests keep their exact search budget;
         # shipped defaults.yaml turns them on, capped per event (round-1 #7).
@@ -397,13 +484,16 @@ def enrich_exhibitors(
             ]},
         ) from exc
 
+    config_fp = _config_fingerprint(enrichment_cfg)
     home = Path.home() / ".event-intel"
     cache_root = cache_dir or (home / "cache" / "search" / workspace_id)
     resume_file = resume_path or (home / "resume" / f"{workspace_id}.jsonl")
-    cache = _SearchCache(cache_root)
+    cache = _SearchCache(cache_root, ttl_days=cache_ttl_days)
     resume = _ResumeStore(resume_file)
 
-    done_by_name = resume.load_done()
+    # refresh bypasses resume entirely; otherwise reuse is gated per-candidate
+    # below (input_fp match AND TTL fresh).
+    done_by_name = {} if refresh else resume.load_done()
     cap = max_companies or max_default
     capped = candidates[:cap]
     warnings: list[str] = []
@@ -420,10 +510,21 @@ def enrich_exhibitors(
     rows: list[EnrichedExhibitor] = []
 
     for cand in capped:
-        if cand.name in done_by_name:
-            rows.append(_from_dict(done_by_name[cand.name]))
-            skipped += 1
-            continue
+        expected_fp = _input_fingerprint(
+            cand.name, cand.url, cand.source_snippet,
+            cand.extraction_confidence, config_fp,
+        )
+        done_row = done_by_name.get(cand.name)
+        if done_row is not None:
+            # Reuse only if the inputs are unchanged (fp match) AND the row is
+            # within resume TTL. A changed snippet/url/confidence or an expired
+            # row falls through to re-enrich instead of being skipped forever.
+            fp_ok = done_row.get("input_fp") == expected_fp
+            fresh = _is_fresh(done_row.get("enriched_at"), now=now, ttl_days=resume_ttl_days)
+            if fp_ok and fresh:
+                rows.append(_from_dict(done_row))
+                skipped += 1
+                continue
 
         row = EnrichedExhibitor(
             name=cand.name,
@@ -443,6 +544,7 @@ def enrich_exhibitors(
                 search_provider=search_provider, query=web_query,
                 kind="web", count=count_web, lang=lang,
                 hits_counter=(lambda hit: None),
+                now=now, refresh=refresh,
             )
             if web_hits["was_hit"]:
                 cache_hits += 1
@@ -463,6 +565,7 @@ def enrich_exhibitors(
             search_provider=search_provider, query=news_query,
             kind="news", count=count_news, lang=lang, days=news_days,
             hits_counter=(lambda hit: None),
+            now=now, refresh=refresh,
         )
         if news_hits["was_hit"]:
             cache_hits += 1
@@ -555,6 +658,7 @@ def enrich_exhibitors(
                 search_provider=search_provider, query=f'"{cand.name}" {suffix}',
                 kind="web", count=count_web, lang=lang,
                 hits_counter=(lambda hit: None),
+                now=now, refresh=refresh,
             )
             if ev_hits["was_hit"]:
                 cache_hits += 1
@@ -581,7 +685,9 @@ def enrich_exhibitors(
             row.enrichment_warnings.append("missing source_snippet after extraction")
 
         rows.append(row)
-        resume.append(_to_dict(row))
+        resume.append(_to_dict(
+            row, input_fp=expected_fp, enriched_at=now.isoformat(),
+        ))
 
     return EnrichmentResult(
         rows=rows,
@@ -603,12 +709,17 @@ def _search_with_cache(
     lang: str,
     days: int | None = None,
     hits_counter,
+    now: datetime,
+    refresh: bool = False,
 ) -> dict:
     """Returns `{results: list[SearchResult], was_hit: bool}`. The cache stores
     serialized SearchResult dicts (title/url/snippet/source) — `extra` and
-    `published_at` are dropped for portability."""
-    if cache_enabled:
-        cached = cache.get(query, kind=kind, lang=lang, count=count, days=days)
+    `published_at` are dropped for portability.
+
+    `refresh` skips the cache READ (forcing a live call) but still WRITES the
+    fresh result, so a subsequent non-refresh run benefits (review r2 #3)."""
+    if cache_enabled and not refresh:
+        cached = cache.get(query, kind=kind, lang=lang, count=count, days=days, now=now)
         if cached is not None:
             return {
                 "results": [_dict_to_searchresult(d) for d in cached],
@@ -629,6 +740,6 @@ def _search_with_cache(
     if cache_enabled:
         cache.put(
             query, kind=kind, lang=lang, count=count, days=days,
-            results=[_searchresult_to_dict(r) for r in live],
+            results=[_searchresult_to_dict(r) for r in live], now=now,
         )
     return {"results": live, "was_hit": False}

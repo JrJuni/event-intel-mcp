@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -192,32 +192,39 @@ def test_rerun_hits_cache_with_zero_new_search_calls(tmp_path):
     assert result2.cache_misses == 0
 
 
+def _seed_resume_row(cand, config, *, official_url):
+    """Build a resume row whose input_fp matches what enrich would compute for
+    `cand` under `config` — so the fp gate (P2-1) treats it as reusable."""
+    from event_intel.events.enrichment import _config_fingerprint, _input_fingerprint
+
+    config_fp = _config_fingerprint(config["enrichment"])
+    return {
+        "name": cand.name,
+        "source_snippet": cand.source_snippet,
+        "url": cand.url,
+        "official_url": official_url,
+        "news_signals": [],
+        "extraction_confidence": cand.extraction_confidence,
+        "enrichment_status": "enriched",
+        "enrichment_warnings": [],
+        "_cache_version": ENRICH_CACHE_VERSION,
+        "input_fp": _input_fingerprint(
+            cand.name, cand.url, cand.source_snippet,
+            cand.extraction_confidence, config_fp,
+        ),
+        "enriched_at": "2026-06-01T00:00:00+00:00",
+    }
+
+
 def test_resume_skips_done_rows_and_only_retries_remaining(tmp_path):
     cands = _candidates_5()
     resume_path = tmp_path / "resume.jsonl"
+    cfg = _config()
 
-    # Pre-seed resume with two already-enriched rows.
+    # Pre-seed resume with two already-enriched rows (fp matches → reusable).
     with resume_path.open("w", encoding="utf-8") as f:
-        f.write(json.dumps({
-            "name": "Mobius Labs",
-            "source_snippet": "from prior run",
-            "official_url": "https://prior.example.com",
-            "news_signals": [],
-            "extraction_confidence": 1.0,
-            "enrichment_status": "enriched",
-            "enrichment_warnings": [],
-            "_cache_version": ENRICH_CACHE_VERSION,
-        }) + "\n")
-        f.write(json.dumps({
-            "name": "NeuroDrive Inc.",
-            "source_snippet": "from prior run",
-            "official_url": "https://prior2.example.com",
-            "news_signals": [],
-            "extraction_confidence": 1.0,
-            "enrichment_status": "enriched",
-            "enrichment_warnings": [],
-            "_cache_version": ENRICH_CACHE_VERSION,
-        }) + "\n")
+        f.write(json.dumps(_seed_resume_row(cands[0], cfg, official_url="https://prior.example.com")) + "\n")
+        f.write(json.dumps(_seed_resume_row(cands[1], cfg, official_url="https://prior2.example.com")) + "\n")
 
     search = _wire_fake_search()
     result = enrich_exhibitors(
@@ -502,3 +509,110 @@ def test_news_gate_drops_offtopic_from_floor_evidence(tmp_path):
     ev_types = {e.type for e in row.evidence}
     assert "news" not in ev_types and "official_url" in ev_types
     assert compute_evidence_floor(row) == 1  # identity only, no activity
+
+
+# ---------- P2-1: cache TTL + input fingerprint + true refresh ----------
+
+
+_T0 = datetime(2026, 6, 1, tzinfo=UTC)
+
+
+def _enrich_once(cands, *, cfg, search, cache_dir, resume_path, now=_T0, refresh=False):
+    return enrich_exhibitors(
+        candidates=cands, workspace_id="p21", lang="en", config=cfg,
+        search_provider=search, cache_dir=cache_dir, resume_path=resume_path,
+        now=now, refresh=refresh,
+    )
+
+
+def test_cache_ttl_expires_stale_entries(tmp_path):
+    """A cached Brave answer is reused within ttl_days but re-fetched once stale —
+    the core 'recent-180-days reused months later' bug (review r2 #2)."""
+    cand = [ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)]
+    cfg = _config(cache_ttl_days=7)
+    search = _wire_fake_search()
+    cache_dir = tmp_path / "cache"
+
+    _enrich_once(cand, cfg=cfg, search=search, cache_dir=cache_dir,
+                 resume_path=tmp_path / "r1.jsonl", now=_T0)
+    assert len(search.calls) > 0  # populated cache (web + news)
+
+    # +3 days, fresh resume file (so resume can't skip) → cache fresh → 0 live calls.
+    search.calls.clear()
+    _enrich_once(cand, cfg=cfg, search=search, cache_dir=cache_dir,
+                 resume_path=tmp_path / "r2.jsonl", now=_T0 + timedelta(days=3))
+    assert search.calls == []
+
+    # +10 days → cache past TTL → live calls again.
+    search.calls.clear()
+    _enrich_once(cand, cfg=cfg, search=search, cache_dir=cache_dir,
+                 resume_path=tmp_path / "r3.jsonl", now=_T0 + timedelta(days=10))
+    assert len(search.calls) > 0
+
+
+def test_unchanged_input_skips_but_changed_snippet_reenriches(tmp_path):
+    """Same name + same inputs → resume skip; a changed snippet busts the
+    input_fp so the row re-enriches instead of being skipped forever (r2 #3)."""
+    cfg = _config()
+    search = _wire_fake_search()
+    cache_dir, resume_path = tmp_path / "c", tmp_path / "r.jsonl"
+
+    c1 = [ExhibitorCandidate(name="Mobius Labs", source_snippet="original snippet aaaaa")]
+    _enrich_once(c1, cfg=cfg, search=search, cache_dir=cache_dir, resume_path=resume_path)
+
+    # identical inputs → skipped via resume.
+    again = _enrich_once(c1, cfg=cfg, search=search, cache_dir=cache_dir, resume_path=resume_path)
+    assert again.skipped_from_resume == 1
+
+    # changed snippet → fp mismatch → re-enriched, not skipped.
+    c2 = [ExhibitorCandidate(name="Mobius Labs", source_snippet="DIFFERENT snippet bbbbb")]
+    changed = _enrich_once(c2, cfg=cfg, search=search, cache_dir=cache_dir, resume_path=resume_path)
+    assert changed.skipped_from_resume == 0
+
+
+def test_config_fingerprint_isolates_enrichment_fields():
+    """config_fp hashes ONLY enrichment-affecting fields — a scoring-weight change
+    must not invalidate Brave enrichment, but an enrichment field change must."""
+    from event_intel.events.enrichment import _config_fingerprint
+
+    base_fp = _config_fingerprint(_config()["enrichment"])
+    # Same enrichment fields → same fp (scoring config lives elsewhere entirely).
+    assert _config_fingerprint(_config()["enrichment"]) == base_fp
+    # An enrichment field change DOES bust it.
+    assert _config_fingerprint(_config(news_days_back=30)["enrichment"]) != base_fp
+
+
+def test_refresh_bypasses_resume_and_cache(tmp_path):
+    """--refresh re-fetches every company: no resume skip AND no cache read — a
+    real refresh, not just resume bypass (review r2 #3)."""
+    cand = [ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)]
+    cfg = _config()
+    search = _wire_fake_search()
+    cache_dir, resume_path = tmp_path / "c", tmp_path / "r.jsonl"
+
+    _enrich_once(cand, cfg=cfg, search=search, cache_dir=cache_dir, resume_path=resume_path)
+    first_calls = len(search.calls)
+    assert first_calls > 0
+
+    # refresh: same resume + cache, but both bypassed → live calls repeat.
+    search.calls.clear()
+    res = _enrich_once(cand, cfg=cfg, search=search, cache_dir=cache_dir,
+                       resume_path=resume_path, refresh=True)
+    assert res.skipped_from_resume == 0
+    assert len(search.calls) == first_calls  # cache not read → re-fetched
+
+
+def test_ttl_days_zero_never_reuses_cache(tmp_path):
+    """ttl_days=0 → always stale: cache is never reused even at the same instant."""
+    cand = [ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)]
+    cfg = _config(cache_ttl_days=0)
+    search = _wire_fake_search()
+    cache_dir = tmp_path / "c"
+
+    _enrich_once(cand, cfg=cfg, search=search, cache_dir=cache_dir,
+                 resume_path=tmp_path / "r1.jsonl", now=_T0)
+    search.calls.clear()
+    # fresh resume so resume can't skip; ttl=0 → cache stale → live calls again.
+    _enrich_once(cand, cfg=cfg, search=search, cache_dir=cache_dir,
+                 resume_path=tmp_path / "r2.jsonl", now=_T0)
+    assert len(search.calls) > 0
