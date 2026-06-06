@@ -180,6 +180,7 @@ def score_exhibitors(
     rationale_for_tiers: tuple[str, ...] = ("S", "A"),
     rationale_max_tokens: int = 256,
     reference_date: datetime | None = None,
+    target_mode: str = "customer",
 ) -> ScoringSummary:
     """Score every (enriched, fit_result) pair and decide tier.
 
@@ -213,6 +214,13 @@ def score_exhibitors(
             .get("retrieval", {})
             .get("negative_sim_threshold", 0.0)
         )
+        # target_mode penalty factors (Phase 18V item 2): scale competitor/bad_fit
+        # penalty weights down for partner/ecosystem modes. customer → 1.0/1.0.
+        tm_cfg = config.get("scoring", {}).get("target_mode", {}).get(target_mode, {})
+        comp_factor = float(tm_cfg.get("competitor_penalty_factor", 1.0))
+        bad_factor = float(tm_cfg.get("bad_fit_penalty_factor", 1.0))
+        weights["competitor_penalty"] = weights.get("competitor_penalty", 0.0) * comp_factor
+        weights["bad_fit_penalty"] = weights.get("bad_fit_penalty", 0.0) * bad_factor
     except (KeyError, TypeError) as exc:
         raise MCPError(
             error_code=ErrorCode.CONFIG_ERROR,

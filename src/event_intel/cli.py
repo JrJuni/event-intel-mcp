@@ -206,6 +206,7 @@ def build_event_cmd(
     no_enrich: bool = typer.Option(False, "--no-enrich", help="Skip Brave enrichment (snippet-only scoring)."),
     no_rationale: bool = typer.Option(False, "--no-rationale", help="Skip Sonnet rationale calls."),
     resume_from: str | None = typer.Option(None, "--resume-from", help="Path to a per-row JSONL resume artifact."),
+    target_mode: str | None = typer.Option(None, "--target-mode", help="customer | partner | ecosystem (default: config/card → customer)."),
 ) -> None:
     """Build a tiered exhibitor list for an event from a saved source file."""
     from event_intel.tools.build_event_tier_list import build_event_tier_list
@@ -233,6 +234,7 @@ def build_event_cmd(
         enrichment_enabled=not no_enrich,
         run_rationale=not no_rationale,
         resume_from=resume_from,
+        target_mode=target_mode,
     )
     _print_json(result)
     raise typer.Exit(code=0 if result.get("ok") else 1)

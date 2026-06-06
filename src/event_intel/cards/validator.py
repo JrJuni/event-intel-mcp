@@ -15,7 +15,7 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
-from event_intel.cards.schema import CapabilityCards
+from event_intel.cards.schema import SCHEMA_VERSION, CapabilityCards
 from event_intel.errors import ErrorCode, MCPError, Stage
 
 
@@ -58,7 +58,7 @@ def validate_dict(data: dict) -> CapabilityCards:
             ),
             hint={
                 "errors": errors,
-                "schema_version_expected": 1,
+                "schema_version_expected": SCHEMA_VERSION,
                 "fix": (
                     "Fix the listed paths in the yaml file. Use "
                     "`event-intel export-schema` to see the full schema."

@@ -34,13 +34,40 @@ def _minimal_cards_dict() -> dict:
 
 def test_minimal_cards_validates():
     cards = CapabilityCards.model_validate(_minimal_cards_dict())
-    assert cards.schema_version == 1
+    # v1 input is migrated to the current version.
+    assert cards.schema_version == SCHEMA_VERSION
     assert cards.product_name == "Mobius"
     assert len(cards.capabilities) == 1
     # Defaults are empty lists, not None
     assert cards.buying_triggers == []
     assert cards.bad_fit == []
     assert cards.competitors == []
+
+
+def test_v1_card_migrates_to_v2_with_default_target_mode():
+    """A v1 card (no target_mode) loads, defaults target_mode=customer, and is
+    normalized to schema_version 2 (review round-2 #4 migration contract)."""
+    data = _minimal_cards_dict()
+    assert "target_mode" not in data and data["schema_version"] == 1
+    cards = CapabilityCards.model_validate(data)
+    assert cards.schema_version == 2
+    assert cards.target_mode == "customer"
+
+
+def test_target_mode_accepts_partner_and_ecosystem():
+    data = _minimal_cards_dict()
+    data["schema_version"] = 2
+    data["target_mode"] = "partner"
+    assert CapabilityCards.model_validate(data).target_mode == "partner"
+    data["target_mode"] = "ecosystem"
+    assert CapabilityCards.model_validate(data).target_mode == "ecosystem"
+
+
+def test_invalid_target_mode_rejected():
+    data = _minimal_cards_dict()
+    data["target_mode"] = "frenemy"
+    with pytest.raises(ValidationError):
+        CapabilityCards.model_validate(data)
 
 
 def test_capability_requires_at_least_three_keywords():
@@ -57,10 +84,10 @@ def test_capability_requires_at_least_three_keywords():
     assert any("keywords" in str(e["loc"]) for e in exc.value.errors())
 
 
-def test_schema_version_must_be_one():
-    """Literal[1] — schema bumps need an intentional SCHEMA_VERSION change."""
+def test_unsupported_schema_version_rejected():
+    """Literal[1, 2] — an unknown future version must fail loud, not silently pass."""
     data = _minimal_cards_dict()
-    data["schema_version"] = 2
+    data["schema_version"] = 3
     with pytest.raises(ValidationError):
         CapabilityCards.model_validate(data)
 
@@ -92,6 +119,6 @@ def test_ideal_customer_geo_optional():
 
 
 def test_schema_version_constant_matches_model_default():
-    assert SCHEMA_VERSION == 1
+    assert SCHEMA_VERSION == 2
     cards = CapabilityCards.model_validate(_minimal_cards_dict())
     assert cards.schema_version == SCHEMA_VERSION

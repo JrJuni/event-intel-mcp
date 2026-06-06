@@ -123,8 +123,13 @@ def build_event_tier_list(
     enrichment_enabled: bool = True,
     resume_from: str | None = None,
     run_rationale: bool = True,
+    target_mode: str | None = None,
 ) -> dict:
-    """Build a tiered exhibitor list from an event source (S3+S4+S5)."""
+    """Build a tiered exhibitor list from an event source (S3+S4+S5).
+
+    `target_mode` (customer | partner | ecosystem) controls competitor handling;
+    None resolves via user config → card default → "customer" (Phase 18V item 2).
+    """
     from event_intel.tools.build_event_tier_list import build_event_tier_list as _impl
 
     return _impl(
@@ -138,6 +143,7 @@ def build_event_tier_list(
         enrichment_enabled=enrichment_enabled,
         resume_from=resume_from,
         run_rationale=run_rationale,
+        target_mode=target_mode,
     )
 
 

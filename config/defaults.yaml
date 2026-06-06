@@ -43,6 +43,16 @@ scoring:
     capability_top_k: 20
     negative_sim_threshold: 0.5
 
+  target_mode:
+    # Phase 18V item 2. Per-mode multipliers on the competitor/bad_fit penalty
+    # weights. The effective mode is resolved at build time
+    # (build_event arg > user config target_mode > card target_mode > customer).
+    # No bonus anywhere — factors only scale penalties down, for reproducible
+    # acceptance (review round-2 #6).
+    customer:   {competitor_penalty_factor: 1.0, bad_fit_penalty_factor: 1.0}
+    partner:    {competitor_penalty_factor: 0.0, bad_fit_penalty_factor: 1.0}
+    ecosystem:  {competitor_penalty_factor: 0.0, bad_fit_penalty_factor: 0.0}
+
   buying_signal:
     # News-driven buying signal (Phase 18V 4a). Half-life of the recency bonus:
     # an article published `recency_half_life_days` ago contributes half the
