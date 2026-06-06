@@ -144,6 +144,11 @@ def mentions_name(text: str | None, tokens: list[str]) -> bool:
     company", so a match requires at least one DISTINCTIVE token. If the name is
     entirely generic (e.g. "Data Cloud"), require ALL its tokens present
     (phrase-like) rather than any one (review round-2 #1).
+
+    KNOWN LIMITATION (review round-3 #3, backlog #13): a company whose ONLY token
+    is a single generic word ("Data", "Cloud") — or whose distinctive tokens are
+    all <3 chars and dropped by name_tokens (e.g. "Data AI" → ["data"]) — still
+    matches loosely. Single generic-word names are inherently ambiguous; deferred.
     """
     if not tokens or not text:
         return False
