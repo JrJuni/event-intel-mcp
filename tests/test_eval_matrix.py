@@ -27,7 +27,11 @@ BASELINE_CELL = "db_x_ai_gtc"
 BASELINE_AUC = 1.0
 BASELINE_LEAKAGE = 0.0
 BASELINE_PRECISION_AT_10 = 0.8
-BASELINE_TIER_COUNTS = {"S": 0, "A": 8, "B": 5, "C": 3}
+# A8/B2/C6: 8 targets (A); 2 competitors below the sim threshold stay B; 3
+# competitors above it + 3 bad_fit are penalized to C. This distribution is only
+# reproducible because the harness now feeds competitor_similarity + target_mode
+# + reference_date into the real scorer (review #2).
+BASELINE_TIER_COUNTS = {"S": 0, "A": 8, "B": 2, "C": 6}
 
 
 def _config():
@@ -74,6 +78,51 @@ def test_baseline_db_x_ai_snapshot():
     assert cm.competitor_leakage_rate == BASELINE_LEAKAGE
     assert cm.precision_at_10 == BASELINE_PRECISION_AT_10
     assert cm.tier_counts == BASELINE_TIER_COUNTS
+
+
+# ---------- the matrix genuinely exercises 4b penalty + target_mode (review #2) ----------
+
+
+def _score_cell_rows(cell, *, config, target_mode=None):
+    """Score a cell through the real scorer and return {name: ScoredExhibitor}.
+    Mirrors harness.run_scoring_cell but exposes per-row results for assertions."""
+    from event_intel.eval.harness import _build_scoring_inputs, _parse_reference_date
+    from event_intel.scoring.compute import score_exhibitors
+
+    enriched, fits = _build_scoring_inputs(cell)
+    summary = score_exhibitors(
+        enriched=enriched, fit_results=fits, cards=None, config=config,
+        top_k=int(config.get("scoring", {}).get("retrieval", {}).get("top_k", 5)),
+        target_mode=target_mode or cell.get("target_mode", "customer"),
+        reference_date=_parse_reference_date(cell),
+    )
+    return {s.name: s for s in summary.rows}
+
+
+def test_similarity_gated_penalty_is_live_in_matrix():
+    """A high-similarity competitor (Snowflake, 0.70) must be penalized BELOW a
+    below-threshold one (Vespa, 0.45) — proving the 4b penalty actually flows
+    through the harness, not just the unit test."""
+    cell = load_cell(_FIXTURES / f"{BASELINE_CELL}.yaml")
+    rows = _score_cell_rows(cell, config=_config())
+    assert rows["Snowflake"].final_score < rows["Vespa.ai"].final_score
+    assert rows["Snowflake"].tier == "C"      # penalty fired
+    assert rows["Vespa.ai"].tier == "B"       # gated out (sim < threshold)
+    # And no competitor of any similarity leaked into S/A.
+    for name in ("Vespa.ai", "Activeloop", "PlanetScale", "Snowflake", "ClickHouse"):
+        assert rows[name].tier not in ("S", "A")
+
+
+def test_partner_mode_neutralizes_penalty_through_harness():
+    """Re-scoring the SAME cell under target_mode=partner zeroes the competitor
+    penalty — a previously-C competitor recovers. Proves target_mode reaches the
+    scorer via the harness (review #2)."""
+    cell = load_cell(_FIXTURES / f"{BASELINE_CELL}.yaml")
+    customer = _score_cell_rows(cell, config=_config(), target_mode="customer")
+    partner = _score_cell_rows(cell, config=_config(), target_mode="partner")
+    assert partner["Snowflake"].final_score > customer["Snowflake"].final_score
+    order = ["C", "B", "A", "S"]
+    assert order.index(partner["Snowflake"].tier) > order.index(customer["Snowflake"].tier)
 
 
 # ---------- metric unit coverage ----------
@@ -179,3 +228,52 @@ def test_pipeline_contract_enrichment_produces_evidence(tmp_path):
     assert row.official_url == "https://acmedata.example"
     assert len(row.news_signals) == 1
     assert row.news_signals[0].url.startswith("https://techpress.example")
+
+
+class _FakeEmbed:
+    def embed(self, texts):
+        return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
+
+
+class _FakeVS:
+    """Honors the `where={"kind": ...}` filter so the two-pool split is actually
+    exercised end-to-end (review #2: 1B must run the retriever, not just enrich)."""
+
+    def __init__(self):
+        self.calls = []
+        self._cap = [{"id": "cap:0", "distance": 0.3,
+                      "metadata": {"kind": "capability", "capability_name": "Vector search"}}]
+        self._neg = [{"id": "competitor:0", "distance": 0.2,
+                      "metadata": {"kind": "competitor", "competitor_name": "RivalDB"}}]
+
+    def query(self, *, collection, query_embeddings, top_k, where=None):
+        self.calls.append({"top_k": top_k, "where": where})
+        kind = (where or {}).get("kind")
+        hits = self._cap if kind == "capability" else self._neg
+        return [list(hits) for _ in query_embeddings]
+
+
+def test_pipeline_contract_retriever_pool_split_and_similarity():
+    """1B: run the REAL retriever against a where-aware fake vectorstore — the
+    capability pool feeds capability_fit, the negative pool feeds the gated
+    competitor_similarity. Catches pool-split regressions the scoring matrix can't."""
+    from event_intel.events.enrichment import EnrichedExhibitor
+    from event_intel.rag.retriever import retrieve_fit_event_to_product
+
+    rows = [EnrichedExhibitor(name="Acme Data", source_snippet="vector search platform")]
+    vs = _FakeVS()
+    fits = retrieve_fit_event_to_product(
+        exhibitors=rows, workspace_id="evalc",
+        embedding_provider=_FakeEmbed(), vectorstore_provider=vs,
+        top_k=5, capability_top_k=20,
+    )
+    fit = fits[0]
+    # capability_fit comes from the capability pool (dist 0.3 → sim 0.85).
+    assert fit.capability_fit == pytest.approx(0.85, abs=1e-6)
+    # competitor_similarity comes from the negative pool (dist 0.2 → sim 0.9).
+    assert fit.competitor_similarity == pytest.approx(0.9, abs=1e-6)
+    # Two pools queried with distinct kind filters and top_k.
+    wheres = [c["where"] for c in vs.calls]
+    assert {"kind": "capability"} in wheres
+    assert {"kind": {"$in": ["competitor", "bad_fit"]}} in wheres
+    assert any(c["top_k"] == 20 for c in vs.calls)  # capability pool larger

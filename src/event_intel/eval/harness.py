@@ -123,6 +123,11 @@ def _build_scoring_inputs(cell: dict):
                 capability_fit_breakdown=dict(r.get("breakdown", {})),
                 competitor_hits=int(r.get("competitor_hits", 0)),
                 bad_fit_hits=int(r.get("bad_fit_hits", 0)),
+                # 4b penalty is similarity-gated — the fixture MUST supply the
+                # similarities (not just hit counts) or the competitor/bad_fit
+                # penalty never fires and the matrix wouldn't test it (review #2).
+                competitor_similarity=float(r.get("competitor_similarity", 0.0)),
+                bad_fit_similarity=float(r.get("bad_fit_similarity", 0.0)),
             )
         )
     return enriched, fits
@@ -146,12 +151,17 @@ def run_scoring_cell(cell: dict, *, config: dict) -> CellMetrics:
     labels = {r["name"]: r.get("label", "neutral") for r in cell["rows"]}
     target_mode = cell.get("target_mode", "customer")
 
+    # The whole point of the matrix is to exercise the REAL scorer paths: the
+    # resolved target_mode (penalty factors) and a FIXED reference_date (recency)
+    # must reach score_exhibitors, else the metrics don't test 18V (review #2).
     summary = score_exhibitors(
         enriched=enriched,
         fit_results=fits,
         cards=None,
         config=config,
         top_k=int(config.get("scoring", {}).get("retrieval", {}).get("top_k", 5)),
+        target_mode=target_mode,
+        reference_date=_parse_reference_date(cell),
     )
 
     scored = [(s.name, s.final_score) for s in summary.rows]

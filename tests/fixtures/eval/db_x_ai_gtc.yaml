@@ -18,11 +18,14 @@ rows:
   - {name: Baseten, label: target, expected_evidence_types: [official_url, news], official_url: "https://www.baseten.co", news: 3, capability_fit: 0.89}
   - {name: Docker, label: target, expected_evidence_types: [official_url, news], official_url: "https://www.docker.com", news: 3, capability_fit: 0.88}
   - {name: Simplismart, label: target, expected_evidence_types: [official_url, news], official_url: "https://www.simplismart.ai", news: 3, capability_fit: 0.88}
-  - {name: Vespa.ai, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://vespa.ai", news: 2, capability_fit: 0.74, competitor_hits: 1}
-  - {name: Activeloop, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://www.activeloop.ai", news: 2, capability_fit: 0.70, competitor_hits: 1}
-  - {name: PlanetScale, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://planetscale.com", news: 2, capability_fit: 0.69, competitor_hits: 1}
-  - {name: Snowflake, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://www.snowflake.com", news: 2, capability_fit: 0.72, competitor_hits: 1}
-  - {name: ClickHouse, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://clickhouse.com", news: 2, capability_fit: 0.70, competitor_hits: 1}
-  - {name: MaxLinear, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://www.maxlinear.com", news: 0, capability_fit: 0.0, bad_fit_hits: 2}
-  - {name: Cloudflare, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://www.cloudflare.com", news: 1, capability_fit: 0.12, bad_fit_hits: 1}
-  - {name: Tailscale, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://tailscale.com", news: 1, capability_fit: 0.18, bad_fit_hits: 1}
+  # competitor_similarity drives the (4b) sim-gated penalty. Two below the 0.5
+  # threshold (no penalty → stay B) + three above (penalty fires → C): the cell
+  # tests BOTH that the gate holds and that it fires.
+  - {name: Vespa.ai, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://vespa.ai", news: 2, capability_fit: 0.74, competitor_hits: 1, competitor_similarity: 0.45}
+  - {name: Activeloop, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://www.activeloop.ai", news: 2, capability_fit: 0.70, competitor_hits: 1, competitor_similarity: 0.45}
+  - {name: PlanetScale, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://planetscale.com", news: 2, capability_fit: 0.69, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: Snowflake, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://www.snowflake.com", news: 2, capability_fit: 0.72, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: ClickHouse, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://clickhouse.com", news: 2, capability_fit: 0.70, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: MaxLinear, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://www.maxlinear.com", news: 0, capability_fit: 0.0, bad_fit_hits: 2, bad_fit_similarity: 0.70}
+  - {name: Cloudflare, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://www.cloudflare.com", news: 1, capability_fit: 0.12, bad_fit_hits: 1, bad_fit_similarity: 0.70}
+  - {name: Tailscale, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://tailscale.com", news: 1, capability_fit: 0.18, bad_fit_hits: 1, bad_fit_similarity: 0.70}
