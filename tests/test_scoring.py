@@ -22,7 +22,11 @@ from event_intel.scoring.dimensions import (
     score_category_fit,
     score_website_verification,
 )
-from event_intel.scoring.rules import compute_evidence_floor, decide_tier
+from event_intel.scoring.rules import (
+    compute_evidence_floor,
+    decide_tier,
+    floor_from_components,
+)
 
 
 def _config():
@@ -78,11 +82,44 @@ def _fit(name, **kw):
 # ---------- dimensions ----------
 
 
-def test_evidence_floor_matrix():
-    assert compute_evidence_floor(has_official_url=False, has_news_signals=False) == 0
-    assert compute_evidence_floor(has_official_url=True, has_news_signals=False) == 1
-    assert compute_evidence_floor(has_official_url=False, has_news_signals=True) == 1
-    assert compute_evidence_floor(has_official_url=True, has_news_signals=True) == 2
+def test_floor_from_components_matrix():
+    assert floor_from_components(False, False) == 0
+    assert floor_from_components(True, False) == 1
+    assert floor_from_components(False, True) == 1
+    assert floor_from_components(True, True) == 2
+
+
+def test_compute_evidence_floor_legacy_fallback():
+    """Rows with no typed evidence fall back to official_url(identity)+news(activity)
+    — the pre-18V `url + news → 2` behavior, preserved as a strict subset."""
+    assert compute_evidence_floor(_row("X")) == 0
+    assert compute_evidence_floor(_row("X", official_url="https://x")) == 1
+    assert compute_evidence_floor(
+        _row("X", news_signals=[NewsSignal("Acme news", "u", "s")])
+    ) == 1
+    assert compute_evidence_floor(
+        _row("X", official_url="https://x", news_signals=[NewsSignal("Acme news", "u", "s")])
+    ) == 2
+
+
+def test_compute_evidence_floor_identity_alone_capped_at_one():
+    """Typed evidence: official_url + same-site product_page is all IDENTITY →
+    floor 1 (cannot reach 2). official_url + press_release → floor 2."""
+    from event_intel.events.evidence import EvidenceItem
+
+    identity_only = _row("Acme", official_url="https://acme.example")
+    identity_only.evidence = [
+        EvidenceItem("official_url", "https://acme.example", "acme.example"),
+        EvidenceItem("product_page", "https://acme.example/product", "acme.example"),
+    ]
+    assert compute_evidence_floor(identity_only) == 1
+
+    with_activity = _row("Acme", official_url="https://acme.example")
+    with_activity.evidence = [
+        EvidenceItem("official_url", "https://acme.example", "acme.example"),
+        EvidenceItem("press_release", "https://acme.example/press/launch", "acme.example"),
+    ]
+    assert compute_evidence_floor(with_activity) == 2
 
 
 def test_website_verification_is_binary():

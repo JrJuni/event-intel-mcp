@@ -149,10 +149,7 @@ def _compute_one(
     )
     final_score = max(0.0, min(10.0, raw * 10.0))
 
-    floor = compute_evidence_floor(
-        has_official_url=bool(row.official_url),
-        has_news_signals=bool(row.news_signals),
-    )
+    floor = compute_evidence_floor(row)
 
     decision: TierDecision = decide_tier(
         final_score=final_score, evidence_floor=floor, tier_rules=tier_rules

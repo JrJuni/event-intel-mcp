@@ -3,7 +3,7 @@
 Schema (informal — pydantic SSOT lives in capability_cards, not here, since
 tier_list is a *report* not a long-lived artifact):
 
-    schema_version: 1
+    schema_version: 2          # v2 adds the per-exhibitor `evidence` list (18V)
     workspace_id: str
     event_name: str
     event_slug: str
@@ -16,6 +16,7 @@ tier_list is a *report* not a long-lived artifact):
         evidence_floor: int
         official_url: str | null
         news_count: int
+        evidence: [{type, url, source_domain, published_at}]   # v2 (18V item 1)
         source_snippet: str
         rationale: str | null
         angle: str | null
@@ -43,7 +44,7 @@ if TYPE_CHECKING:
     from event_intel.scoring.compute import ScoringSummary
 
 
-REPORT_SCHEMA_VERSION = 1
+REPORT_SCHEMA_VERSION = 2   # v2: typed `evidence` list added per exhibitor (18V item 1)
 
 
 def _exhibitor_to_dict(scored) -> dict:
@@ -56,6 +57,11 @@ def _exhibitor_to_dict(scored) -> dict:
         "evidence_floor": int(scored.evidence_floor),
         "official_url": row.official_url,
         "news_count": len(row.news_signals),
+        "evidence": [
+            {"type": e.type, "url": e.url, "source_domain": e.source_domain,
+             "published_at": e.published_at}
+            for e in getattr(row, "evidence", []) or []
+        ],
         "source_snippet": row.source_snippet,
         "rationale": scored.rationale,
         "angle": scored.angle,

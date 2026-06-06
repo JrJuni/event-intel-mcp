@@ -18,6 +18,11 @@ enrichment:
   fetch_body_max_chars: 2000
   cache_enabled: true              # Cache Brave responses per (query, kind) hash
   official_url_levenshtein_threshold: 0.7
+  evidence_queries:                # Phase 18V item 1 — extra typed-evidence queries
+    product: true                  # "{name}" product → product_page evidence
+    partners: true                 # "{name}" partners → partner_page evidence
+    press_release: true            # "{name}" press release → press_release evidence
+    max_extra_calls_per_event: 30  # Budget: cap real (cache-miss) extra API calls/event (round-1 #7)
 
 scoring:
   weights:
