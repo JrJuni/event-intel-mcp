@@ -68,19 +68,32 @@ def domain_of(url: str | None) -> str | None:
     return host or None
 
 
-# Common two-level public suffixes — so api.acme.co.uk → acme.co.uk, not co.uk.
+# Two-level suffixes where the registrable unit is the THIRD label from the end.
+# Two flavors, treated identically by the algorithm:
+#  - ccTLD second levels (co.uk → acme.co.uk)
+#  - MULTI-TENANT hosting suffixes where each subdomain is a SEPARATE company
+#    (github.io → a.github.io ≠ b.github.io). Without these, two startups on
+#    github.io/vercel.app collapse to one site and the identity gate reopens
+#    (review round-2 #7).
 # Heuristic (no PSL dependency, to stay cold-start safe); extend as needed.
 _TWO_LEVEL_SUFFIXES = {
+    # ccTLD second levels
     "co.uk", "org.uk", "ac.uk", "gov.uk", "co.kr", "or.kr", "co.jp", "or.jp",
     "com.au", "net.au", "co.nz", "com.br", "co.in", "com.cn", "com.sg",
     "co.za", "com.mx", "com.tr", "com.hk", "com.tw",
+    # multi-tenant hosting / site builders (each subdomain = distinct tenant)
+    "github.io", "gitlab.io", "github.dev", "vercel.app", "netlify.app",
+    "pages.dev", "workers.dev", "web.app", "firebaseapp.com", "herokuapp.com",
+    "fly.dev", "onrender.com", "surge.sh", "glitch.me", "repl.co", "replit.app",
+    "wixsite.com", "webflow.io", "blogspot.com", "wordpress.com",
 }
 
 
 def registrable_domain(host: str | None) -> str | None:
     """eTLD+1 heuristic so subdomains collapse to the same site
-    (api.acme.com / www.acme.com / acme.com → acme.com). Review #1: subdomains
-    were wrongly treated as independent domains."""
+    (api.acme.com / www.acme.com / acme.com → acme.com), EXCEPT under known
+    two-level suffixes where the third label is the registrable unit
+    (acme.co.uk; a.github.io stays distinct from b.github.io). Reviews #1 + #7."""
     if not host:
         return None
     host = host.lower()

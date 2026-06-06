@@ -91,6 +91,16 @@ def test_registrable_domain_and_same_site_subdomains():
     assert same_site("acme.com", "bigcorp.com") is False
 
 
+def test_multitenant_hosts_are_distinct_companies():
+    """Review round-2 #7: two startups on github.io/vercel.app must NOT be judged
+    the same site — each subdomain is its own registrable unit."""
+    assert registrable_domain("acme.github.io") == "acme.github.io"
+    assert registrable_domain("widgets.vercel.app") == "widgets.vercel.app"
+    assert same_site("acme.github.io", "widgets.github.io") is False
+    assert same_site("a.vercel.app", "b.vercel.app") is False
+    assert same_site("acme.github.io", "acme.github.io") is True
+
+
 def test_third_party_identity_page_does_not_satisfy_floor():
     """A /products or /docs page on a THIRD-PARTY domain must not count as the
     company's identity (review #1 — path-only third-party match → floor 2)."""
