@@ -9,6 +9,8 @@ from event_intel.events.evidence import (
     domain_of,
     floor_components,
     merge_evidence,
+    registrable_domain,
+    same_site,
 )
 
 
@@ -77,3 +79,36 @@ def test_floor_components_identity_vs_activity():
 def test_domain_of_strips_www():
     assert domain_of("https://www.acme.com/x") == "acme.com"
     assert domain_of(None) is None
+
+
+def test_registrable_domain_and_same_site_subdomains():
+    assert registrable_domain("api.acme.com") == "acme.com"
+    assert registrable_domain("www.acme.com") == "acme.com"
+    assert registrable_domain("docs.acme.co.uk") == "acme.co.uk"
+    # subdomains of the same site match; different sites don't (review #1)
+    assert same_site("api.acme.com", "acme.com") is True
+    assert same_site("docs.acme.com", "www.acme.com") is True
+    assert same_site("acme.com", "bigcorp.com") is False
+
+
+def test_third_party_identity_page_does_not_satisfy_floor():
+    """A /products or /docs page on a THIRD-PARTY domain must not count as the
+    company's identity (review #1 — path-only third-party match → floor 2)."""
+    class _Row:
+        def __init__(self, official_url, evidence):
+            self.official_url = official_url
+            self.news_signals = []
+            self.evidence = evidence
+
+    # No official site found; only a foreign product page → NOT identity.
+    foreign = _Row(None, [
+        EvidenceItem("product_page", "https://bigcorp.com/products/x", "bigcorp.com"),
+    ])
+    assert floor_components(foreign) == (False, False)
+
+    # Same product page but on the company's OWN subdomain → identity.
+    own = _Row("https://acme.com", [
+        EvidenceItem("official_url", "https://acme.com", "acme.com"),
+        EvidenceItem("product_page", "https://docs.acme.com/products/x", "docs.acme.com"),
+    ])
+    assert floor_components(own)[0] is True

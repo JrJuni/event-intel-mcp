@@ -68,6 +68,61 @@ def domain_of(url: str | None) -> str | None:
     return host or None
 
 
+# Common two-level public suffixes — so api.acme.co.uk → acme.co.uk, not co.uk.
+# Heuristic (no PSL dependency, to stay cold-start safe); extend as needed.
+_TWO_LEVEL_SUFFIXES = {
+    "co.uk", "org.uk", "ac.uk", "gov.uk", "co.kr", "or.kr", "co.jp", "or.jp",
+    "com.au", "net.au", "co.nz", "com.br", "co.in", "com.cn", "com.sg",
+    "co.za", "com.mx", "com.tr", "com.hk", "com.tw",
+}
+
+
+def registrable_domain(host: str | None) -> str | None:
+    """eTLD+1 heuristic so subdomains collapse to the same site
+    (api.acme.com / www.acme.com / acme.com → acme.com). Review #1: subdomains
+    were wrongly treated as independent domains."""
+    if not host:
+        return None
+    host = host.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    parts = host.split(".")
+    if len(parts) <= 2:
+        return host
+    last2 = ".".join(parts[-2:])
+    if last2 in _TWO_LEVEL_SUFFIXES and len(parts) >= 3:
+        return ".".join(parts[-3:])
+    return last2
+
+
+def same_site(a: str | None, b: str | None) -> bool:
+    """True iff two hosts share a registrable domain (subdomain-tolerant)."""
+    ra, rb = registrable_domain(a), registrable_domain(b)
+    return ra is not None and ra == rb
+
+
+_NAME_TOKEN_RE = re.compile(r"[^a-z0-9가-힣]+")
+
+
+def name_tokens(name: str | None) -> list[str]:
+    """Significant lowercased tokens of a company name for relevance checks
+    (len>=3, else the whole name)."""
+    toks = [t for t in _NAME_TOKEN_RE.split((name or "").lower()) if len(t) >= 3]
+    if toks:
+        return toks
+    whole = (name or "").lower().strip()
+    return [whole] if whole else []
+
+
+def mentions_name(text: str | None, tokens: list[str]) -> bool:
+    """Whole-token match (NOT substring) so a generic name token like 'data'
+    doesn't match 'databases' and let an unrelated page through."""
+    if not tokens or not text:
+        return False
+    hay = {t for t in _NAME_TOKEN_RE.split(text.lower()) if t}
+    return any(t in hay for t in tokens)
+
+
 def canonical_url(url: str) -> str:
     """Scheme+host+path normalized; drop query/fragment and trailing slash so the
     same page found by different queries dedupes to one key."""
@@ -120,11 +175,11 @@ def merge_evidence(raw: list[EvidenceItem]) -> list[EvidenceItem]:
 
 
 def _is_identity(item: EvidenceItem, *, official_domain: str | None) -> bool:
-    if item.type in (OFFICIAL_URL, PRODUCT_PAGE, DOCS):
-        return True
-    if item.type == PARTNER_PAGE:
-        # Own-domain partner page is just existence proof; independent isn't.
-        return official_domain is not None and item.source_domain == official_domain
+    # Identity is existence proof on the company's OWN site — a /products or
+    # /docs page on a THIRD-PARTY domain is not the company's identity (review
+    # #1: third-party path-only matches must not satisfy the floor).
+    if item.type in (OFFICIAL_URL, PRODUCT_PAGE, DOCS, PARTNER_PAGE):
+        return official_domain is not None and same_site(item.source_domain, official_domain)
     return False
 
 
@@ -132,7 +187,8 @@ def _is_activity(item: EvidenceItem, *, official_domain: str | None) -> bool:
     if item.type in (NEWS, PRESS_RELEASE):
         return True
     if item.type == PARTNER_PAGE:
-        return official_domain is None or item.source_domain != official_domain
+        # Independent (third-party-domain) partner page is an activity signal.
+        return not same_site(item.source_domain, official_domain)
     return False
 
 

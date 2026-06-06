@@ -478,7 +478,23 @@ def enrich_exhibitors(
             classify_url_type,
             domain_of,
             merge_evidence,
+            mentions_name,
+            name_tokens,
+            same_site,
         )
+
+        official_domain = domain_of(row.official_url)
+        cand_name_tokens = name_tokens(cand.name)
+
+        def _evidence_relevant(url: str, title: str) -> bool:
+            # Extra-query results come from arbitrary domains; accept only if the
+            # page is plausibly ABOUT this company — same site as the official URL
+            # OR a company-name token appears in the host/path/title. Stops a
+            # third-party "/products" page from becoming identity (review #1).
+            dom = domain_of(url)
+            if official_domain and same_site(dom, official_domain):
+                return True
+            return mentions_name(f"{dom or ''} {url} {title or ''}", cand_name_tokens)
 
         raw_ev: list[EvidenceItem] = []
         if row.official_url:
@@ -516,6 +532,8 @@ def enrich_exhibitors(
                 extra_api_calls += 1     # only real API calls count toward budget
             for hit in ev_hits["results"]:
                 if not _is_article_like(hit.url):
+                    continue
+                if not _evidence_relevant(hit.url, hit.title):
                     continue
                 raw_ev.append(
                     EvidenceItem(
