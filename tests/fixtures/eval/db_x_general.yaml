@@ -1,0 +1,17 @@
+# DB (NoSQL data platform) × general B2B trade show. Targets = data-heavy
+# software/analytics firms; competitors = other databases; bad_fit = non-software
+# services (catering, print).
+cell: db_x_general
+product: db
+event: general
+target_mode: customer
+reference_date: "2026-06-01T00:00:00+00:00"
+rows:
+  - {name: Segment Analytics, label: target, expected_evidence_types: [official_url, news], official_url: "https://segmentanalytics.example", news: 3, capability_fit: 0.92}
+  - {name: Retool, label: target, expected_evidence_types: [official_url, news], official_url: "https://retool.example", news: 3, capability_fit: 0.90}
+  - {name: Hightouch, label: target, expected_evidence_types: [official_url, news], official_url: "https://hightouch.example", news: 3, capability_fit: 0.89}
+  - {name: Census Data Sync, label: target, expected_evidence_types: [official_url, news], official_url: "https://censussync.example", news: 3, capability_fit: 0.88}
+  - {name: Couchbase, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://www.couchbase.com", news: 2, capability_fit: 0.73, competitor_hits: 1, competitor_similarity: 0.45}
+  - {name: Redis Labs, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://redis.example", news: 2, capability_fit: 0.71, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: GourmetEvents Catering, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://gourmetevents.example", news: 0, capability_fit: 0.0, bad_fit_hits: 2, bad_fit_similarity: 0.70}
+  - {name: PrintWorks Signage, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://printworks.example", news: 1, capability_fit: 0.10, bad_fit_hits: 1, bad_fit_similarity: 0.70}

@@ -32,7 +32,7 @@
 18V/18V.1 이후 남은 일반화·측정 항목 (현재 blocking 아님):
 
 - **형태소 분석 라이브러리 (P2)** — 규칙기반 CJK bigram이 JP/CN 셀에서 미흡할 때만 janome/jieba 도입. cold-start lazy-import + 패키징 부담 평가 동반.
-- **9-셀 full eval matrix (P2)** — 현재 3~4 셀(DB×AI baseline + hardware×mfg). 제품(DB/부품/B2B) × 행사(AI/제조/일반) 전 셀 fixture 확장.
+- ~~**9-셀 full eval matrix (P2)**~~ ✅ 완료 (2026-06-07, Phase 18W) — 제품(DB/부품/B2B) × 행사(AI/제조/일반) 9셀 fixture 전부 작성(`tests/fixtures/eval/*.yaml`). 9셀 모두 AUC 1.0 / competitor leakage 0 / evidence-FP 0 통과. harness가 `*.yaml` glob → 자동 게이트.
 - **ecosystem 셀 leakage 재정의 (P2)** — partner/ecosystem 모드에서 competitor leakage 지표 의미 반전 → mode별 positive label·기대치 fixture 정비.
 - **캐시 TTL / resume 신선도 (P2, blind review r2 #2)** — 검색 캐시 키에 만료(주차 버킷 등) 없음 → "최근 180일" 결과가 수개월 뒤 재사용. resume도 event_slug+회사명 기준이라 같은 이벤트 재실행 시 변경된 뉴스/snippet/confidence 무기한 skip. → 캐시 만료 정책 + resume `--refresh`/변경감지.
 - **evidence 예산 round-robin (P2, blind review r2 #6)** — 현재 per-company 예산(default event cap 0)이라 starvation 없음. 단 event cap을 다시 켜면 순차 루프상 뒤 후보가 굶음 → 전역 round-robin 분배로 재설계해야 cap+공정성 양립.

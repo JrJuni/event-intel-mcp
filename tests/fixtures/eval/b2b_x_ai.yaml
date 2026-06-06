@@ -1,0 +1,17 @@
+# B2B service (usage-based billing & metering API for SaaS) × AI expo. Targets =
+# AI SaaS that meter token/inference usage and need to bill it; competitors =
+# other billing/metering platforms; bad_fit = hardware/infra with no SaaS billing.
+cell: b2b_x_ai
+product: b2b-service
+event: ai
+target_mode: customer
+reference_date: "2026-06-01T00:00:00+00:00"
+rows:
+  - {name: PromptForge, label: target, expected_evidence_types: [official_url, news], official_url: "https://promptforge.example", news: 3, capability_fit: 0.93}
+  - {name: InferStack, label: target, expected_evidence_types: [official_url, news], official_url: "https://inferstack.example", news: 3, capability_fit: 0.91}
+  - {name: AgentDesk AI, label: target, expected_evidence_types: [official_url, news], official_url: "https://agentdesk.example", news: 3, capability_fit: 0.90}
+  - {name: VectorPilot, label: target, expected_evidence_types: [official_url, news], official_url: "https://vectorpilot.example", news: 3, capability_fit: 0.88}
+  - {name: Metronome Billing, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://metronome.example", news: 2, capability_fit: 0.73, competitor_hits: 1, competitor_similarity: 0.45}
+  - {name: Orb Metering, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://orb.example", news: 2, capability_fit: 0.71, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: RackPower Datacenters, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://rackpower.example", news: 0, capability_fit: 0.0, bad_fit_hits: 2, bad_fit_similarity: 0.70}
+  - {name: FiberRun Networks, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://fiberrun.example", news: 1, capability_fit: 0.11, bad_fit_hits: 1, bad_fit_similarity: 0.70}

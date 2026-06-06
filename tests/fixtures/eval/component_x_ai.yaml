@@ -1,0 +1,17 @@
+# Hardware component (edge-AI inference SoC) × AI expo. Targets = AI/edge product
+# builders who'd embed the chip; competitors = rival silicon/accelerator vendors;
+# bad_fit = pure cloud SaaS with no edge/device footprint.
+cell: component_x_ai
+product: hardware-component
+event: ai
+target_mode: customer
+reference_date: "2026-06-01T00:00:00+00:00"
+rows:
+  - {name: EdgeReason Robotics, label: target, expected_evidence_types: [official_url, news], official_url: "https://edgereason.example", news: 3, capability_fit: 0.93}
+  - {name: VisionEdge Cameras, label: target, expected_evidence_types: [official_url, news], official_url: "https://visionedge.example", news: 3, capability_fit: 0.91}
+  - {name: Skylark Drones, label: target, expected_evidence_types: [official_url, news], official_url: "https://skylarkdrones.example", news: 3, capability_fit: 0.89}
+  - {name: NeuralWear Devices, label: target, expected_evidence_types: [official_url, news], official_url: "https://neuralwear.example", news: 3, capability_fit: 0.88}
+  - {name: Hailo, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://hailo.example", news: 2, capability_fit: 0.74, competitor_hits: 1, competitor_similarity: 0.45}
+  - {name: SiMa.ai, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://sima.example", news: 2, capability_fit: 0.72, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: PureCloud CRM, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://purecloudcrm.example", news: 0, capability_fit: 0.0, bad_fit_hits: 2, bad_fit_similarity: 0.70}
+  - {name: LedgerBooks SaaS, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://ledgerbooks.example", news: 1, capability_fit: 0.12, bad_fit_hits: 1, bad_fit_similarity: 0.70}
