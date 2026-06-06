@@ -53,9 +53,12 @@ scoring:
     # (build_event arg > user config target_mode > card target_mode > customer).
     # No bonus anywhere — factors only scale penalties down, for reproducible
     # acceptance (review round-2 #6).
+    # Mode policy (Phase 18W P2-3): competitor is negative only in customer;
+    # bad_fit is negative in EVERY mode (a card-declared unfit company shouldn't
+    # rank regardless of mode), so ecosystem keeps bad_fit_penalty_factor 1.0.
     customer:   {competitor_penalty_factor: 1.0, bad_fit_penalty_factor: 1.0}
     partner:    {competitor_penalty_factor: 0.0, bad_fit_penalty_factor: 1.0}
-    ecosystem:  {competitor_penalty_factor: 0.0, bad_fit_penalty_factor: 0.0}
+    ecosystem:  {competitor_penalty_factor: 0.0, bad_fit_penalty_factor: 1.0}
 
   buying_signal:
     # News-driven buying signal (Phase 18V 4a). Half-life of the recency bonus:

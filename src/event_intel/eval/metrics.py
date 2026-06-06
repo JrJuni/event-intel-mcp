@@ -67,14 +67,33 @@ def competitor_leakage_rate(
 ) -> float | None:
     """Fraction of competitor-labeled companies that leaked into S/A.
 
-    Customer-mode guard (target_mode partner/ecosystem redefine the expectation
-    — the harness selects whether to assert this). Returns None if no competitors.
+    Competitor is a NEGATIVE class only in customer mode (partner = neutral,
+    ecosystem = positive — see the harness mode-policy table), so the harness
+    asserts this only for customer. Returns None if no competitors.
     """
     comps = [n for n, lab in labels.items() if lab == "competitor"]
     if not comps:
         return None
     leaked = sum(1 for n in comps if tiers.get(n) in _S_A)
     return leaked / len(comps)
+
+
+def bad_fit_leakage_rate(
+    tiers: dict[str, str], labels: dict[str, str]
+) -> float | None:
+    """Fraction of bad_fit-labeled companies that leaked into S/A.
+
+    bad_fit is a NEGATIVE class in EVERY mode (a company the product card declares
+    unfit shouldn't reach S/A regardless of target_mode), so this is kept separate
+    from competitor leakage — merging the two into one denominator would let a
+    glut of bad_fit dilute a real competitor leak (review r2 #5). Returns None if
+    there are no bad_fit rows.
+    """
+    bad = [n for n, lab in labels.items() if lab == "bad_fit"]
+    if not bad:
+        return None
+    leaked = sum(1 for n in bad if tiers.get(n) in _S_A)
+    return leaked / len(bad)
 
 
 def evidence_false_positive_rate(
