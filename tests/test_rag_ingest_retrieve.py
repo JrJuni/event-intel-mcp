@@ -10,9 +10,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from event_intel.events.enrichment import EnrichedExhibitor, NewsSignal
+from event_intel.events.enrichment import EnrichedExhibitor
 from event_intel.rag.retriever import (
-    FitResult,
     _product_collection_name,
     _similarity_from_distance,
     retrieve_fit_event_to_product,

@@ -33,7 +33,7 @@ dict shape.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -71,7 +71,7 @@ def _exhibitor_to_dict(scored) -> dict:
     }
 
 
-def _needs_review_to_dict(row: "EnrichedExhibitor") -> dict:
+def _needs_review_to_dict(row: EnrichedExhibitor) -> dict:
     return {
         "name": row.name,
         "source_snippet": row.source_snippet,
@@ -81,11 +81,11 @@ def _needs_review_to_dict(row: "EnrichedExhibitor") -> dict:
 
 def build_tier_list_payload(
     *,
-    summary: "ScoringSummary",
-    needs_review: list["EnrichedExhibitor"] | None,
-    context: "ReportContext",
+    summary: ScoringSummary,
+    needs_review: list[EnrichedExhibitor] | None,
+    context: ReportContext,
 ) -> dict:
-    generated_at = context.generated_at or datetime.now(timezone.utc)
+    generated_at = context.generated_at or datetime.now(UTC)
     counts = dict(summary.tier_counts)
     counts["needs_review"] = len(needs_review or [])
     return {

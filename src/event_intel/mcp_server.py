@@ -26,7 +26,7 @@ load_project_env()
 
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 
-from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_exception  # noqa: E402
+from event_intel.errors import ErrorCode, MCPError, Stage  # noqa: E402
 
 app = FastMCP("event-intel")
 

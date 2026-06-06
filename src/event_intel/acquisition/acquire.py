@@ -23,7 +23,6 @@ No new LLM calls after step 4. Probe is 0 LLM. Paginate cap = max_pages (3, yaml
 from __future__ import annotations
 
 import logging
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -58,10 +57,10 @@ def acquire_source(
     The caller (tool handler) wraps in envelope_from_exception.
     """
     from event_intel.acquisition import analyzer as _analyzer
+    from event_intel.acquisition import http_status_map as _status_map
     from event_intel.acquisition import probe as _probe
     from event_intel.acquisition import raw_fetch as _raw_fetch
     from event_intel.acquisition import robots as _robots
-    from event_intel.acquisition import http_status_map as _status_map
     from event_intel.acquisition.url_safety import validate_url
     from event_intel.providers import llm as _llm
     from event_intel.runtime import preflight as _preflight

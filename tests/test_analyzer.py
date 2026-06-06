@@ -9,20 +9,17 @@ every Sonnet-suggested URL through url_safety + robots; (c) bounded blast radius
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from event_intel.acquisition import analyzer as _analyzer
 from event_intel.acquisition import raw_fetch as _raw_fetch
 from event_intel.acquisition import robots as _robots_mod
-from event_intel.acquisition.analyzer import AnalyzeVerdict, analyze_page
+from event_intel.acquisition.analyzer import analyze_page
 from event_intel.acquisition.raw_fetch import RawResponse
 from event_intel.errors import ErrorCode, MCPError, Stage
-from event_intel.providers import llm as _llm
 from event_intel.providers.llm import LLMResponse
-
 
 # ---------- shared fakes ----------
 

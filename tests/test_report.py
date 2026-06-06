@@ -5,7 +5,7 @@ isolation, tier_list.yaml round-trip, product_brief.md export, en/ko switch.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -70,7 +70,7 @@ def _summary(*scored: ScoredExhibitor) -> ScoringSummary:
 def _ctx(**kw):
     base = dict(
         workspace_id="acme", event_name="Sample Expo", event_slug="sample_expo",
-        lang="en", generated_at=datetime(2026, 5, 28, 12, 0, tzinfo=timezone.utc),
+        lang="en", generated_at=datetime(2026, 5, 28, 12, 0, tzinfo=UTC),
     )
     base.update(kw)
     return ReportContext(**base)

@@ -137,12 +137,13 @@ def probe_endpoints(
     Returns ProbeResult with winner=None + ACQUISITION_AMBIGUOUS if no candidate
     clears min_score.
     """
-    from event_intel.acquisition.analyzer import AnalyzeHints
+    from pydantic import ValidationError
+
+    from event_intel.acquisition import http_status_map as _status_map
     from event_intel.acquisition import raw_fetch as _raw_fetch
     from event_intel.acquisition import robots as _robots
-    from event_intel.acquisition import http_status_map as _status_map
-    from event_intel.acquisition.url_safety import validate_url, host_relation
-    from pydantic import ValidationError
+    from event_intel.acquisition.analyzer import AnalyzeHints
+    from event_intel.acquisition.url_safety import host_relation, validate_url
 
     # 1. Validate hints.
     try:
@@ -311,12 +312,13 @@ def probe_embedded_json(
     - script_var_name: matches var X = {...};
     - key_path: dotted-key walk (e.g. 'props.pageProps.exhibitors')
     """
-    from event_intel.acquisition.analyzer import AnalyzeHints
+    from pydantic import ValidationError
+
+    from event_intel.acquisition import http_status_map as _status_map
     from event_intel.acquisition import raw_fetch as _raw_fetch
     from event_intel.acquisition import robots as _robots
-    from event_intel.acquisition import http_status_map as _status_map
+    from event_intel.acquisition.analyzer import AnalyzeHints
     from event_intel.acquisition.url_safety import validate_url
-    from pydantic import ValidationError
 
     # 1. Validate hints.
     try:

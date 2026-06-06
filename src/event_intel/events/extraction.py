@@ -300,9 +300,9 @@ def _merge_candidates(
 
 def extract_exhibitors(
     *,
-    capture: "SourceCapture",
+    capture: SourceCapture,
     lang: str = "en",
-    llm_provider: "LLMProvider",
+    llm_provider: LLMProvider,
     config: dict,
     max_tokens: int | None = None,
 ) -> ExtractionResult:

@@ -199,6 +199,7 @@ class ChatGPTOAuthProvider(LLMProvider):
 
     def _refresh(self, refresh_token: str) -> dict | None:
         import time
+
         import httpx
         try:
             resp = httpx.post(
@@ -224,7 +225,6 @@ class ChatGPTOAuthProvider(LLMProvider):
     def _pkce_login(self) -> dict:
         import base64
         import hashlib
-        import json
         import secrets
         import threading
         import time
@@ -363,6 +363,7 @@ class ChatGPTOAuthProvider(LLMProvider):
         temperature: float,
     ) -> LLMResponse:
         import json
+
         import httpx
 
         token = self._ensure_token()

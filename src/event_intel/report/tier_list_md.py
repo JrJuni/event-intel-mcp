@@ -16,7 +16,7 @@ rows into the high-tier sections.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -52,7 +52,7 @@ def _h(lang: str, tier: str) -> str:
     return (_TIER_HEADINGS_KO if lang == "ko" else _TIER_HEADINGS_EN)[tier]
 
 
-def _evidence_chips(row: "EnrichedExhibitor") -> str:
+def _evidence_chips(row: EnrichedExhibitor) -> str:
     chips: list[str] = []
     evidence = getattr(row, "evidence", None)
     if evidence:
@@ -74,7 +74,7 @@ def _evidence_chips(row: "EnrichedExhibitor") -> str:
     return " ".join(chips)
 
 
-def _render_row(scored: "ScoredExhibitor", *, lang: str) -> str:
+def _render_row(scored: ScoredExhibitor, *, lang: str) -> str:
     row = scored.row
     lines: list[str] = []
     lines.append(f"### {row.name} — **{scored.tier}** · score {scored.final_score:.2f}/10")
@@ -112,7 +112,7 @@ def _render_row(scored: "ScoredExhibitor", *, lang: str) -> str:
 _TIER_FLOOR_MIN = {"S": 2, "A": 1}
 
 
-def _assert_floor_invariant(summary: "ScoringSummary") -> None:
+def _assert_floor_invariant(summary: ScoringSummary) -> None:
     # Use the single floor authority (rules.compute_evidence_floor) so this can
     # never diverge from the scoring-stage formula again (18V item 1). Enforce the
     # PER-TIER minimum (S needs floor 2, A needs 1) — not a blanket floor>=1 — so
@@ -133,8 +133,8 @@ def _assert_floor_invariant(summary: "ScoringSummary") -> None:
 
 def render_tier_list_md(
     *,
-    summary: "ScoringSummary",
-    needs_review: list["EnrichedExhibitor"] | None = None,
+    summary: ScoringSummary,
+    needs_review: list[EnrichedExhibitor] | None = None,
     context: ReportContext,
 ) -> str:
     """Render the 6-section Markdown report.
@@ -144,7 +144,7 @@ def render_tier_list_md(
     can decide whether to promote / drop.
     """
     _assert_floor_invariant(summary)
-    generated_at = context.generated_at or datetime.now(timezone.utc)
+    generated_at = context.generated_at or datetime.now(UTC)
     lang = context.lang
 
     counts = summary.tier_counts
@@ -171,7 +171,7 @@ def render_tier_list_md(
         )
     out.append("")
 
-    rows_by_tier: dict[str, list["ScoredExhibitor"]] = {"S": [], "A": [], "B": [], "C": []}
+    rows_by_tier: dict[str, list[ScoredExhibitor]] = {"S": [], "A": [], "B": [], "C": []}
     for scored in summary.rows:
         rows_by_tier.setdefault(scored.tier, []).append(scored)
     # Within tier, sort by descending final_score so the strongest is at top.

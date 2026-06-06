@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 TIER_ORDER = ("S", "A", "B", "C")
 
 

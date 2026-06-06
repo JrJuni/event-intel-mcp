@@ -53,8 +53,8 @@ def test_cold_check_runtime_responds_over_stdio():
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, encoding="utf-8", errors="replace", bufsize=1,
     )
-    out_q: "queue.Queue[str]" = queue.Queue()
-    threading.Thread(target=lambda: [out_q.put(l.rstrip("\n")) for l in proc.stdout], daemon=True).start()
+    out_q: queue.Queue[str] = queue.Queue()
+    threading.Thread(target=lambda: [out_q.put(ln.rstrip("\n")) for ln in proc.stdout], daemon=True).start()
     bad_lines = []
 
     def send(obj):

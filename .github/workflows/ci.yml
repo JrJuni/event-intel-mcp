@@ -33,11 +33,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Lint (ruff) — informational
-        # Non-blocking for now: the codebase has pre-existing import-order findings.
-        # Surfaces issues without gating the merge. Flip to blocking once cleaned.
+      - name: Lint (ruff)
+        # Blocking: the tree is clean (chore/ruff-cleanup). New lint findings fail CI.
         run: ruff check src tests
-        continue-on-error: true
 
       - name: Test (pytest)
         # The default test selection excludes `slow` tests (real bge-m3 load /

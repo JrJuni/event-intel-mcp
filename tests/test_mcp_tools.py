@@ -15,8 +15,6 @@ from pathlib import Path
 
 import pytest
 
-from event_intel.errors import ErrorCode
-from event_intel.events import enrichment as _enrichment
 from event_intel.providers import embedding as _embedding
 from event_intel.providers import llm as _llm
 from event_intel.providers import search as _search
@@ -26,7 +24,6 @@ from event_intel.storage.identifiers import validate_slug
 from event_intel.tools.build_event_tier_list import (
     build_event_tier_list as build_tool,
 )
-
 
 # ---------- shared fakes ----------
 

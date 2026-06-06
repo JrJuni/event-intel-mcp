@@ -225,10 +225,10 @@ def run_preflight(
     warm_up: bool = False,
     warm_up_block: bool = False,
     config: dict | None = None,
-    embedding_provider: "EmbeddingProvider | None" = None,
-    vectorstore_provider: "VectorStoreProvider | None" = None,
-    llm_provider: "LLMProvider | None" = None,
-    search_provider: "SearchProvider | None" = None,
+    embedding_provider: EmbeddingProvider | None = None,
+    vectorstore_provider: VectorStoreProvider | None = None,
+    llm_provider: LLMProvider | None = None,
+    search_provider: SearchProvider | None = None,
 ) -> dict:
     """Run 5 preflight checks. Returns the success envelope on full pass.
 

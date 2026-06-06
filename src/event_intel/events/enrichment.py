@@ -24,7 +24,6 @@ import difflib
 import hashlib
 import json
 import re
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -80,7 +79,7 @@ class EnrichedExhibitor:
     official_url: str | None = None       # post-enrichment determination
     description: str | None = None
     news_signals: list[NewsSignal] = field(default_factory=list)
-    evidence: list["EvidenceItem"] = field(default_factory=list)  # typed, deduped (18V item 1)
+    evidence: list[EvidenceItem] = field(default_factory=list)  # typed, deduped (18V item 1)
     extraction_confidence: float = 1.0
     enrichment_status: str = "enriched"   # "enriched" | "needs_review" | "failed"
     enrichment_warnings: list[str] = field(default_factory=list)
@@ -113,7 +112,7 @@ class _SearchCache:
         # Version prefix → a parser/semantics bump (ENRICH_CACHE_VERSION) yields
         # new keys, so stale entries (e.g. v1's empty news) are never reused.
         h = hashlib.sha1(
-            f"v{ENRICH_CACHE_VERSION}|{kind}|{lang}|c{count}|d{days}|{query}".encode("utf-8")
+            f"v{ENRICH_CACHE_VERSION}|{kind}|{lang}|c{count}|d{days}|{query}".encode()
         ).hexdigest()
         return h
 
@@ -211,7 +210,7 @@ def _name_tokens(name: str) -> list[str]:
     return [t for t in base.split() if t and t not in _TOKEN_STOPWORDS]
 
 
-def _score_candidate_url(name: str, candidate: "SearchResult", *, threshold: float) -> float:
+def _score_candidate_url(name: str, candidate: SearchResult, *, threshold: float) -> float:
     """0..1 score that `candidate.url` is the official site for `name`.
 
     Cheap features:
@@ -245,7 +244,7 @@ def _score_candidate_url(name: str, candidate: "SearchResult", *, threshold: flo
 
 
 def _pick_official_url(
-    name: str, web_hits: list["SearchResult"], *, threshold: float
+    name: str, web_hits: list[SearchResult], *, threshold: float
 ) -> str | None:
     best_url: str | None = None
     best_score = 0.0
@@ -260,7 +259,7 @@ def _pick_official_url(
 # ---------- main entry ----------
 
 
-def _searchresult_to_dict(r: "SearchResult") -> dict:
+def _searchresult_to_dict(r: SearchResult) -> dict:
     return {
         "title": r.title,
         "url": r.url,
@@ -270,7 +269,7 @@ def _searchresult_to_dict(r: "SearchResult") -> dict:
     }
 
 
-def _dict_to_searchresult(d: dict) -> "SearchResult":
+def _dict_to_searchresult(d: dict) -> SearchResult:
     from event_intel.providers.search import SearchResult
     from event_intel.timeutil import parse_iso_utc
 
@@ -334,7 +333,7 @@ def _from_dict(d: dict) -> EnrichedExhibitor:
     )
 
 
-def _evidence_from_dicts(items: list[dict]) -> list["EvidenceItem"]:
+def _evidence_from_dicts(items: list[dict]) -> list[EvidenceItem]:
     from event_intel.events.evidence import EvidenceItem
 
     return [
@@ -350,11 +349,11 @@ def _evidence_from_dicts(items: list[dict]) -> list["EvidenceItem"]:
 
 def enrich_exhibitors(
     *,
-    candidates: list["ExhibitorCandidate"],
+    candidates: list[ExhibitorCandidate],
     workspace_id: str,
     lang: str = "en",
     config: dict,
-    search_provider: "SearchProvider",
+    search_provider: SearchProvider,
     cache_dir: Path | None = None,
     resume_path: Path | None = None,
     max_companies: int | None = None,
@@ -489,8 +488,8 @@ def enrich_exhibitors(
             EvidenceItem,
             classify_url_type,
             domain_of,
-            merge_evidence,
             mentions_name,
+            merge_evidence,
             name_tokens,
             same_site,
         )
@@ -498,11 +497,15 @@ def enrich_exhibitors(
         official_domain = domain_of(row.official_url)
         cand_name_tokens = name_tokens(cand.name)
 
-        def _evidence_relevant(url: str, title: str) -> bool:
+        def _evidence_relevant(
+            url: str, title: str,
+            *, official_domain=official_domain, cand_name_tokens=cand_name_tokens,
+        ) -> bool:
             # Extra-query results come from arbitrary domains; accept only if the
             # page is plausibly ABOUT this company — same site as the official URL
             # OR a company-name token appears in the host/path/title. Stops a
             # third-party "/products" page from becoming identity (review #1).
+            # Loop vars bound as defaults so the closure captures THIS iteration.
             dom = domain_of(url)
             if official_domain and same_site(dom, official_domain):
                 return True
@@ -584,7 +587,7 @@ def _search_with_cache(
     *,
     cache: _SearchCache,
     cache_enabled: bool,
-    search_provider: "SearchProvider",
+    search_provider: SearchProvider,
     query: str,
     kind: str,
     count: int,

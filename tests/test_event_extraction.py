@@ -17,7 +17,6 @@ from event_intel.events.extraction import (
 )
 from event_intel.events.source_capture import SourceCapture, capture_source
 
-
 # ---------- Fake LLM provider ----------
 
 

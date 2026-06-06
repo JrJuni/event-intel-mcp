@@ -13,7 +13,6 @@ import pytest
 from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_exception
 from event_intel.storage.identifiers import sanitize_slug, validate_slug
 
-
 # Expected snapshot. If this drifts, downstream consumers must be updated too.
 EXPECTED_ERROR_CODES = {
     "INVALID_INPUT",

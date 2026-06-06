@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from event_intel.providers.search import BraveSearchProvider
 
-
 # Shapes mirror the real Brave Search API responses (verified 2026-06-05).
 _NEWS_PAYLOAD = {
     "type": "news",

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Callable
+from collections.abc import Callable
 
 # Conservative readiness estimate shown to users. Measured loads are ~10-20s; we
 # advertise a wider window so a slow disk / cold cache never reads as "stuck".

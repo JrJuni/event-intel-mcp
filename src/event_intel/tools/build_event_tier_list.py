@@ -19,7 +19,7 @@ retriever / scoring.compute / report.* / providers.* / preflight.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -63,14 +63,14 @@ def _outputs_base() -> Path:
 
 
 def _resolve_output_dir(workspace_id: str, event_slug: str) -> Path:
-    date_tag = datetime.now(timezone.utc).strftime("%Y%m%d")
+    date_tag = datetime.now(UTC).strftime("%Y%m%d")
     return _outputs_base() / workspace_id / f"{event_slug}_{date_tag}"
 
 
 _VALID_TARGET_MODES = ("customer", "partner", "ecosystem")
 
 
-def _load_cards_or_warn(workspace_id: str) -> tuple["CapabilityCards | None", str | None]:
+def _load_cards_or_warn(workspace_id: str) -> tuple[CapabilityCards | None, str | None]:
     """Card-load contract (review round-2 #3):
       - a candidate file EXISTS but fails validation → raise (explicit error).
       - NO candidate file exists → (None, warning). This is a legitimate state:
@@ -96,7 +96,7 @@ def _load_cards_or_warn(workspace_id: str) -> tuple["CapabilityCards | None", st
 
 
 def _resolve_target_mode(
-    arg: str | None, config: dict, cards: "CapabilityCards | None"
+    arg: str | None, config: dict, cards: CapabilityCards | None
 ) -> str:
     """Precedence: build_event arg > user config > card default > 'customer'."""
     cfg_mode = config.get("target_mode")
@@ -247,7 +247,7 @@ def build_event_tier_list(
         # 8. Reports — md + yaml (S5).
         context = _tier_list_md.ReportContext(
             workspace_id=ws, event_name=event_name, event_slug=slug,
-            lang=lang, generated_at=datetime.now(timezone.utc),
+            lang=lang, generated_at=datetime.now(UTC),
             target_mode=resolved_target_mode,
         )
         needs_review_rows = [

@@ -23,7 +23,6 @@ host_relation(landing_host, candidate_host) -> "same" | "subdomain" | "cross"
 from __future__ import annotations
 
 import ipaddress
-import re
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -174,11 +173,11 @@ def host_relation(
             h = h[4:]
         return h
 
-    l = _norm(landing_host)
-    c = _norm(candidate_host)
+    lh = _norm(landing_host)
+    ch = _norm(candidate_host)
 
-    if l == c:
+    if lh == ch:
         return "same"
-    if c.endswith(f".{l}"):
+    if ch.endswith(f".{lh}"):
         return "subdomain"
     return "cross"

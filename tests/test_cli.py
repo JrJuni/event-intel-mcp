@@ -17,7 +17,6 @@ from typer.testing import CliRunner
 
 from event_intel.cli import app
 
-
 runner = CliRunner()
 
 
@@ -160,7 +159,6 @@ def test_build_event_text_file_uses_text_file_source_kind(tmp_path, monkeypatch)
     """Phase 18T R2-4: --text-file must map to source_kind='text_file' (file-path
     contract), NOT 'text' (inline-string contract)."""
     from event_intel.tools import build_event_tier_list as _bt_mod
-    from event_intel.runtime import preflight as _preflight
 
     # Capture the source_kind that the tool receives.
     captured: dict = {}

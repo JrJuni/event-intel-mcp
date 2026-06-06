@@ -21,7 +21,7 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -77,7 +77,7 @@ class ManifestModel:
     http_pages: int
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ManifestModel":
+    def from_dict(cls, d: dict) -> ManifestModel:
         return cls(
             verdict=d["verdict"],
             source_kind=d["source_kind"],
@@ -133,7 +133,7 @@ def make_manifest(
         "verdict": verdict,
         "source_kind": source_kind,
         "source_ref": str(source_ref),
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "fetched_at": datetime.now(UTC).isoformat(),
         "sha256": sha256_of(artifact_path),
         "url": url,
         "content_type": content_type,

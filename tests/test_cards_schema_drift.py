@@ -17,7 +17,6 @@ from pathlib import Path
 
 from event_intel.cards.schema import SCHEMA_VERSION, CapabilityCards
 
-
 _SNAPSHOT_PATH = (
     Path(__file__).resolve().parent.parent
     / "src"

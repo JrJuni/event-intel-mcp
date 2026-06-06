@@ -11,7 +11,6 @@ import pytest
 from event_intel.errors import ErrorCode, MCPError, Stage
 from event_intel.storage.identifiers import sanitize_slug, suggest_slug, validate_slug
 
-
 # ---------- validate_slug ----------
 
 

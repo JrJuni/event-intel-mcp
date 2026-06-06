@@ -16,16 +16,14 @@ from __future__ import annotations
 import base64
 import json
 from contextlib import contextmanager
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import httpx
 import pytest
 
 from event_intel.providers.llm import (
     ChatGPTOAuthProvider,
     make_llm_provider,
 )
-
 
 # ---------- helpers ----------
 

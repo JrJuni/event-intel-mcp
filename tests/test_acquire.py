@@ -6,24 +6,15 @@ Uses string-path patching throughout (cold-start isolation safety).
 from __future__ import annotations
 
 import json
-import os
-import tempfile
-from dataclasses import dataclass
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from event_intel.acquisition import acquire as _acquire_mod
-from event_intel.acquisition import analyzer as _analyzer
-from event_intel.acquisition import probe as _probe_mod
-from event_intel.acquisition import raw_fetch as _raw_fetch
-from event_intel.acquisition import robots as _robots_mod
-from event_intel.acquisition.acquire import AcquireResult, acquire_source
+from event_intel.acquisition.acquire import acquire_source
 from event_intel.acquisition.raw_fetch import RawResponse
-from event_intel.errors import ErrorCode, MCPError, Stage
+from event_intel.errors import ErrorCode, MCPError
 from event_intel.providers import llm as _llm
-
 
 # ---------- shared fakes ----------
 
@@ -250,7 +241,12 @@ def test_acquire_cache_hit_returns_manifest_data(tmp_path, monkeypatch):
     monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
 
     # Pre-create an artifact + manifest.
-    from event_intel.storage.artifacts import artifact_dir, make_manifest, write_artifact, write_manifest
+    from event_intel.storage.artifacts import (
+        artifact_dir,
+        make_manifest,
+        write_artifact,
+        write_manifest,
+    )
     art_dir = artifact_dir(workspace_id="ws1", event_slug="evt6")
     body = _html_body()
     path = write_artifact(art_dir, "source.html", body)
@@ -291,7 +287,11 @@ def test_acquire_cache_hit_returns_manifest_data(tmp_path, monkeypatch):
 def test_acquire_sha256_mismatch_triggers_refetch(tmp_path, monkeypatch):
     monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
 
-    from event_intel.storage.artifacts import artifact_dir, make_manifest, write_artifact, write_manifest
+    from event_intel.storage.artifacts import (
+        artifact_dir,
+        write_artifact,
+        write_manifest,
+    )
     art_dir = artifact_dir(workspace_id="ws1", event_slug="evt7")
     path = write_artifact(art_dir, "source.html", _html_body())
     # Write manifest with WRONG sha256.
@@ -332,10 +332,14 @@ def test_acquire_sha256_mismatch_triggers_refetch(tmp_path, monkeypatch):
 def test_acquire_refetch_true_ignores_cache(tmp_path, monkeypatch):
     monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
 
-    from event_intel.storage.artifacts import artifact_dir, make_manifest, write_artifact, write_manifest
+    from event_intel.storage.artifacts import (
+        artifact_dir,
+        make_manifest,
+        write_artifact,
+        write_manifest,
+    )
     art_dir = artifact_dir(workspace_id="ws1", event_slug="evt8")
     path = write_artifact(art_dir, "source.html", _html_body())
-    from event_intel.storage.artifacts import sha256_of
     manifest = make_manifest(
         verdict="static_html", source_kind="html_file", source_ref=str(path),
         url="https://example.com", content_type="text/html",

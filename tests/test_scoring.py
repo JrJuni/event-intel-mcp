@@ -8,6 +8,7 @@ Evidence floor matrix (Contract #9):
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC
 
 import pytest
 
@@ -18,7 +19,6 @@ from event_intel.rag.retriever import FitResult
 from event_intel.scoring.compute import score_exhibitors
 from event_intel.scoring.dimensions import (
     score_buying_signal,
-    score_capability_fit,
     score_category_fit,
     score_website_verification,
 )
@@ -150,9 +150,9 @@ def test_buying_signal_downweights_generic_news():
 def test_buying_signal_recency_bonus_and_naive_timestamp_safe():
     """Recent name-matched news outranks stale; a naive date-only published_at
     must NOT raise TypeError against the UTC-aware reference_date (round-2 #1)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    ref = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    ref = datetime(2026, 6, 1, tzinfo=UTC)
     recent = _row(
         "Acme",
         news_signals=[NewsSignal("Acme news", "u", "s", published_at="2026-05-30")],  # naive date-only
@@ -358,7 +358,6 @@ def test_score_exhibitors_runs_rationale_only_for_target_tiers():
 
         def chat_once(self, *, system, user, max_tokens, temperature):
             self.calls += 1
-            from dataclasses import dataclass
 
             @dataclass
             class R:

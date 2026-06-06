@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from event_intel.cards.schema import CapabilityCards
 
 
-def render_product_brief_md(cards: "CapabilityCards", *, lang: str = "en") -> str:
+def render_product_brief_md(cards: CapabilityCards, *, lang: str = "en") -> str:
     """Render a one-page Markdown brief from capability cards."""
     L = _LABELS_KO if lang == "ko" else _LABELS_EN
 

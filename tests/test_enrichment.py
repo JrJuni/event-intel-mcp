@@ -7,14 +7,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from pathlib import Path
+from datetime import UTC
 
 import pytest
 
 from event_intel.errors import ErrorCode, MCPError
 from event_intel.events.enrichment import (
     ENRICH_CACHE_VERSION,
-    EnrichedExhibitor,
     enrich_exhibitors,
 )
 from event_intel.events.extraction import ExhibitorCandidate
@@ -288,13 +287,13 @@ def test_official_url_threshold_filters_low_score_hits(tmp_path):
 def test_news_drops_non_article_pages_and_carries_published_at(tmp_path):
     """Utility/non-article news pages (login/docs/privacy) are dropped by path;
     real articles keep their published_at (carried from SearchResult)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     cands = [ExhibitorCandidate(name="Acme AI", source_snippet="AI agents platform", url="https://acme.example")]
     search = FakeSearch()
     search.news_by_name["Acme AI"] = [
         _SR(title="Acme raises Series B", url="https://news.example.com/acme-series-b",
-            snippet="funding", published_at=datetime(2026, 6, 1, tzinfo=timezone.utc)),
+            snippet="funding", published_at=datetime(2026, 6, 1, tzinfo=UTC)),
         _SR(title="Acme privacy policy", url="https://acme.example/privacy", snippet="legal"),
         _SR(title="Acme docs", url="https://acme.example/docs/start", snippet="how-to"),
     ]
@@ -358,7 +357,6 @@ def test_typed_evidence_populated_and_deduped(tmp_path):
     )
     row = result.rows[0]
     types = sorted(e.type for e in row.evidence)
-    by_url = {e.url: e for e in row.evidence}
     # official homepage → official_url; techblog → news; press path → press_release.
     assert "official_url" in types
     assert "news" in types

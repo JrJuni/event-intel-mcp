@@ -10,20 +10,15 @@ from unittest.mock import patch
 
 import pytest
 
-from event_intel.acquisition import probe as _probe
 from event_intel.acquisition import raw_fetch as _raw_fetch
-from event_intel.acquisition import robots as _robots_mod
-from event_intel.acquisition import http_status_map as _status_map
 from event_intel.acquisition.probe import (
     ProbeAttempt,
     ProbeResult,
-    _response_looks_like_exhibitor_list,
-    probe_endpoints,
     probe_embedded_json,
+    probe_endpoints,
 )
 from event_intel.acquisition.raw_fetch import RawResponse
 from event_intel.errors import ErrorCode, MCPError, Stage
-
 
 # ---------- shared helpers ----------
 
@@ -268,8 +263,6 @@ def test_probe_endpoints_max_5_cap():
     responses = [_raw_ok("no keywords here", url=f"https://example.com/api/{i}") for i in range(5)]
     fetch_calls = []
 
-    original_fetch = _raw_fetch.fetch_raw
-
     def counting_fetch(url, **kwargs):
         fetch_calls.append(url)
         idx = len(fetch_calls) - 1
@@ -335,7 +328,6 @@ def test_probe_skips_non_get_post_methods():
 def test_probe_carries_short_body_warning():
     """When map_http_response returns (True, advisory_warning), candidate proceeds
     and the warning is stored in the attempt log — not treated as failure."""
-    from event_intel.acquisition.http_status_map import _make_error
 
     advisory_warn = MCPError(
         error_code=ErrorCode.INTERNAL,
@@ -412,8 +404,10 @@ def test_probe_exhibitor_endpoint_tool_wrapper_failure_envelope(monkeypatch):
     current sys.modules version — avoiding class-identity mismatches that arise
     after cold-start tests purge and re-import event_intel.*.
     """
+    from event_intel.errors import ErrorCode as _EC
+    from event_intel.errors import MCPError as _MCPError
+    from event_intel.errors import Stage as _Stage
     from event_intel.tools import probe_exhibitor_endpoint as _tool_mod
-    from event_intel.errors import ErrorCode as _EC, MCPError as _MCPError, Stage as _Stage
 
     def _raise(**kw):
         raise _MCPError(
