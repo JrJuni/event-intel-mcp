@@ -32,6 +32,7 @@ class ReportContext:
     lang: str = "en"
     generated_at: datetime | None = None
     target_mode: str = "customer"   # resolved mode, recorded for reproducibility (review #7)
+    tier_rules: dict | None = None  # effective scoring.tier_rules — drives the floor invariant (review r2 #3)
 
 
 _TIER_HEADINGS_EN = {
@@ -107,21 +108,37 @@ def _render_row(scored: ScoredExhibitor, *, lang: str) -> str:
     return "\n".join(lines)
 
 
-# Mirrors shipped scoring.tier_rules.evidence_floor_min — the contract this
-# backstop guards. Update both together if the tier rules change.
-_TIER_FLOOR_MIN = {"S": 2, "A": 1}
+# Fallback floor minimums (shipped defaults) when no tier_rules are supplied —
+# used only by callers that don't pass the effective config.
+_DEFAULT_TIER_FLOOR_MIN = {"S": 2, "A": 1}
 
 
-def _assert_floor_invariant(summary: ScoringSummary) -> None:
+def _floor_minimums(tier_rules: dict | None) -> dict[str, int]:
+    """Per-tier evidence_floor_min from the EFFECTIVE tier_rules (review r2 #3) —
+    so a user who legitimately lowers a tier's floor in config doesn't trip a
+    report-time crash that the scorer already accepted. Falls back to defaults."""
+    if not tier_rules:
+        return dict(_DEFAULT_TIER_FLOOR_MIN)
+    out: dict[str, int] = {}
+    for tier, rule in tier_rules.items():
+        try:
+            out[tier] = int((rule or {}).get("evidence_floor_min", 0))
+        except (TypeError, ValueError):
+            out[tier] = 0
+    return out
+
+
+def _assert_floor_invariant(summary: ScoringSummary, tier_rules: dict | None = None) -> None:
     # Use the single floor authority (rules.compute_evidence_floor) so this can
-    # never diverge from the scoring-stage formula again (18V item 1). Enforce the
-    # PER-TIER minimum (S needs floor 2, A needs 1) — not a blanket floor>=1 — so
-    # a scorer/config regression that put an S row at floor 1 is caught (review #7).
+    # never diverge from the scoring-stage formula again (18V item 1). The per-tier
+    # minimum comes from the EFFECTIVE tier_rules (review r2 #3), not a hardcoded
+    # map — config-changed floors must not crash the report.
     from event_intel.scoring.rules import compute_evidence_floor
 
+    minimums = _floor_minimums(tier_rules)
     for scored in summary.rows:
-        need = _TIER_FLOOR_MIN.get(scored.tier)
-        if need is None:
+        need = minimums.get(scored.tier)
+        if not need:  # tier absent from rules or min 0 → nothing to assert
             continue
         floor = compute_evidence_floor(scored.row)
         if floor < need:
@@ -143,7 +160,7 @@ def render_tier_list_md(
     enrichment that scoring skipped. Rendered in its own section so the human
     can decide whether to promote / drop.
     """
-    _assert_floor_invariant(summary)
+    _assert_floor_invariant(summary, context.tier_rules)
     generated_at = context.generated_at or datetime.now(UTC)
     lang = context.lang
 
