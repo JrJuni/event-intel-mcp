@@ -393,3 +393,35 @@ def test_evidence_query_budget_caps_extra_api_calls(tmp_path):
         if c["kind"] == "web" and ("product" in c["query"] or "partners" in c["query"] or "press release" in c["query"])
     ]
     assert len(extra_web) == 2, extra_web
+
+
+def test_extra_evidence_query_drops_irrelevant_third_party(tmp_path):
+    """Review #1: extra evidence-query hits on an unrelated third-party domain
+    (no company-name token) are NOT added; same-domain hits ARE."""
+    search = FakeSearch()
+    # Keyed by a fragment present in the actual (quoted) query string:
+    #   official-url query → '"Acme Data" official site'
+    #   product query      → '"Acme Data" product'
+    search.web_by_name["official site"] = [
+        _SR(title="Acme Data — official", url="https://acmedata.example", snippet=""),
+    ]
+    search.web_by_name["product"] = [
+        # own-domain product page → kept
+        _SR(title="Acme Data product", url="https://acmedata.example/products/store", snippet=""),
+        # unrelated third-party page, no "Acme" token → dropped
+        _SR(title="Top 10 databases of 2026", url="https://randomblog.example/products/list", snippet=""),
+    ]
+    cands = [
+        ExhibitorCandidate(name="Acme Data", source_snippet="feature store", extraction_confidence=0.9)
+    ]
+    cfg = _config(
+        evidence_queries={"product": True, "partners": False, "press_release": False,
+                          "max_extra_calls_per_event": 10}
+    )
+    result = enrich_exhibitors(
+        candidates=cands, workspace_id="ev3", lang="en", config=cfg,
+        search_provider=search, cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+    )
+    urls = {e.url for e in result.rows[0].evidence}
+    assert "https://acmedata.example/products/store" in urls
+    assert "https://randomblog.example/products/list" not in urls
