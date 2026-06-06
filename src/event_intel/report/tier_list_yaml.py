@@ -108,7 +108,14 @@ def load_tier_list_yaml(text_or_path: str | Path) -> dict:
     """Load from a yaml string OR from a filesystem path."""
     if isinstance(text_or_path, Path):
         return yaml.safe_load(text_or_path.read_text(encoding="utf-8")) or {}
-    p = Path(text_or_path)
-    if p.is_file():
-        return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    # A str may be a path OR raw YAML content. `is_file()` on a multi-line YAML
+    # string raises OSError(errno 36, "File name too long") on Linux (it returns
+    # False on Windows) — guard it so a content string always falls through to
+    # being parsed, cross-platform.
+    try:
+        is_file = Path(text_or_path).is_file()
+    except OSError:
+        is_file = False
+    if is_file:
+        return yaml.safe_load(Path(text_or_path).read_text(encoding="utf-8")) or {}
     return yaml.safe_load(text_or_path) or {}
