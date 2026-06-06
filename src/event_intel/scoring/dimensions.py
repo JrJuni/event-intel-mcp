@@ -18,7 +18,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
+
+from event_intel.timeutil import recency_weight
 
 if TYPE_CHECKING:
     from event_intel.cards.schema import CapabilityCards
@@ -49,31 +52,72 @@ def score_website_verification(row: "EnrichedExhibitor") -> float:
     return 1.0 if row.official_url else 0.0
 
 
+def _name_match_tokens(name: str) -> list[str]:
+    """Significant lowercased tokens of a company name for news relevance.
+
+    Prefer tokens of length >= 3 (avoids 'a'/'io' matching everything); fall
+    back to the whole lowercased name if a short name has no such token.
+    """
+    toks = [t for t in re.split(r"\W+", (name or "").lower()) if len(t) >= 3]
+    if toks:
+        return toks
+    whole = (name or "").lower().strip()
+    return [whole] if whole else []
+
+
+def _news_matches_name(signal, name_tokens: list[str]) -> bool:
+    if not name_tokens:
+        return False
+    hay = f"{signal.title or ''} {signal.snippet or ''}".lower()
+    return any(t in hay for t in name_tokens)
+
+
 def score_buying_signal(
-    row: "EnrichedExhibitor", *, triggers: list[str] | None = None
+    row: "EnrichedExhibitor",
+    *,
+    triggers: list[str] | None = None,
+    reference_date: datetime | None = None,
+    half_life_days: float = 180.0,
 ) -> float:
-    """Coarse signal driven by news count + trigger-keyword hit rate.
+    """News-driven signal: count bracket × company-name relevance + recency bonus.
 
     - 0 news → 0.0
-    - 1-2 news → 0.4
-    - 3+ news → 0.6
-    - + 0.4 bonus if any news title/snippet matches a buying-trigger keyword.
+    - 1-2 news → base 0.4; 3+ news → base 0.6
+    - generic news (no company-name match in any title/snippet) halves the base
+      — a pile of unrelated articles is a weak buying signal (review round-2 #1).
+    - + up to 0.3 recency bonus from the freshest name-matched article
+      (exponential half-life; missing/future published_at contributes 0).
+    - + 0.4 bonus if any news matches a buying-trigger keyword.
 
-    Clamped to 1.0.
+    Clamped to 1.0. published_at normalization is handled in timeutil so a naive
+    timestamp never collides with the UTC-aware reference_date.
     """
     news = row.news_signals
     if not news:
         return 0.0
     base = 0.4 if len(news) <= 2 else 0.6
+
+    name_tokens = _name_match_tokens(row.name)
+    matched = [n for n in news if _news_matches_name(n, name_tokens)]
+    if not matched:
+        base *= 0.5
+
+    ref = reference_date or datetime.now(timezone.utc)
+    rec = max(
+        (
+            recency_weight(n.published_at, reference_date=ref, half_life_days=half_life_days)
+            for n in (matched or news)
+        ),
+        default=0.0,
+    )
+    base = min(1.0, base + 0.3 * rec)
+
     if triggers:
-        haystack = " ".join(
-            f"{n.title} {n.snippet}".lower() for n in news
-        )
+        haystack = " ".join(f"{n.title} {n.snippet}".lower() for n in news)
         trig_lower = [t.lower() for t in triggers if t]
-        hit = any(t in haystack for t in trig_lower if t)
-        if hit:
+        if any(t in haystack for t in trig_lower if t):
             base = min(1.0, base + 0.4)
-    return base
+    return min(1.0, base)
 
 
 # Tokenizer for category_fit only. Splits on whitespace + common punctuation
@@ -163,12 +207,19 @@ def compute_dimensions(
     *,
     cards: "CapabilityCards | None",
     top_k: int,
+    reference_date: datetime | None = None,
+    half_life_days: float = 180.0,
 ) -> DimensionScores:
     triggers = [t.signal for t in cards.buying_triggers] if cards else []
     return DimensionScores(
         capability_fit=score_capability_fit(fit),
         source_confidence=score_source_confidence(row),
-        buying_signal=score_buying_signal(row, triggers=triggers),
+        buying_signal=score_buying_signal(
+            row,
+            triggers=triggers,
+            reference_date=reference_date,
+            half_life_days=half_life_days,
+        ),
         website_verification=score_website_verification(row),
         category_fit=score_category_fit(row, cards=cards),
         competitor_penalty=score_competitor_penalty(fit, top_k=top_k),

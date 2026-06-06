@@ -259,17 +259,12 @@ def _searchresult_to_dict(r: "SearchResult") -> dict:
 
 
 def _dict_to_searchresult(d: dict) -> "SearchResult":
-    from datetime import datetime
-
     from event_intel.providers.search import SearchResult
+    from event_intel.timeutil import parse_iso_utc
 
-    published_at = None
-    raw = d.get("published_at")
-    if raw:
-        try:
-            published_at = datetime.fromisoformat(raw)
-        except (ValueError, TypeError):
-            published_at = None
+    # Normalize cache-restored timestamps to aware UTC too — a v2 cache written
+    # before the normalization fix may hold a naive ISO string (review r2 #1).
+    published_at = parse_iso_utc(d.get("published_at"))
     return SearchResult(
         title=d.get("title", ""),
         url=d.get("url", ""),

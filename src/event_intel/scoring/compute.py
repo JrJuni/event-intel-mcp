@@ -13,6 +13,7 @@ range from defaults.yaml.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from event_intel.errors import ErrorCode, MCPError, Stage
@@ -127,8 +128,13 @@ def _compute_one(
     weights: dict[str, float],
     tier_rules: dict,
     top_k: int,
+    reference_date: datetime | None = None,
+    half_life_days: float = 180.0,
 ) -> ScoredExhibitor:
-    dims = compute_dimensions(row, fit, cards=cards, top_k=top_k)
+    dims = compute_dimensions(
+        row, fit, cards=cards, top_k=top_k,
+        reference_date=reference_date, half_life_days=half_life_days,
+    )
 
     raw = (
         dims.capability_fit       * weights.get("capability_fit", 0.0)
@@ -174,6 +180,7 @@ def score_exhibitors(
     rationale_lang: str = "en",
     rationale_for_tiers: tuple[str, ...] = ("S", "A"),
     rationale_max_tokens: int = 256,
+    reference_date: datetime | None = None,
 ) -> ScoringSummary:
     """Score every (enriched, fit_result) pair and decide tier.
 
@@ -197,6 +204,11 @@ def score_exhibitors(
     try:
         weights = dict(config["scoring"]["weights"])
         tier_rules = dict(config["scoring"]["tier_rules"])
+        half_life_days = float(
+            config.get("scoring", {})
+            .get("buying_signal", {})
+            .get("recency_half_life_days", 180.0)
+        )
     except (KeyError, TypeError) as exc:
         raise MCPError(
             error_code=ErrorCode.CONFIG_ERROR,
@@ -210,6 +222,7 @@ def score_exhibitors(
         scored = _compute_one(
             row=row, fit=fit, cards=cards,
             weights=weights, tier_rules=tier_rules, top_k=top_k,
+            reference_date=reference_date, half_life_days=half_life_days,
         )
         rows.append(scored)
 

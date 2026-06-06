@@ -89,11 +89,46 @@ def test_website_verification_is_binary():
 
 
 def test_buying_signal_news_count_brackets():
-    assert score_buying_signal(_row("X")) == 0.0
-    one = _row("X", news_signals=[NewsSignal(title="t", url="u", snippet="s")])
-    three = _row("X", news_signals=[NewsSignal(title=f"t{i}", url="u", snippet="s") for i in range(3)])
+    # News must mention the company for the full bracket (name-match relevance).
+    assert score_buying_signal(_row("Acme")) == 0.0
+    one = _row("Acme", news_signals=[NewsSignal(title="Acme launches", url="u", snippet="s")])
+    three = _row(
+        "Acme",
+        news_signals=[NewsSignal(title=f"Acme update {i}", url="u", snippet="s") for i in range(3)],
+    )
     assert score_buying_signal(one) == 0.4
     assert score_buying_signal(three) == 0.6
+
+
+def test_buying_signal_downweights_generic_news():
+    """A pile of articles that never name the company is a weak signal — base halved."""
+    matched = _row("Acme", news_signals=[NewsSignal("Acme raises Series B", "u", "s")])
+    generic = _row("Acme", news_signals=[NewsSignal("Some unrelated headline", "u", "s")])
+    assert score_buying_signal(matched) == 0.4
+    assert score_buying_signal(generic) == 0.2
+
+
+def test_buying_signal_recency_bonus_and_naive_timestamp_safe():
+    """Recent name-matched news outranks stale; a naive date-only published_at
+    must NOT raise TypeError against the UTC-aware reference_date (round-2 #1)."""
+    from datetime import datetime, timezone
+
+    ref = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    recent = _row(
+        "Acme",
+        news_signals=[NewsSignal("Acme news", "u", "s", published_at="2026-05-30")],  # naive date-only
+    )
+    stale = _row(
+        "Acme",
+        news_signals=[NewsSignal("Acme news", "u", "s", published_at="2024-01-01")],
+    )
+    r_recent = score_buying_signal(recent, reference_date=ref)
+    r_stale = score_buying_signal(stale, reference_date=ref)
+    assert r_recent > r_stale
+    assert r_stale == pytest.approx(0.4, abs=0.05)
+    # future timestamp contributes no recency bonus, no crash.
+    future = _row("Acme", news_signals=[NewsSignal("Acme news", "u", "s", published_at="2099-01-01")])
+    assert score_buying_signal(future, reference_date=ref) == 0.4
 
 
 def test_buying_signal_trigger_keyword_bonus():
