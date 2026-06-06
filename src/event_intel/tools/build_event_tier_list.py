@@ -89,8 +89,9 @@ def _load_cards_or_warn(workspace_id: str) -> tuple["CapabilityCards | None", st
             # YAML / schema; we let it propagate (no silent except: continue).
             return _validator.load_and_validate(path), None
     return None, (
-        f"no capability_cards file in outputs/{workspace_id}; scoring proceeds "
-        "with target_mode=customer default and generic rationale"
+        f"no capability_cards file in outputs/{workspace_id}: category_fit and "
+        "buying-trigger signals are DISABLED and target_mode defaults to customer "
+        "— RANKINGS differ from a carded run, not just the rationale text"
     )
 
 
@@ -151,6 +152,12 @@ def build_event_tier_list(
         # 2. Preflight — must include product_context check (R3-#1).
         config = _preflight.load_config()
         _preflight.run_preflight(ws, require_product_context=True, config=config)
+
+        # 2b. Load + VALIDATE cards EARLY (review #6) — a present-but-invalid card
+        #     file should fail before spending LLM extraction + Brave/embedding
+        #     calls, not after. Also resolve target_mode here.
+        cards, cards_warning = _load_cards_or_warn(ws)
+        resolved_target_mode = _resolve_target_mode(target_mode, config, cards)
 
         # 3. Source capture (S3, raises SOURCE_CAPTURE_FAILED on failure).
         capture = _source_capture.capture_source(
@@ -213,13 +220,13 @@ def build_event_tier_list(
                 vectorstore_provider=_vectorstore.ChromaProvider(),
                 top_k=int(_retrieval_cfg.get("top_k", _DEFAULT_TOP_K)),
                 capability_top_k=int(_retrieval_cfg.get("capability_top_k", _DEFAULT_TOP_K)),
+                capability_aggregate_top_n=int(_retrieval_cfg.get("capability_aggregate_top_n", 3)),
             )
         else:
             fit_results = []
 
-        # 7. Scoring + tier decision + optional rationale (S4).
-        cards, cards_warning = _load_cards_or_warn(ws)
-        resolved_target_mode = _resolve_target_mode(target_mode, config, cards)
+        # 7. Scoring + tier decision + optional rationale (S4). cards +
+        #    resolved_target_mode were loaded/validated early (step 2b).
         rationale_llm = None
         if run_rationale and enriched_rows:
             rationale_model = config["llm"].get("rationale_model", llm_model_extract)
@@ -241,6 +248,7 @@ def build_event_tier_list(
         context = _tier_list_md.ReportContext(
             workspace_id=ws, event_name=event_name, event_slug=slug,
             lang=lang, generated_at=datetime.now(timezone.utc),
+            target_mode=resolved_target_mode,
         )
         needs_review_rows = [
             _enrichment.EnrichedExhibitor(

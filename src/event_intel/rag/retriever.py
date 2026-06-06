@@ -72,6 +72,7 @@ def retrieve_fit_event_to_product(
     vectorstore_provider: "VectorStoreProvider",
     top_k: int = 5,
     capability_top_k: int | None = None,
+    capability_aggregate_top_n: int = 3,
 ) -> list[FitResult]:
     """For each exhibitor, embed its evidence and query the product collection.
 
@@ -140,11 +141,14 @@ def retrieve_fit_event_to_product(
                 bad_fit_hits += 1
                 bad_sims.append(sim)
 
-        # capability_fit averages ONLY capability-kind hits — never inflated by a
-        # competitor/bad_fit neighbor (the Phase-18U contamination fix). A 1-hit
-        # and a 3-hit average are treated with equal confidence (count-weighting
-        # deferred — backlog).
-        avg = sum(cap_sims) / len(cap_sims) if cap_sims else 0.0
+        # capability_fit = mean of the TOP-N strongest capability-kind sims, not
+        # the mean of ALL of them (review #5). With <=10 capability chunks and a
+        # capability pool of 20, averaging everything let weak capabilities dilute
+        # a strong specific match and flatten scores. Top-N keeps a sharp,
+        # genuine fit sharp. Still capability-only (Phase-18U contamination fix).
+        top_n = capability_aggregate_top_n if capability_aggregate_top_n > 0 else len(cap_sims)
+        best = sorted(cap_sims, reverse=True)[:top_n]
+        avg = sum(best) / len(best) if best else 0.0
         results.append(
             FitResult(
                 name=exh.name,
