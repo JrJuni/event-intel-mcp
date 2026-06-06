@@ -88,18 +88,22 @@ def score_buying_signal(
     if not matched:
         base *= 0.5
 
+    # Recency AND trigger bonuses come ONLY from name-matched news (review r4):
+    # the relevance gate must govern the whole signal, not just the base. Earlier,
+    # `matched or news` + an all-news trigger scan let recent/trigger-bearing but
+    # UNRELATED articles add +0.3 (+0.4) on top of the halved base.
     ref = reference_date or datetime.now(UTC)
     rec = max(
         (
             recency_weight(n.published_at, reference_date=ref, half_life_days=half_life_days)
-            for n in (matched or news)
+            for n in matched
         ),
         default=0.0,
     )
     base = min(1.0, base + 0.3 * rec)
 
-    if triggers:
-        haystack = " ".join(f"{n.title} {n.snippet}".lower() for n in news)
+    if triggers and matched:
+        haystack = " ".join(f"{n.title} {n.snippet}".lower() for n in matched)
         trig_lower = [t.lower() for t in triggers if t]
         if any(t in haystack for t in trig_lower if t):
             base = min(1.0, base + 0.4)
