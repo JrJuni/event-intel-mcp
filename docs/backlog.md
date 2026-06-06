@@ -31,11 +31,11 @@
 
 18V/18V.1 이후 남은 일반화·측정 항목 (현재 blocking 아님):
 
-- **형태소 분석 라이브러리 (P2)** — 규칙기반 CJK bigram이 JP/CN 셀에서 미흡할 때만 janome/jieba 도입. cold-start lazy-import + 패키징 부담 평가 동반.
+- **형태소 분석 라이브러리 (P2 → 측정 완료, 도입은 별도 결정 대기)** — 2026-06-07 cards-backed 측정(`tests/test_category_fit_cjk.py`, report-only)으로 **bigram이 적대적 CJK 케이스에서 false-overlap 100%(4/4)** 확인: JP 半導体↔指導体制(導体), ZH 半导体↔领导体系(导体), KO 이차전지↔전지적(전지). positives 7건은 전부 category_fit>0(측정 가능 입증). → janome(JP)/jieba(CN) 도입이 정당화됨. KR은 순수 파이썬 형태소기 부재로 bigram 유지. **Step 1(lazy-import + `[cjk]` extra + bigram fallback)은 cold-start/패키징 부담 평가 동반 별도 plan.**
 - ~~**9-셀 full eval matrix (P2)**~~ ✅ 완료 (2026-06-07, Phase 18W) — 제품(DB/부품/B2B) × 행사(AI/제조/일반) 9셀 fixture 전부 작성(`tests/fixtures/eval/*.yaml`). 9셀 모두 AUC 1.0 / competitor leakage 0 / evidence-FP 0 통과. harness가 `*.yaml` glob → 자동 게이트.
-- **ecosystem 셀 leakage 재정의 (P2)** — partner/ecosystem 모드에서 competitor leakage 지표 의미 반전 → mode별 positive label·기대치 fixture 정비.
-- **캐시 TTL / resume 신선도 (P2, blind review r2 #2)** — 검색 캐시 키에 만료(주차 버킷 등) 없음 → "최근 180일" 결과가 수개월 뒤 재사용. resume도 event_slug+회사명 기준이라 같은 이벤트 재실행 시 변경된 뉴스/snippet/confidence 무기한 skip. → 캐시 만료 정책 + resume `--refresh`/변경감지.
-- **evidence 예산 round-robin (P2, blind review r2 #6)** — 현재 per-company 예산(default event cap 0)이라 starvation 없음. 단 event cap을 다시 켜면 순차 루프상 뒤 후보가 굶음 → 전역 round-robin 분배로 재설계해야 cap+공정성 양립.
+- ~~**ecosystem 셀 leakage 재정의 (P2)**~~ ✅ 완료 (2026-06-07, Phase 18W P2-3) — 모드 정책표 확정(competitor: customer만 negative, partner neutral, ecosystem positive; bad_fit: 전 모드 negative). `bad_fit_leakage_rate` 분리 신설(competitor와 별도 denominator). `ecosystem.bad_fit_penalty_factor 0.0→1.0`(B안). 직접 mode 테스트(BASELINE_CELL 재채점, 신규 fixture 0).
+- ~~**캐시 TTL / resume 신선도 (P2, blind review r2 #2)**~~ ✅ 완료 (2026-06-07, Phase 18W P2-1) — `ENRICH_CACHE_VERSION 4`: 캐시 페이로드 `cached_at` 래핑 + TTL(`cache_ttl_days`/`resume_ttl_days` 7, 0=항상stale/None=무기한). resume row `input_fp`(name|url|snippet|confidence|config_fp) → 변경 시 재enrich. `config_fp`는 enrichment 필드만(scoring weight 격리). 진짜 `--refresh`(resume+cache 읽기 둘 다 우회).
+- ~~**evidence 예산 round-robin (P2, blind review r2 #6)**~~ ✅ 완료 (2026-06-07, Phase 18W P2-2) — `allocate_round_robin` 순수 함수: event cap 설정 시 각 회사가 2번째 슬롯 전에 1번째를 먼저 받음(starvation 제거). cap=0(기본) 기존 동등. 회사별 즉시 resume.append 유지(내구성).
 - **generic 단일토큰 회사명 floor 오탐 (P3, blind review r3 #3)** — `mentions_name`이 토큰경계+generic guard로 강화됐지만, 토큰이 단일 generic 단어뿐인 회사명("Data"/"Cloud")이나 distinctive 토큰이 전부 <3자라 `name_tokens`가 떨군 경우("Data AI"→["data"])는 여전히 느슨하게 매칭. 단일 generic-word 회사명은 본질적 모호 — 추후 phrase 요구/사전 보강 검토.
 - **same_site allowlist 한계 (P3, blind review r3 #5)** — `registrable_domain`이 알려진 멀티테넌트 suffix(github.io/vercel.app 등) 목록 기반. 목록 밖 호스팅 도메인은 동일 회사로 오판 가능. cold-start 제약상 PSL 라이브러리 미도입(현 절충 수용). 필요 시 목록 확장 또는 lazy PSL.
 - **lint 추가 룰 (P3)** — 현 ruff select(E/F/I/W/B/UP)에 D(docstring)·ANN(type annotation) 등 점진 도입 검토.
