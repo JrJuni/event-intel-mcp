@@ -6,6 +6,10 @@
 
 ## 진행 중
 
+- **Phase 18W — 범용화 잔여 (2026-06-07 착수)**
+  - ✅ **9-셀 full eval matrix** — 제품(DB/부품/B2B) × 행사(AI/제조/일반) 9셀 labeled fixture(`tests/fixtures/eval/*.yaml`). 단일 gold set 과적합 한계 보완 — 9셀 모두 AUC 1.0 / competitor leakage 0 / evidence-FP 0. parametrized 게이트 9셀 자동 커버(`447 passed`). backlog #13에서 promote.
+  - **남은 18W 후보(backlog #13)**: CJK 형태소 lib, 캐시 TTL/resume 신선도(r2 #2), 예산 round-robin(r2 #6), generic 단일토큰(r3 #3)·same_site allowlist(r3 #5) P3 known-limitation.
+
 - **Phase 18V.1 — 머지 후 blind review 정제 + CI 게이트 (2026-06-06)**
   - **계기.** 18V(PR #1) 머지 후 정적 blind review 7건(P1×4, P2×3) — 전부 코드 대조로 valid 확인. 스택 PR로 순차 수정, 각 단계 **실연결된 eval matrix로 회귀 검증**. (메모리: 리뷰는 HEAD 대조 후 경험적으로 해소.)
   - ✅ **#2 eval 실연결** (PR #2) — 하버스가 `target_mode`/`reference_date`/`competitor_similarity`를 scorer에 안 넘겨 4a recency·4b penalty·target_mode가 **실제로 미검증**이었음. 전달하도록 수정 + fixture에 sim 부여(임계 0.5 위/아래 혼합) → penalty 실발화. 1B가 실제 retriever 실행. **baseline A8/B5/C3 → A8/B2/C6**(penalty 정확). 내가 PR #1 본문에 쓴 "baseline이 안전성 입증"은 과장이었음 — 인정·수정.

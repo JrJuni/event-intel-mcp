@@ -1,0 +1,17 @@
+# Hardware component (edge-AI inference SoC) × general trade show. Targets = OEMs
+# embedding compute into products; competitors = chip/module vendors; bad_fit =
+# pure services with no hardware.
+cell: component_x_general
+product: hardware-component
+event: general
+target_mode: customer
+reference_date: "2026-06-01T00:00:00+00:00"
+rows:
+  - {name: SmartShelf Retail, label: target, expected_evidence_types: [official_url, news], official_url: "https://smartshelf.example", news: 3, capability_fit: 0.92}
+  - {name: MediScan Devices, label: target, expected_evidence_types: [official_url, news], official_url: "https://mediscan.example", news: 3, capability_fit: 0.90}
+  - {name: AgriSense Sensors, label: target, expected_evidence_types: [official_url, news], official_url: "https://agrisense.example", news: 3, capability_fit: 0.89}
+  - {name: KioskWorks Terminals, label: target, expected_evidence_types: [official_url, news], official_url: "https://kioskworks.example", news: 3, capability_fit: 0.88}
+  - {name: Ambarella, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://ambarella.example", news: 2, capability_fit: 0.73, competitor_hits: 1, competitor_similarity: 0.45}
+  - {name: Kneron, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://kneron.example", news: 2, capability_fit: 0.71, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: BrightOffice Cleaning, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://brightoffice.example", news: 0, capability_fit: 0.0, bad_fit_hits: 2, bad_fit_similarity: 0.70}
+  - {name: TravelDesk Agency, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://traveldesk.example", news: 1, capability_fit: 0.10, bad_fit_hits: 1, bad_fit_similarity: 0.70}

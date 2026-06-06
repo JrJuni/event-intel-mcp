@@ -1,0 +1,17 @@
+# B2B service (usage-based billing & metering API) × general trade show. Targets =
+# subscription/usage SaaS businesses; competitors = billing/payments platforms;
+# bad_fit = unrelated offline businesses.
+cell: b2b_x_general
+product: b2b-service
+event: general
+target_mode: customer
+reference_date: "2026-06-01T00:00:00+00:00"
+rows:
+  - {name: DocFlow SaaS, label: target, expected_evidence_types: [official_url, news], official_url: "https://docflow.example", news: 3, capability_fit: 0.92}
+  - {name: SignalDesk Support, label: target, expected_evidence_types: [official_url, news], official_url: "https://signaldesk.example", news: 3, capability_fit: 0.90}
+  - {name: ScheduleHero, label: target, expected_evidence_types: [official_url, news], official_url: "https://schedulehero.example", news: 3, capability_fit: 0.89}
+  - {name: InboxPilot, label: target, expected_evidence_types: [official_url, news], official_url: "https://inboxpilot.example", news: 3, capability_fit: 0.88}
+  - {name: Recurly, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://recurly.example", news: 2, capability_fit: 0.73, competitor_hits: 1, competitor_similarity: 0.45}
+  - {name: Paddle Payments, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://paddle.example", news: 2, capability_fit: 0.71, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: GreenThumb Landscaping, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://greenthumb.example", news: 0, capability_fit: 0.0, bad_fit_hits: 2, bad_fit_similarity: 0.70}
+  - {name: CityWide Movers, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://citywidemovers.example", news: 1, capability_fit: 0.10, bad_fit_hits: 1, bad_fit_similarity: 0.70}

@@ -1,0 +1,17 @@
+# B2B service (usage-based billing & metering API) × smart-manufacturing expo.
+# Targets = industrial SaaS / equipment-as-a-service vendors who bill by usage;
+# competitors = billing/ERP-billing platforms; bad_fit = pure hardware/parts.
+cell: b2b_x_mfg
+product: b2b-service
+event: manufacturing
+target_mode: customer
+reference_date: "2026-06-01T00:00:00+00:00"
+rows:
+  - {name: UptimeOps Platform, label: target, expected_evidence_types: [official_url, news], official_url: "https://uptimeops.example", news: 3, capability_fit: 0.92}
+  - {name: FleetMeter Telematics, label: target, expected_evidence_types: [official_url, news], official_url: "https://fleetmeter.example", news: 3, capability_fit: 0.90}
+  - {name: RoboLease Systems, label: target, expected_evidence_types: [official_url, news], official_url: "https://robolease.example", news: 3, capability_fit: 0.89}
+  - {name: CNCaaS Cloud, label: target, expected_evidence_types: [official_url, news], official_url: "https://cncaas.example", news: 3, capability_fit: 0.88}
+  - {name: Chargebee, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://chargebee.example", news: 2, capability_fit: 0.72, competitor_hits: 1, competitor_similarity: 0.45}
+  - {name: Zuora Billing, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://zuora.example", news: 2, capability_fit: 0.70, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: TitaniumStock Metals, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://titaniumstock.example", news: 0, capability_fit: 0.0, bad_fit_hits: 2, bad_fit_similarity: 0.70}
+  - {name: HydraulicParts Direct, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://hydraulicparts.example", news: 1, capability_fit: 0.10, bad_fit_hits: 1, bad_fit_similarity: 0.70}

@@ -1,0 +1,17 @@
+# DB (NoSQL data platform) × smart-manufacturing expo. Targets = data-hungry
+# manufacturing/IoT software that needs a flexible document store; competitors =
+# other databases/time-series engines; bad_fit = pure mechanical/logistics.
+cell: db_x_mfg
+product: db
+event: manufacturing
+target_mode: customer
+reference_date: "2026-06-01T00:00:00+00:00"
+rows:
+  - {name: MachineMetrics, label: target, expected_evidence_types: [official_url, news], official_url: "https://machinemetrics.example", news: 3, capability_fit: 0.93}
+  - {name: Tulip Interfaces, label: target, expected_evidence_types: [official_url, news], official_url: "https://tulip.example", news: 3, capability_fit: 0.91}
+  - {name: Augury, label: target, expected_evidence_types: [official_url, news], official_url: "https://augury.example", news: 3, capability_fit: 0.90}
+  - {name: FactoryStream IoT, label: target, expected_evidence_types: [official_url, news], official_url: "https://factorystream.example", news: 3, capability_fit: 0.88}
+  - {name: InfluxData, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://www.influxdata.com", news: 2, capability_fit: 0.72, competitor_hits: 1, competitor_similarity: 0.45}
+  - {name: Timescale, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://www.timescale.com", news: 2, capability_fit: 0.70, competitor_hits: 1, competitor_similarity: 0.70}
+  - {name: PrecisionFastener Co, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://precisionfastener.example", news: 0, capability_fit: 0.0, bad_fit_hits: 2, bad_fit_similarity: 0.70}
+  - {name: PalletLogix Freight, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://palletlogix.example", news: 1, capability_fit: 0.12, bad_fit_hits: 1, bad_fit_similarity: 0.70}
