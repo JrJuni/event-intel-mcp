@@ -22,7 +22,8 @@ enrichment:
     product: true                  # "{name}" product → product_page evidence
     partners: true                 # "{name}" partners → partner_page evidence
     press_release: true            # "{name}" press release → press_release evidence
-    max_extra_calls_per_event: 30  # Budget: cap real (cache-miss) extra API calls/event (round-1 #7)
+    max_per_company: 3             # Per-company cap — deterministic, order-independent (review #3)
+    max_extra_calls_per_event: 0   # Optional event-wide ATTEMPT ceiling (0 = off; max_companies bounds cost)
 
 scoring:
   weights:

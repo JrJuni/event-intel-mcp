@@ -99,23 +99,28 @@ class EnrichmentResult:
 
 
 class _SearchCache:
-    """Lightweight on-disk cache. One JSON file per (query, kind, lang) hash."""
+    """Lightweight on-disk cache. One JSON file per (query, kind, lang, count,
+    days) hash. count/days are part of the key (review #4): a news query for the
+    last 30 days must NOT serve a cached 180-day result, and a count=5 request
+    must not return a count=20 payload."""
 
     def __init__(self, root: Path):
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def _key(query: str, kind: str, lang: str) -> str:
+    def _key(query: str, kind: str, lang: str, count: int = 0, days: int | None = None) -> str:
         # Version prefix → a parser/semantics bump (ENRICH_CACHE_VERSION) yields
         # new keys, so stale entries (e.g. v1's empty news) are never reused.
         h = hashlib.sha1(
-            f"v{ENRICH_CACHE_VERSION}|{kind}|{lang}|{query}".encode("utf-8")
+            f"v{ENRICH_CACHE_VERSION}|{kind}|{lang}|c{count}|d{days}|{query}".encode("utf-8")
         ).hexdigest()
         return h
 
-    def get(self, query: str, *, kind: str, lang: str) -> list[dict] | None:
-        path = self.root / f"{self._key(query, kind, lang)}.json"
+    def get(
+        self, query: str, *, kind: str, lang: str, count: int = 0, days: int | None = None
+    ) -> list[dict] | None:
+        path = self.root / f"{self._key(query, kind, lang, count, days)}.json"
         if not path.is_file():
             return None
         try:
@@ -124,8 +129,11 @@ class _SearchCache:
         except (json.JSONDecodeError, OSError):
             return None
 
-    def put(self, query: str, *, kind: str, lang: str, results: list[dict]) -> None:
-        path = self.root / f"{self._key(query, kind, lang)}.json"
+    def put(
+        self, query: str, *, kind: str, lang: str, results: list[dict],
+        count: int = 0, days: int | None = None,
+    ) -> None:
+        path = self.root / f"{self._key(query, kind, lang, count, days)}.json"
         try:
             with path.open("w", encoding="utf-8") as f:
                 json.dump(results, f, ensure_ascii=False)
@@ -373,6 +381,10 @@ def enrich_exhibitors(
             "partners": (bool(ev_cfg.get("partners", False)), "partners"),
             "press_release": (bool(ev_cfg.get("press_release", False)), "press release"),
         }
+        # Budget is per-company (deterministic, order-independent — review #3) with
+        # an OPTIONAL event-wide ATTEMPT ceiling (0 = off). Counting attempts, not
+        # cache misses, makes the queried set independent of cache warmth.
+        ev_max_per_company = int(ev_cfg.get("max_per_company", 3))
         ev_max_extra = int(ev_cfg.get("max_extra_calls_per_event", 0))
     except (KeyError, TypeError, ValueError) as exc:
         raise MCPError(
@@ -405,7 +417,7 @@ def enrich_exhibitors(
     cache_hits = 0
     cache_misses = 0
     skipped = 0
-    extra_api_calls = 0          # real (cache-miss) extra evidence-query calls, budget-capped
+    extra_query_attempts = 0     # event-wide extra evidence-query ATTEMPTS (cache-independent)
     rows: list[EnrichedExhibitor] = []
 
     for cand in capped:
@@ -514,11 +526,18 @@ def enrich_exhibitors(
                     published_at=n.published_at,
                 )
             )
+        per_company_extra = 0
         for enabled, suffix in ev_enabled.values():
             if not enabled:
                 continue
-            if ev_max_extra and extra_api_calls >= ev_max_extra:
+            if ev_max_per_company and per_company_extra >= ev_max_per_company:
                 break
+            if ev_max_extra and extra_query_attempts >= ev_max_extra:
+                break
+            # Count the ATTEMPT before the call so cache hits and misses consume
+            # budget identically → the queried set is deterministic (review #3).
+            extra_query_attempts += 1
+            per_company_extra += 1
             ev_hits = _search_with_cache(
                 cache=cache, cache_enabled=cache_enabled,
                 search_provider=search_provider, query=f'"{cand.name}" {suffix}',
@@ -529,7 +548,6 @@ def enrich_exhibitors(
                 cache_hits += 1
             else:
                 cache_misses += 1
-                extra_api_calls += 1     # only real API calls count toward budget
             for hit in ev_hits["results"]:
                 if not _is_article_like(hit.url):
                     continue
@@ -578,7 +596,7 @@ def _search_with_cache(
     serialized SearchResult dicts (title/url/snippet/source) — `extra` and
     `published_at` are dropped for portability."""
     if cache_enabled:
-        cached = cache.get(query, kind=kind, lang=lang)
+        cached = cache.get(query, kind=kind, lang=lang, count=count, days=days)
         if cached is not None:
             return {
                 "results": [_dict_to_searchresult(d) for d in cached],
@@ -598,7 +616,7 @@ def _search_with_cache(
         ) from exc
     if cache_enabled:
         cache.put(
-            query, kind=kind, lang=lang,
+            query, kind=kind, lang=lang, count=count, days=days,
             results=[_searchresult_to_dict(r) for r in live],
         )
     return {"results": live, "was_hit": False}
