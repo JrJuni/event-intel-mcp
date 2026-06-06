@@ -6,6 +6,17 @@
 
 ## 진행 중
 
+- **Phase 18V.1 — 머지 후 blind review 정제 + CI 게이트 (2026-06-06)**
+  - **계기.** 18V(PR #1) 머지 후 정적 blind review 7건(P1×4, P2×3) — 전부 코드 대조로 valid 확인. 스택 PR로 순차 수정, 각 단계 **실연결된 eval matrix로 회귀 검증**. (메모리: 리뷰는 HEAD 대조 후 경험적으로 해소.)
+  - ✅ **#2 eval 실연결** (PR #2) — 하버스가 `target_mode`/`reference_date`/`competitor_similarity`를 scorer에 안 넘겨 4a recency·4b penalty·target_mode가 **실제로 미검증**이었음. 전달하도록 수정 + fixture에 sim 부여(임계 0.5 위/아래 혼합) → penalty 실발화. 1B가 실제 retriever 실행. **baseline A8/B5/C3 → A8/B2/C6**(penalty 정확). 내가 PR #1 본문에 쓴 "baseline이 안전성 입증"은 과장이었음 — 인정·수정.
+  - ✅ **#1 evidence 관련성 게이트** (PR #7, #3 대체) — 제3자 경로매칭(`/products` 등)이 floor 2 만들던 것 차단: identity는 official 도메인과 **same-site**일 때만(서브도메인 인식 `registrable_domain`), extra 쿼리 결과는 same-site OR 회사명 토큰(whole-token) 일치만 채택.
+  - ✅ **#3/#4 결정론** (PR #4) — evidence 예산을 **per-company**(순서·캐시상태 무관, attempt 카운트) + 캐시 키에 `count`/`days` + resume **이벤트 스코프**(`resume/{ws}/{slug}.jsonl`).
+  - ✅ **#5/#6/#7 P2** (PR #5) — capability_fit = **top-N 평균**(top_k 20 vs ≤10 capability 평탄화 해소); 카드 **조기 검증**(enrichment 비용 전) + cards=None 경고를 "랭킹 변동"으로 강화; floor invariant **티어별 최소**(S=2); `target_mode`를 `tier_list.yaml`에 기록(`REPORT_SCHEMA_VERSION` 3).
+  - ✅ **CI 게이트** (PR #6/#8/#9) — GitHub Actions `pytest`+`ruff` 둘 다 **blocking**, `main` 브랜치 보호로 `pytest (python 3.11)` strict 필수. ruff 클린 스윕(194건). actions Node 24(checkout@v5/setup-python@v6).
+  - **CI가 잡은 크로스플랫폼 버그 2건**: (a) eval가 핵심 미검증(#2), (b) `load_tier_list_yaml`이 Windows는 통과/Linux는 `OSError errno 36`(긴 YAML 문자열을 경로로 probe) — `is_file()` guard로 수정. → **Windows 단독 통과 버그를 Linux 러너가 차단**.
+  - **테스트**: 430 passed, ruff clean. PR #1,#2,#7,#4,#5,#6,#8,#9 머지, 브랜치 정리(`main`만).
+  - **남은 갭(18W)**: backlog #13 참조.
+
 - **Phase 18V — 범용 exhibition intelligence 엔진 (2026-06-06, plan `snoopy-weaving-robin.md`, branch `phase-18v`)**
   - **계기.** 18U는 MongoDB×GTC 단일 gold set 기준 MVP 합격. 모든 제품·전시회 범용화에 backlog #12의 4개 P1 필요. 18U 교훈("측정 먼저, 튜닝 마지막")에 따라 **eval matrix를 먼저** 짓고 모든 변경을 거기에 회귀 검증. plan v1→v3 (blind review 2라운드, 코드 대조 후 14건 전부 수용).
   - ✅ **18V-1 eval matrix** — 2층: scoring matrix(fake FitResult, 빠른 회귀) + pipeline-contract matrix(fake provider, 실제 enrichment+retriever). metrics: `ranking_accuracy_auc`(정규화 pairwise, 셀크기 무관) / mode-aware `precision_at_10` / `competitor_leakage_rate` / `evidence_false_positive_rate`. `event-intel eval-matrix` CLI. baseline 스냅샷(DB×AI: A8/B5/C3, AUC 1.0, leakage 0, P@10 0.8) 커밋 상수.

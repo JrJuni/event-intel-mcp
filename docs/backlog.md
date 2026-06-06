@@ -25,7 +25,16 @@
 
 ### ~~#12 Phase 18V — 범용 exhibition intelligence (MVP→일반화)~~ ✅ 완료 (2026-06-06, branch `phase-18v`)
 
-**완료**: 4항목 전부 구현(eval matrix 2층 / news recency+UTC 정규화 / pool 분리+sim-gated penalty / CJK / evidence_types+floor 재설계 / target_mode). 상세 `status.md` Phase 18V. plan v3(blind review 2라운드 14건 수용). 18W 후보: 형태소 분석 라이브러리, 9-셀 full matrix, ecosystem leakage 재정의.
+**완료**: 4항목 전부 구현(eval matrix 2층 / news recency+UTC 정규화 / pool 분리+sim-gated penalty / CJK / evidence_types+floor 재설계 / target_mode). 상세 `status.md` Phase 18V. plan v3(blind review 2라운드 14건 수용). **+ Phase 18V.1 머지후 정제(2026-06-06)**: 정적 blind review 7건(P1×4/P2×3) 전부 수정(eval 실연결·evidence 관련성 게이트·예산/캐시/resume 결정론·capability top-N·카드 조기검증·티어별 floor invariant). + CI 게이트(pytest+ruff blocking, main 브랜치 보호). 상세 `status.md` Phase 18V.1. 잔여 → #13.
+
+### #13 Phase 18W — 범용화 잔여 + 측정 확장 (P2)
+
+18V/18V.1 이후 남은 일반화·측정 항목 (현재 blocking 아님):
+
+- **형태소 분석 라이브러리 (P2)** — 규칙기반 CJK bigram이 JP/CN 셀에서 미흡할 때만 janome/jieba 도입. cold-start lazy-import + 패키징 부담 평가 동반.
+- **9-셀 full eval matrix (P2)** — 현재 3~4 셀(DB×AI baseline + hardware×mfg). 제품(DB/부품/B2B) × 행사(AI/제조/일반) 전 셀 fixture 확장.
+- **ecosystem 셀 leakage 재정의 (P2)** — partner/ecosystem 모드에서 competitor leakage 지표 의미 반전 → mode별 positive label·기대치 fixture 정비.
+- **lint 추가 룰 (P3)** — 현 ruff select(E/F/I/W/B/UP)에 D(docstring)·ANN(type annotation) 등 점진 도입 검토.
 
 원래 항목(아카이브) — Phase 18U는 **MongoDB×GTC 단일 use-case 기준 MVP**로 합격(경쟁사 S/A=0, 타깃 median 5위 vs 경쟁사 25위). 모든 전시회·제품에 범용으로 쓰려면 별도 phase 필요 — blind review 2·3라운드에서 반복 도출, 사용자가 4항목 모두 중요 표시(2026-06-05):
 
