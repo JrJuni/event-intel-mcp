@@ -34,7 +34,11 @@
 - **형태소 분석 라이브러리 (P2)** — 규칙기반 CJK bigram이 JP/CN 셀에서 미흡할 때만 janome/jieba 도입. cold-start lazy-import + 패키징 부담 평가 동반.
 - **9-셀 full eval matrix (P2)** — 현재 3~4 셀(DB×AI baseline + hardware×mfg). 제품(DB/부품/B2B) × 행사(AI/제조/일반) 전 셀 fixture 확장.
 - **ecosystem 셀 leakage 재정의 (P2)** — partner/ecosystem 모드에서 competitor leakage 지표 의미 반전 → mode별 positive label·기대치 fixture 정비.
+- **캐시 TTL / resume 신선도 (P2, blind review r2 #2)** — 검색 캐시 키에 만료(주차 버킷 등) 없음 → "최근 180일" 결과가 수개월 뒤 재사용. resume도 event_slug+회사명 기준이라 같은 이벤트 재실행 시 변경된 뉴스/snippet/confidence 무기한 skip. → 캐시 만료 정책 + resume `--refresh`/변경감지.
+- **evidence 예산 round-robin (P2, blind review r2 #6)** — 현재 per-company 예산(default event cap 0)이라 starvation 없음. 단 event cap을 다시 켜면 순차 루프상 뒤 후보가 굶음 → 전역 round-robin 분배로 재설계해야 cap+공정성 양립.
 - **lint 추가 룰 (P3)** — 현 ruff select(E/F/I/W/B/UP)에 D(docstring)·ANN(type annotation) 등 점진 도입 검토.
+
+**18V.1 round-2 정제 완료분(2026-06-06, 참고)**: HIGH 3건(#1 news 게이트+generic-token, #3 report invariant config화, #5 카드↔vector replace) + MEDIUM 2건(#7 멀티테넌트 same_site, #4 top-N/recency eval 실검증) 머지. 상세 `status.md`.
 
 원래 항목(아카이브) — Phase 18U는 **MongoDB×GTC 단일 use-case 기준 MVP**로 합격(경쟁사 S/A=0, 타깃 median 5위 vs 경쟁사 25위). 모든 전시회·제품에 범용으로 쓰려면 별도 phase 필요 — blind review 2·3라운드에서 반복 도출, 사용자가 4항목 모두 중요 표시(2026-06-05):
 

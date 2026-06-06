@@ -15,6 +15,7 @@
   - ✅ **CI 게이트** (PR #6/#8/#9) — GitHub Actions `pytest`+`ruff` 둘 다 **blocking**, `main` 브랜치 보호로 `pytest (python 3.11)` strict 필수. ruff 클린 스윕(194건). actions Node 24(checkout@v5/setup-python@v6).
   - **CI가 잡은 크로스플랫폼 버그 2건**: (a) eval가 핵심 미검증(#2), (b) `load_tier_list_yaml`이 Windows는 통과/Linux는 `OSError errno 36`(긴 YAML 문자열을 경로로 probe) — `is_file()` guard로 수정. → **Windows 단독 통과 버그를 Linux 러너가 차단**.
   - **테스트**: 430 passed, ruff clean. PR #1,#2,#7,#4,#5,#6,#8,#9 머지, 브랜치 정리(`main`만).
+  - **round-2 정제 (2026-06-06)** — 머지된 main에 2차 정적 blind review 7건(전부 valid, HEAD 대조). HIGH 3(PR #11): #1 news floor-evidence 게이트+generic-token name 매칭, #3 report floor invariant를 effective tier_rules로(하드코딩 제거), #5 카드↔vector ingest replace(orphan 제거). MEDIUM 2(PR #12): #7 멀티테넌트 same_site(github.io/vercel.app 등 분리), #4 top-N·recency eval 실검증(retriever→scorer + news published_at). 잔여 #2(캐시 TTL/resume 신선도)·#6(예산 round-robin) → backlog #13. **438 passed**.
   - **남은 갭(18W)**: backlog #13 참조.
 
 - **Phase 18V — 범용 exhibition intelligence 엔진 (2026-06-06, plan `snoopy-weaving-robin.md`, branch `phase-18v`)**
