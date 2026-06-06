@@ -304,6 +304,23 @@ def export_schema_cmd(
     _print_json({"ok": True, "path": str(out_path), "schema_version": SCHEMA_VERSION})
 
 
+@app.command("eval-matrix")
+def eval_matrix_cmd(
+    cell_dir: str = typer.Option(
+        "tests/fixtures/eval",
+        "--cell-dir",
+        help="Directory of labeled eval cells (*.yaml).",
+    ),
+) -> None:
+    """Run the scoring-matrix (1A) over labeled cells and print metrics (Phase 18V)."""
+    from event_intel.eval.harness import run_matrix
+    from event_intel.runtime.preflight import load_config
+
+    config = load_config()
+    cells = run_matrix(cell_dir, config=config)
+    _print_json({"ok": True, "cells": [c.as_dict() for c in cells]})
+
+
 def main() -> None:
     """Module entrypoint for `python -m event_intel.cli`."""
     app()

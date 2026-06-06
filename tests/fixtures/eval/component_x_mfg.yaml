@@ -1,0 +1,19 @@
+# Contrast eval cell — product=edge-AI inference SoC (hardware component),
+# event=smart-manufacturing expo. Validates the engine generalizes off the
+# DB×AI baseline: targets are automation/robotics integrators that embed the
+# component; competitors are rival silicon vendors; bad_fit are unrelated
+# industrial services. Scoring-matrix (1A) fake capability_fit values.
+cell: component_x_mfg
+product: hardware-component
+event: manufacturing
+target_mode: customer
+reference_date: "2026-06-01T00:00:00+00:00"
+rows:
+  - {name: FactoryVision Robotics, label: target, expected_evidence_types: [official_url, news], official_url: "https://factoryvision.example", news: 3, capability_fit: 0.92}
+  - {name: AutoCell Integrators, label: target, expected_evidence_types: [official_url, news], official_url: "https://autocell.example", news: 3, capability_fit: 0.90}
+  - {name: EdgeWeld Systems, label: target, expected_evidence_types: [official_url, news], official_url: "https://edgeweld.example", news: 3, capability_fit: 0.89}
+  - {name: PrecisionPick Automation, label: target, expected_evidence_types: [official_url, news], official_url: "https://precisionpick.example", news: 3, capability_fit: 0.88}
+  - {name: RivalChip Semiconductors, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://rivalchip.example", news: 2, capability_fit: 0.72, competitor_hits: 1}
+  - {name: NPUWorks, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://npuworks.example", news: 2, capability_fit: 0.70, competitor_hits: 1}
+  - {name: AcmeCatering Industrial, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://acmecatering.example", news: 0, capability_fit: 0.0, bad_fit_hits: 2}
+  - {name: FreightLogix, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://freightlogix.example", news: 1, capability_fit: 0.10, bad_fit_hits: 1}
