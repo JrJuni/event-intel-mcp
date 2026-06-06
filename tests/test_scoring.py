@@ -324,6 +324,34 @@ def test_bad_fit_and_competitor_penalty_drops_tier():
     assert tier_order.index(dirty.tier) < tier_order.index(clean.tier)
 
 
+def test_buying_signal_unmatched_news_gets_no_recency_or_trigger_bonus():
+    """Review round-4: recency + trigger bonuses come ONLY from name-matched news.
+    A recent, trigger-bearing, but UNRELATED article must not inflate the signal
+    beyond the halved base."""
+    from datetime import datetime
+
+    ref = datetime(2026, 6, 1, tzinfo=UTC)
+    row = _row(
+        "Acme",
+        news_signals=[NewsSignal(
+            title="Big funding round shakes the cloud sector",
+            url="u", snippet="raised Series C", published_at="2026-05-30",
+        )],
+    )
+    # 1 news, name unmatched → base 0.4×0.5 = 0.2; recent + 'Series C' trigger must
+    # NOT add bonuses because the article isn't about the company.
+    assert score_buying_signal(row, triggers=["Series C"], reference_date=ref) == pytest.approx(0.2)
+    # Sanity: the SAME article, now name-matched, does get the bonuses.
+    matched_row = _row(
+        "Acme",
+        news_signals=[NewsSignal(
+            title="Acme raises Series C", url="u", snippet="funding",
+            published_at="2026-05-30",
+        )],
+    )
+    assert score_buying_signal(matched_row, triggers=["Series C"], reference_date=ref) > 0.2
+
+
 def test_competitor_penalty_does_not_saturate_when_similarity_low():
     """4b regression: a row whose negative pool is FULL of competitor/bad_fit
     chunks (high counts) but at LOW similarity must NOT be penalized — the count
