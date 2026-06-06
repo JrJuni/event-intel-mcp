@@ -6,9 +6,15 @@
 
 ## 진행 중
 
-- **Phase 18W — 범용화 잔여 (2026-06-07 착수)**
-  - ✅ **9-셀 full eval matrix** — 제품(DB/부품/B2B) × 행사(AI/제조/일반) 9셀 labeled fixture(`tests/fixtures/eval/*.yaml`). 단일 gold set 과적합 한계 보완 — 9셀 모두 AUC 1.0 / competitor leakage 0 / evidence-FP 0. parametrized 게이트 9셀 자동 커버(`447 passed`). backlog #13에서 promote.
-  - **남은 18W 후보(backlog #13)**: CJK 형태소 lib, 캐시 TTL/resume 신선도(r2 #2), 예산 round-robin(r2 #6), generic 단일토큰(r3 #3)·same_site allowlist(r3 #5) P3 known-limitation.
+- **Phase 18W — 범용화 잔여 (2026-06-07, plan `phase-18w-p2.md`)**
+  - ✅ **9-셀 full eval matrix** — 제품(DB/부품/B2B) × 행사(AI/제조/일반) 9셀 labeled fixture(`tests/fixtures/eval/*.yaml`). 단일 gold set 과적합 한계 보완 — 9셀 모두 AUC 1.0 / competitor leakage 0 / evidence-FP 0. parametrized 게이트 9셀 자동 커버. backlog #13에서 promote. (PR #17)
+  - **P2 4건 — 정적 blind review 2라운드(14건, 전부 HEAD 대조 후 수용) 후 실행. 각 항목 CI 게이트 통과 머지.**
+  - ✅ **P2-1 캐시 TTL + fingerprint + 진짜 refresh** (PR #18) — `ENRICH_CACHE_VERSION 4`(캐시 `cached_at` 래핑 + resume `enriched_at`/`input_fp`). 공유 `_is_fresh` 계약(None=무기한/0=항상stale/양수=ttl). `--refresh`가 resume+cache 읽기 **둘 다** 우회(쓰기는 유지). `input_fp=sha1(name|url|snippet|confidence|config_fp)` → 입력 변경 시 TTL 무관 재enrich. `config_fp`는 enrichment 필드만(scoring weight 격리). `now` 주입. config `cache_ttl_days`/`resume_ttl_days`(7).
+  - ✅ **P2-2 round-robin evidence 할당** (PR #19) — `allocate_round_robin` 순수 함수(event cap 설정 시 공정 분배, cap=0 기존 동등). enrich 대상만 사전 할당(skip 회사 예산 미소모). 회사별 즉시 resume.append 유지 → 후반 실패가 앞 회사 유실 안 함(내구성 테스트). 2-pass 재작성 회피(review r2 #4).
+  - ✅ **P2-3 leakage 분리 + mode 정책** (PR #20) — `bad_fit_leakage_rate` 신설(competitor와 별도 denominator, review r2 #5). 모드 정책표 확정: competitor는 customer만 negative(partner neutral/ecosystem positive), bad_fit은 전 모드 negative. `ecosystem.bad_fit_penalty_factor 0.0→1.0`(B안, 사용자 결정). 게이트: bad_fit_leakage=0 전 모드. 직접 mode 테스트(BASELINE_CELL 재채점, 신규 fixture 0).
+  - ✅ **P2-4 cards-backed CJK category-fit 측정** (PR #진행중, report-only) — `score_category_fit`이 `cards=None`에선 항상 0이라 eval harness로 측정 불가했던 한계(review r2 #1) 해소: 실제 `CapabilityCards`(CJK industries)로 직접 호출. **측정 결과: bigram이 적대적 케이스 false-overlap 100%(4/4)** — JP 半導体↔指導体制, ZH 半导体↔领导体系, KO 이차전지↔전지적(전부 0.5 오탐). positives 7건 전부 category_fit>0. CI 게이트 아님(report-only). → janome/jieba 도입 정당화, Step 1은 별도 plan(backlog #13).
+  - **테스트**: 460 passed, ruff clean, 양쪽 CI 게이트.
+  - **남은 18W(backlog #13)**: CJK 형태소 lib **도입**(측정 완료, cold-start/패키징 평가 동반 별도 plan), generic 단일토큰(r3 #3)·same_site allowlist(r3 #5) P3 known-limitation, lint 추가 룰(P3).
 
 - **Phase 18V.1 — 머지 후 blind review 정제 + CI 게이트 (2026-06-06)**
   - **계기.** 18V(PR #1) 머지 후 정적 blind review 7건(P1×4, P2×3) — 전부 코드 대조로 valid 확인. 스택 PR로 순차 수정, 각 단계 **실연결된 eval matrix로 회귀 검증**. (메모리: 리뷰는 HEAD 대조 후 경험적으로 해소.)
