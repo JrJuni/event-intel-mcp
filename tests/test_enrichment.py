@@ -318,3 +318,78 @@ def test_cache_key_includes_version(monkeypatch):
     monkeypatch.setattr(enr, "ENRICH_CACHE_VERSION", ENRICH_CACHE_VERSION + 1)
     k2 = enr._SearchCache._key("Acme AI", "news", "en")
     assert k1 != k2
+
+
+def test_typed_evidence_populated_and_deduped(tmp_path):
+    """Phase 18V item 1: official_url + news classify into typed evidence; with
+    evidence_queries enabled, a press-release page is added and the same URL
+    returned by multiple queries dedupes to one item."""
+    search = FakeSearch()
+    search.web_by_name["Acme Data"] = [
+        _SR(title="Acme Data — official", url="https://acmedata.example", snippet=""),
+    ]
+    # Both the press-release query AND the news query surface the SAME press URL.
+    search.web_by_name["Acme Data press release"] = [
+        _SR(title="Acme launches v2", url="https://acmedata.example/press/v2", snippet=""),
+    ]
+    search.news_by_name["Acme Data"] = [
+        _SR(title="Acme launches v2", url="https://acmedata.example/press/v2", snippet="launch"),
+        _SR(title="Acme on TechBlog", url="https://techblog.example/acme", snippet="profile"),
+    ]
+    cands = [
+        ExhibitorCandidate(
+            name="Acme Data",
+            source_snippet="Realtime feature store",
+            extraction_confidence=0.9,
+        )
+    ]
+    cfg = _config(
+        evidence_queries={
+            "product": False,
+            "partners": False,
+            "press_release": True,
+            "max_extra_calls_per_event": 10,
+        }
+    )
+    result = enrich_exhibitors(
+        candidates=cands, workspace_id="ev1", lang="en", config=cfg,
+        search_provider=search,
+        cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+    )
+    row = result.rows[0]
+    types = sorted(e.type for e in row.evidence)
+    by_url = {e.url: e for e in row.evidence}
+    # official homepage → official_url; techblog → news; press path → press_release.
+    assert "official_url" in types
+    assert "news" in types
+    # The /press/v2 URL appears in BOTH press-release web query and news query but
+    # is deduped to a single press_release item (path precedence).
+    press_items = [e for e in row.evidence if e.url.rstrip("/").endswith("/press/v2")]
+    assert len(press_items) == 1
+    assert press_items[0].type == "press_release"
+
+
+def test_evidence_query_budget_caps_extra_api_calls(tmp_path):
+    """max_extra_calls_per_event bounds real (cache-miss) extra evidence queries."""
+    search = FakeSearch()
+    cands = _candidates_5()
+    cfg = _config(
+        evidence_queries={
+            "product": True,
+            "partners": True,
+            "press_release": True,
+            "max_extra_calls_per_event": 2,
+        }
+    )
+    enrich_exhibitors(
+        candidates=cands, workspace_id="ev2", lang="en", config=cfg,
+        search_provider=search,
+        cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+    )
+    # 5 companies × 3 evidence query types = 15 possible; budget caps extra web
+    # queries (beyond the official-site lookups) at 2.
+    extra_web = [
+        c for c in search.calls
+        if c["kind"] == "web" and ("product" in c["query"] or "partners" in c["query"] or "press release" in c["query"])
+    ]
+    assert len(extra_web) == 2, extra_web

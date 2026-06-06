@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING
 from event_intel.errors import ErrorCode, MCPError, Stage
 
 if TYPE_CHECKING:
+    from event_intel.events.evidence import EvidenceItem
     from event_intel.events.extraction import ExhibitorCandidate
     from event_intel.providers.search import SearchProvider, SearchResult
 
@@ -41,7 +42,9 @@ if TYPE_CHECKING:
 #   v1 → original.
 #   v2 → Brave news parser fix (top-level results) + published_at + non-article
 #        news path filter (Phase 18U). Old v1 entries cached empty news.
-ENRICH_CACHE_VERSION = 2
+#   v3 → typed evidence (official_url/product_page/docs/partner_page/press_release/
+#        news) + canonical dedupe + UTC-aware published_at (Phase 18V item 1).
+ENRICH_CACHE_VERSION = 3
 
 # News results whose URL path is a utility/non-article page are dropped — they
 # are not real buying signals. We filter by PATH, not domain, so a company's own
@@ -77,6 +80,7 @@ class EnrichedExhibitor:
     official_url: str | None = None       # post-enrichment determination
     description: str | None = None
     news_signals: list[NewsSignal] = field(default_factory=list)
+    evidence: list["EvidenceItem"] = field(default_factory=list)  # typed, deduped (18V item 1)
     extraction_confidence: float = 1.0
     enrichment_status: str = "enriched"   # "enriched" | "needs_review" | "failed"
     enrichment_warnings: list[str] = field(default_factory=list)
@@ -259,17 +263,12 @@ def _searchresult_to_dict(r: "SearchResult") -> dict:
 
 
 def _dict_to_searchresult(d: dict) -> "SearchResult":
-    from datetime import datetime
-
     from event_intel.providers.search import SearchResult
+    from event_intel.timeutil import parse_iso_utc
 
-    published_at = None
-    raw = d.get("published_at")
-    if raw:
-        try:
-            published_at = datetime.fromisoformat(raw)
-        except (ValueError, TypeError):
-            published_at = None
+    # Normalize cache-restored timestamps to aware UTC too — a v2 cache written
+    # before the normalization fix may hold a naive ISO string (review r2 #1).
+    published_at = parse_iso_utc(d.get("published_at"))
     return SearchResult(
         title=d.get("title", ""),
         url=d.get("url", ""),
@@ -290,6 +289,11 @@ def _to_dict(row: EnrichedExhibitor) -> dict:
             {"title": n.title, "url": n.url, "snippet": n.snippet,
              "source": n.source, "published_at": n.published_at}
             for n in row.news_signals
+        ],
+        "evidence": [
+            {"type": e.type, "url": e.url, "source_domain": e.source_domain,
+             "published_at": e.published_at}
+            for e in row.evidence
         ],
         "extraction_confidence": row.extraction_confidence,
         "enrichment_status": row.enrichment_status,
@@ -315,10 +319,25 @@ def _from_dict(d: dict) -> EnrichedExhibitor:
             )
             for n in d.get("news_signals", [])
         ],
+        evidence=_evidence_from_dicts(d.get("evidence", [])),
         extraction_confidence=float(d.get("extraction_confidence", 1.0)),
         enrichment_status=d.get("enrichment_status", "enriched"),
         enrichment_warnings=list(d.get("enrichment_warnings", [])),
     )
+
+
+def _evidence_from_dicts(items: list[dict]) -> list["EvidenceItem"]:
+    from event_intel.events.evidence import EvidenceItem
+
+    return [
+        EvidenceItem(
+            type=i.get("type", ""),
+            url=i.get("url", ""),
+            source_domain=i.get("source_domain"),
+            published_at=i.get("published_at"),
+        )
+        for i in items
+    ]
 
 
 def enrich_exhibitors(
@@ -345,6 +364,16 @@ def enrich_exhibitors(
         news_days = int(enrichment_cfg["news_days_back"])
         cache_enabled = bool(enrichment_cfg.get("cache_enabled", True))
         url_threshold = float(enrichment_cfg["official_url_levenshtein_threshold"])
+        # Extra evidence-type queries (Phase 18V item 1). Default OFF when the key
+        # is absent so existing callers/tests keep their exact search budget;
+        # shipped defaults.yaml turns them on, capped per event (round-1 #7).
+        ev_cfg = enrichment_cfg.get("evidence_queries", {}) or {}
+        ev_enabled = {
+            "product": (bool(ev_cfg.get("product", False)), "product"),
+            "partners": (bool(ev_cfg.get("partners", False)), "partners"),
+            "press_release": (bool(ev_cfg.get("press_release", False)), "press release"),
+        }
+        ev_max_extra = int(ev_cfg.get("max_extra_calls_per_event", 0))
     except (KeyError, TypeError, ValueError) as exc:
         raise MCPError(
             error_code=ErrorCode.CONFIG_ERROR,
@@ -376,6 +405,7 @@ def enrich_exhibitors(
     cache_hits = 0
     cache_misses = 0
     skipped = 0
+    extra_api_calls = 0          # real (cache-miss) extra evidence-query calls, budget-capped
     rows: list[EnrichedExhibitor] = []
 
     for cand in capped:
@@ -439,6 +469,62 @@ def enrich_exhibitors(
                     published_at=hit.published_at.isoformat() if hit.published_at else None,
                 )
             )
+
+        # 3) Typed evidence (Phase 18V item 1): classify official_url + news,
+        #    optionally enrich with budgeted product/partner/press queries, then
+        #    canonical-dedupe with type precedence.
+        from event_intel.events.evidence import (
+            EvidenceItem,
+            classify_url_type,
+            domain_of,
+            merge_evidence,
+        )
+
+        raw_ev: list[EvidenceItem] = []
+        if row.official_url:
+            raw_ev.append(
+                EvidenceItem(
+                    type=classify_url_type(row.official_url),
+                    url=row.official_url,
+                    source_domain=domain_of(row.official_url),
+                )
+            )
+        for n in row.news_signals:
+            raw_ev.append(
+                EvidenceItem(
+                    type=classify_url_type(n.url, from_news=True),
+                    url=n.url,
+                    source_domain=domain_of(n.url),
+                    published_at=n.published_at,
+                )
+            )
+        for enabled, suffix in ev_enabled.values():
+            if not enabled:
+                continue
+            if ev_max_extra and extra_api_calls >= ev_max_extra:
+                break
+            ev_hits = _search_with_cache(
+                cache=cache, cache_enabled=cache_enabled,
+                search_provider=search_provider, query=f'"{cand.name}" {suffix}',
+                kind="web", count=count_web, lang=lang,
+                hits_counter=(lambda hit: None),
+            )
+            if ev_hits["was_hit"]:
+                cache_hits += 1
+            else:
+                cache_misses += 1
+                extra_api_calls += 1     # only real API calls count toward budget
+            for hit in ev_hits["results"]:
+                if not _is_article_like(hit.url):
+                    continue
+                raw_ev.append(
+                    EvidenceItem(
+                        type=classify_url_type(hit.url),
+                        url=hit.url,
+                        source_domain=domain_of(hit.url),
+                    )
+                )
+        row.evidence = merge_evidence(raw_ev)
 
         # raw_extraction → enriched promotion check
         if not row.source_snippet:

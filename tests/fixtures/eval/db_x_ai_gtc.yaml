@@ -1,0 +1,28 @@
+# Baseline eval cell — product=NoSQL data platform (MongoDB Atlas),
+# event=NVIDIA GTC 2026 (AI). This is the Phase-18U gold set re-expressed as a
+# labeled eval cell. `capability_fit` here is a fake stand-in for what retrieval
+# produces (scoring matrix 1A); the real retrieval path is exercised by the
+# pipeline-contract matrix (1B). Targets are AI app/data builders; competitors
+# are other data/serving engines; bad_fit are pure infra/semis.
+cell: db_x_ai_gtc
+product: db
+event: ai
+target_mode: customer
+reference_date: "2026-06-01T00:00:00+00:00"
+rows:
+  - {name: LlamaIndex, label: target, expected_evidence_types: [official_url, news], official_url: "https://www.llamaindex.ai", news: 3, capability_fit: 0.93}
+  - {name: Nexla, label: target, expected_evidence_types: [official_url, news], official_url: "https://www.nexla.com", news: 3, capability_fit: 0.92}
+  - {name: Together AI, label: target, expected_evidence_types: [official_url, news], official_url: "https://www.together.ai", news: 3, capability_fit: 0.91}
+  - {name: Arize AI, label: target, expected_evidence_types: [official_url, news], official_url: "https://arize.com", news: 3, capability_fit: 0.90}
+  - {name: Weights & Biases, label: target, expected_evidence_types: [official_url, news], official_url: "https://wandb.ai", news: 3, capability_fit: 0.90}
+  - {name: Baseten, label: target, expected_evidence_types: [official_url, news], official_url: "https://www.baseten.co", news: 3, capability_fit: 0.89}
+  - {name: Docker, label: target, expected_evidence_types: [official_url, news], official_url: "https://www.docker.com", news: 3, capability_fit: 0.88}
+  - {name: Simplismart, label: target, expected_evidence_types: [official_url, news], official_url: "https://www.simplismart.ai", news: 3, capability_fit: 0.88}
+  - {name: Vespa.ai, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://vespa.ai", news: 2, capability_fit: 0.74, competitor_hits: 1}
+  - {name: Activeloop, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://www.activeloop.ai", news: 2, capability_fit: 0.70, competitor_hits: 1}
+  - {name: PlanetScale, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://planetscale.com", news: 2, capability_fit: 0.69, competitor_hits: 1}
+  - {name: Snowflake, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://www.snowflake.com", news: 2, capability_fit: 0.72, competitor_hits: 1}
+  - {name: ClickHouse, label: competitor, expected_evidence_types: [official_url, news], official_url: "https://clickhouse.com", news: 2, capability_fit: 0.70, competitor_hits: 1}
+  - {name: MaxLinear, label: bad_fit, expected_evidence_types: [official_url], official_url: "https://www.maxlinear.com", news: 0, capability_fit: 0.0, bad_fit_hits: 2}
+  - {name: Cloudflare, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://www.cloudflare.com", news: 1, capability_fit: 0.12, bad_fit_hits: 1}
+  - {name: Tailscale, label: bad_fit, expected_evidence_types: [official_url, news], official_url: "https://tailscale.com", news: 1, capability_fit: 0.18, bad_fit_hits: 1}

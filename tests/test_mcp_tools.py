@@ -175,9 +175,11 @@ class _FakeVectorStore:
             return {"exists": True, "count": self.product_chunks}
         return {"exists": False, "count": 0}
 
-    def query(self, *, collection, query_embeddings, top_k):
+    def query(self, *, collection, query_embeddings, top_k, where=None):
         # Each query returns top_k hits, all labeled as capability matches so
         # capability_fit_breakdown is non-trivial and capability_fit > 0.
+        # (where is honored by real Chroma; this fake returns capability chunks
+        # regardless — the negative pool then simply finds no competitor/bad_fit.)
         per_query = [
             {
                 "id": f"chunk-{i}",

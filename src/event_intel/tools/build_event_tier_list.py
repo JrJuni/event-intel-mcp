@@ -67,11 +67,17 @@ def _resolve_output_dir(workspace_id: str, event_slug: str) -> Path:
     return _outputs_base() / workspace_id / f"{event_slug}_{date_tag}"
 
 
-def _load_cards_if_available(workspace_id: str) -> "CapabilityCards | None":
-    """Best-effort cards load for rationale prompting. Score still computes
-    without cards (rationale just becomes generic). We try the two standard
-    paths and silently give up — the preflight already proved the *RAG*
-    side is ingested."""
+_VALID_TARGET_MODES = ("customer", "partner", "ecosystem")
+
+
+def _load_cards_or_warn(workspace_id: str) -> tuple["CapabilityCards | None", str | None]:
+    """Card-load contract (review round-2 #3):
+      - a candidate file EXISTS but fails validation → raise (explicit error).
+      - NO candidate file exists → (None, warning). This is a legitimate state:
+        the RAG collection can be ingested (preflight passed) while the local
+        card file is absent, so we must not hard-fail — scoring proceeds with
+        target_mode=customer + generic rationale.
+    """
     base = _outputs_base()
     candidates = [
         base / workspace_id / "capability_cards.yaml",
@@ -79,11 +85,32 @@ def _load_cards_if_available(workspace_id: str) -> "CapabilityCards | None":
     ]
     for path in candidates:
         if path.is_file():
-            try:
-                return _validator.load_and_validate(path)
-            except Exception:
-                continue
-    return None
+            # Present → must validate. load_and_validate raises MCPError on bad
+            # YAML / schema; we let it propagate (no silent except: continue).
+            return _validator.load_and_validate(path), None
+    return None, (
+        f"no capability_cards file in outputs/{workspace_id}; scoring proceeds "
+        "with target_mode=customer default and generic rationale"
+    )
+
+
+def _resolve_target_mode(
+    arg: str | None, config: dict, cards: "CapabilityCards | None"
+) -> str:
+    """Precedence: build_event arg > user config > card default > 'customer'."""
+    cfg_mode = config.get("target_mode")
+    card_mode = getattr(cards, "target_mode", None) if cards is not None else None
+    for candidate in (arg, cfg_mode, card_mode, "customer"):
+        if candidate:
+            if candidate not in _VALID_TARGET_MODES:
+                raise MCPError(
+                    error_code=ErrorCode.INVALID_INPUT,
+                    stage=Stage.PREFLIGHT,
+                    message=f"invalid target_mode {candidate!r}",
+                    hint={"field": "target_mode", "allowed": list(_VALID_TARGET_MODES)},
+                )
+            return candidate
+    return "customer"
 
 
 def build_event_tier_list(
@@ -99,6 +126,7 @@ def build_event_tier_list(
     resume_from: str | None = None,
     run_rationale: bool = True,
     rationale_for_tiers: tuple[str, ...] = ("S", "A"),
+    target_mode: str | None = None,
 ) -> dict:
     """Build a tiered exhibitor list from an event source. See module docstring."""
     try:
@@ -169,18 +197,21 @@ def build_event_tier_list(
 
         # 6. Fit retrieval (S4, single-direction).
         if enriched_rows:
+            _retrieval_cfg = config.get("scoring", {}).get("retrieval", {})
             fit_results = _retriever.retrieve_fit_event_to_product(
                 exhibitors=enriched_rows,
                 workspace_id=ws,
                 embedding_provider=_embedding.BgeM3Provider(),
                 vectorstore_provider=_vectorstore.ChromaProvider(),
-                top_k=_DEFAULT_TOP_K,
+                top_k=int(_retrieval_cfg.get("top_k", _DEFAULT_TOP_K)),
+                capability_top_k=int(_retrieval_cfg.get("capability_top_k", _DEFAULT_TOP_K)),
             )
         else:
             fit_results = []
 
         # 7. Scoring + tier decision + optional rationale (S4).
-        cards = _load_cards_if_available(ws)
+        cards, cards_warning = _load_cards_or_warn(ws)
+        resolved_target_mode = _resolve_target_mode(target_mode, config, cards)
         rationale_llm = None
         if run_rationale and enriched_rows:
             rationale_model = config["llm"].get("rationale_model", llm_model_extract)
@@ -195,6 +226,7 @@ def build_event_tier_list(
             rationale_lang=lang,
             rationale_for_tiers=rationale_for_tiers,
             rationale_max_tokens=int(config["llm"].get("rationale_max_tokens", 256)),
+            target_mode=resolved_target_mode,
         )
 
         # 8. Reports — md + yaml (S5).
@@ -238,6 +270,7 @@ def build_event_tier_list(
             "event_slug": slug,
             "event_name": event_name,
             "lang": lang,
+            "target_mode": resolved_target_mode,
             "tier_counts": yaml_payload["tier_counts"],
             "rationale_calls": summary.rationale_calls,
             "candidates_extracted": len(extraction.candidates),
@@ -248,7 +281,11 @@ def build_event_tier_list(
             "cache_hits": enrich_result.cache_hits,
             "cache_misses": enrich_result.cache_misses,
             "skipped_from_resume": enrich_result.skipped_from_resume,
-            "warnings": list(extraction.warnings) + list(enrich_result.warnings),
+            "warnings": (
+                list(extraction.warnings)
+                + list(enrich_result.warnings)
+                + ([cards_warning] if cards_warning else [])
+            ),
             "tier_list_md_path": str(md_path),
             "tier_list_yaml_path": str(yaml_path),
         }

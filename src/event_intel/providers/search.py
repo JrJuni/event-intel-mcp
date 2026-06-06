@@ -114,13 +114,13 @@ class BraveSearchProvider(SearchProvider):
         Returns None on any parse failure — published_at is advisory; the evidence
         floor only cares whether news exists, not exactly when.
         """
+        from event_intel.timeutil import parse_iso_utc
+
         raw = item.get("page_age") or item.get("age")
-        if not raw or not isinstance(raw, str):
-            return None
-        try:
-            return datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        except ValueError:
-            return None
+        # parse_iso_utc normalizes to an aware UTC datetime (or None) so a
+        # date-only / tz-less Brave timestamp never collides with the UTC-aware
+        # reference_date in recency scoring (review round-2 #1).
+        return parse_iso_utc(raw if isinstance(raw, str) else None)
 
     def ping(self) -> dict:
         """Lightweight health check. Returns quota if header is present, else null."""

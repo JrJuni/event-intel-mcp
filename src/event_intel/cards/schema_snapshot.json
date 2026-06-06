@@ -203,10 +203,23 @@
       "type": "string"
     },
     "schema_version": {
-      "const": 1,
-      "default": 1,
+      "default": 2,
+      "enum": [
+        1,
+        2
+      ],
       "title": "Schema Version",
       "type": "integer"
+    },
+    "target_mode": {
+      "default": "customer",
+      "enum": [
+        "customer",
+        "partner",
+        "ecosystem"
+      ],
+      "title": "Target Mode",
+      "type": "string"
     }
   },
   "required": [

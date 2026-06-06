@@ -53,10 +53,21 @@ def _h(lang: str, tier: str) -> str:
 
 def _evidence_chips(row: "EnrichedExhibitor") -> str:
     chips: list[str] = []
-    if row.official_url:
-        chips.append(f"`url`")
-    if row.news_signals:
-        chips.append(f"`news×{len(row.news_signals)}`")
+    evidence = getattr(row, "evidence", None)
+    if evidence:
+        # One chip per distinct evidence type, with a count (typed evidence, 18V).
+        counts: dict[str, int] = {}
+        for e in evidence:
+            counts[e.type] = counts.get(e.type, 0) + 1
+        for etype in ("official_url", "product_page", "docs", "partner_page", "press_release", "news"):
+            if etype in counts:
+                n = counts[etype]
+                chips.append(f"`{etype}×{n}`" if n > 1 else f"`{etype}`")
+    else:
+        if row.official_url:
+            chips.append("`url`")
+        if row.news_signals:
+            chips.append(f"`news×{len(row.news_signals)}`")
     if not chips:
         chips.append("`snippet-only`")
     return " ".join(chips)
@@ -96,14 +107,17 @@ def _render_row(scored: "ScoredExhibitor", *, lang: str) -> str:
 
 
 def _assert_floor_invariant(summary: "ScoringSummary") -> None:
+    # Use the single floor authority (rules.compute_evidence_floor) so this can
+    # never diverge from the scoring-stage formula again (18V item 1).
+    from event_intel.scoring.rules import compute_evidence_floor
+
     for scored in summary.rows:
         if scored.tier not in ("S", "A"):
             continue
-        row = scored.row
-        floor = int(bool(row.official_url)) + int(bool(row.news_signals))
+        floor = compute_evidence_floor(scored.row)
         if floor < 1:
             raise RuntimeError(
-                f"floor invariant broken: {row.name} is tier {scored.tier} "
+                f"floor invariant broken: {scored.row.name} is tier {scored.tier} "
                 f"but evidence_floor={floor} (needs >= 1). Check scoring.tier_rules."
             )
 

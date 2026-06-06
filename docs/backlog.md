@@ -23,9 +23,11 @@
 - 340/340 tests green (+8 신규: 7 regex pattern 검증 + 4 prompt construction 검증)
 - 이전 verdict 분류 회귀 없음 (FakeLLM parametrize 4 verdicts 그대로 통과)
 
-### #12 Phase 18V — 범용 exhibition intelligence (MVP→일반화)
+### ~~#12 Phase 18V — 범용 exhibition intelligence (MVP→일반화)~~ ✅ 완료 (2026-06-06, branch `phase-18v`)
 
-Phase 18U(스코어링 변별력)는 **MongoDB×GTC 단일 use-case 기준 MVP**로 합격(경쟁사 S/A=0, 타깃 median 5위 vs 경쟁사 25위). 모든 전시회·제품에 범용으로 쓰려면 별도 phase 필요 — blind review 2·3라운드에서 반복 도출, 사용자가 4항목 모두 중요 표시(2026-06-05):
+**완료**: 4항목 전부 구현(eval matrix 2층 / news recency+UTC 정규화 / pool 분리+sim-gated penalty / CJK / evidence_types+floor 재설계 / target_mode). 상세 `status.md` Phase 18V. plan v3(blind review 2라운드 14건 수용). 18W 후보: 형태소 분석 라이브러리, 9-셀 full matrix, ecosystem leakage 재정의.
+
+원래 항목(아카이브) — Phase 18U는 **MongoDB×GTC 단일 use-case 기준 MVP**로 합격(경쟁사 S/A=0, 타깃 median 5위 vs 경쟁사 25위). 모든 전시회·제품에 범용으로 쓰려면 별도 phase 필요 — blind review 2·3라운드에서 반복 도출, 사용자가 4항목 모두 중요 표시(2026-06-05):
 
 - **evidence_types 확장 (P1)** — evidence floor를 news 외 `official_url`/`product_page`/`press_release`/`partner_page`/`docs`로 확장. 뉴스 적은 소규모·비상장·지역 타깃이 구조적으로 S/A 못 가는 문제 해소. evidence floor 재설계 동반.
 - **target_mode 정책 (P1)** — `customer`/`partner`/`ecosystem` 모드로 경쟁사 처리 전환. 현재는 카드 `bad_fit`/`competitors` 선언이 정책 레이어(파트너 타깃이면 카드에서 빼면 됨)지만, "고객이자 경쟁사" 겹침 케이스용 명시 모드.

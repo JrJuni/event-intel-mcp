@@ -6,6 +6,17 @@
 
 ## 진행 중
 
+- **Phase 18V — 범용 exhibition intelligence 엔진 (2026-06-06, plan `snoopy-weaving-robin.md`, branch `phase-18v`)**
+  - **계기.** 18U는 MongoDB×GTC 단일 gold set 기준 MVP 합격. 모든 제품·전시회 범용화에 backlog #12의 4개 P1 필요. 18U 교훈("측정 먼저, 튜닝 마지막")에 따라 **eval matrix를 먼저** 짓고 모든 변경을 거기에 회귀 검증. plan v1→v3 (blind review 2라운드, 코드 대조 후 14건 전부 수용).
+  - ✅ **18V-1 eval matrix** — 2층: scoring matrix(fake FitResult, 빠른 회귀) + pipeline-contract matrix(fake provider, 실제 enrichment+retriever). metrics: `ranking_accuracy_auc`(정규화 pairwise, 셀크기 무관) / mode-aware `precision_at_10` / `competitor_leakage_rate` / `evidence_false_positive_rate`. `event-intel eval-matrix` CLI. baseline 스냅샷(DB×AI: A8/B5/C3, AUC 1.0, leakage 0, P@10 0.8) 커밋 상수.
+  - ✅ **18V-2 (4a)** news relevance(회사명 매칭→generic 반감) + recency decay + **UTC-aware timestamp 정규화**(naive/date-only가 aware reference_date와 충돌하던 TypeError 차단, parse+cache 양쪽). `timeutil.py`.
+  - ✅ **18V-2 (4b)** retrieval **pool 분리** + **sim-gated negative penalty**(count는 negative-only pool에서 포화 → max similarity≥threshold만 penalty). `FitResult`에 competitor/bad_fit_similarity.
+  - ✅ **18V-2 (4c)** 규칙기반 **CJK bigram** 토크나이저(한·일·중 회사명/카테고리 세그먼트, lazy-import 불필요).
+  - ✅ **18V-2 (item1)** **typed evidence**(`EvidenceItem{type,url,source_domain,published_at}`) + canonical URL **dedupe** + 결정적 type precedence(경로 기준) + **identity-vs-activity floor**(floor 2는 activity/독립출처 요구 — official_url+동일사이트 product_page는 floor 1). budgeted 신규 Brave 쿼리. `ENRICH_CACHE_VERSION` 3. `REPORT_SCHEMA_VERSION` 2. floor-invariant를 `rules.compute_evidence_floor`로 단일화.
+  - ✅ **18V-3 (item2)** `target_mode`(customer/partner/ecosystem) **build 실행 인자**(우선순위 arg>config>card>customer, None sentinel) + 카드 스키마 **v1→v2 migration**(기존 v1 무손상) + **카드 로드 계약**(파일 부재→warning+customer, 파일 존재+invalid→명시 에러). mode별 penalty factor(customer 1/1, partner 0/1, ecosystem 0/0).
+  - **테스트**: 전체 green. 커밋 6개 엄격 분리. baseline 무회귀(A8/B5/C3) 전 단계 유지.
+  - **남은 갭(18W 후보)**: 형태소 분석 라이브러리(janome/jieba), 9-셀 full matrix, ecosystem 셀 leakage 재정의, 양방향 retrieval.
+
 - **Phase 18U — 스코어링 변별력 복구 (2026-06-05, plan `snoopy-weaving-robin.md`)**
   - **계기.** 실사용 검증(제품=MongoDB Atlas 카드, 이벤트=NVIDIA GTC 2026 실참가사 34곳)에서 티어가 전부 B로 뭉치고 경쟁사가 A에 섞임. 3라운드 blind review로 "입력/신호 오염 상태에서 penalty만 튜닝하면 과적합" 리스크 도출 → **순서 고정**: 입력 identity → 신호 정확성 → 마지막에 penalty.
   - ✅ **S1 news 파서 버그** (`782a64c`) — Brave `/news/search`는 최상위 `results`인데 파서가 `data["news"]["results"]`를 읽어 전원 news=0 → S 원천 불가. 수정 후 news 0→156. contract 테스트 `test_search_provider.py`.

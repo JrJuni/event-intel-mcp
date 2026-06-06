@@ -112,7 +112,8 @@ def test_validate_subcommand_against_sample_cards(repo_root):
     assert res.exit_code == 0, res.stdout
     payload = json.loads(res.stdout)
     assert payload["ok"] is True
-    assert payload["schema_version"] == 1
+    # v1 sample card is migrated to the current schema version on load.
+    assert payload["schema_version"] == 2
 
 
 def test_draft_cards_requires_source_or_text():

@@ -206,6 +206,7 @@ def build_event_cmd(
     no_enrich: bool = typer.Option(False, "--no-enrich", help="Skip Brave enrichment (snippet-only scoring)."),
     no_rationale: bool = typer.Option(False, "--no-rationale", help="Skip Sonnet rationale calls."),
     resume_from: str | None = typer.Option(None, "--resume-from", help="Path to a per-row JSONL resume artifact."),
+    target_mode: str | None = typer.Option(None, "--target-mode", help="customer | partner | ecosystem (default: config/card → customer)."),
 ) -> None:
     """Build a tiered exhibitor list for an event from a saved source file."""
     from event_intel.tools.build_event_tier_list import build_event_tier_list
@@ -233,6 +234,7 @@ def build_event_cmd(
         enrichment_enabled=not no_enrich,
         run_rationale=not no_rationale,
         resume_from=resume_from,
+        target_mode=target_mode,
     )
     _print_json(result)
     raise typer.Exit(code=0 if result.get("ok") else 1)
@@ -302,6 +304,23 @@ def export_schema_cmd(
         encoding="utf-8",
     )
     _print_json({"ok": True, "path": str(out_path), "schema_version": SCHEMA_VERSION})
+
+
+@app.command("eval-matrix")
+def eval_matrix_cmd(
+    cell_dir: str = typer.Option(
+        "tests/fixtures/eval",
+        "--cell-dir",
+        help="Directory of labeled eval cells (*.yaml).",
+    ),
+) -> None:
+    """Run the scoring-matrix (1A) over labeled cells and print metrics (Phase 18V)."""
+    from event_intel.eval.harness import run_matrix
+    from event_intel.runtime.preflight import load_config
+
+    config = load_config()
+    cells = run_matrix(cell_dir, config=config)
+    _print_json({"ok": True, "cells": [c.as_dict() for c in cells]})
 
 
 def main() -> None:

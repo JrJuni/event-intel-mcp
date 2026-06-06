@@ -26,8 +26,25 @@ class TierDecision:
     reasons: list[str]
 
 
-def compute_evidence_floor(*, has_official_url: bool, has_news_signals: bool) -> int:
-    return int(bool(has_official_url)) + int(bool(has_news_signals))
+def floor_from_components(has_identity: bool, has_activity: bool) -> int:
+    """Identity-vs-activity floor (Phase 18V item 1). Floor 2 requires BOTH an
+    identity signal (existence proof) AND an activity/independent signal, so
+    same-site evidence alone (official_url + product_page) caps at floor 1."""
+    if has_identity and has_activity:
+        return 2
+    if has_identity or has_activity:
+        return 1
+    return 0
+
+
+def compute_evidence_floor(row) -> int:
+    """Evidence floor (0/1/2) for an enriched row. Reads the typed evidence list
+    when present, else the legacy official_url + news_signals fields — so the old
+    `url + news → 2` behavior is preserved as a strict subset."""
+    from event_intel.events.evidence import floor_components
+
+    has_identity, has_activity = floor_components(row)
+    return floor_from_components(has_identity, has_activity)
 
 
 def decide_tier(

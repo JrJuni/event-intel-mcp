@@ -149,6 +149,25 @@ def test_s4_modules_keep_module_top_cold(fresh_sys_modules):
     )
 
 
+def test_eval_modules_keep_module_top_cold(fresh_sys_modules):
+    """Phase 18V: eval.metrics / eval.harness are pure stdlib + cold scoring
+    imports — they must NOT pull heavy ML libs at module top (the eval matrix
+    runs in CI and as a CLI without an embedding model loaded)."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.eval")
+    importlib.import_module("event_intel.eval.metrics")
+    importlib.import_module("event_intel.eval.harness")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, (
+        f"Phase 18V eval modules leaked heavy ML imports: {leaked}. "
+        "Eval must stay deps-free (stdlib + cold scoring only)."
+    )
+
+
 def test_s5_report_modules_keep_module_top_cold(fresh_sys_modules):
     """S5: report/* must NOT pull heavy ML libs at module top — rendering is
     pure markdown/yaml so this is just a regression guard."""
@@ -177,6 +196,7 @@ def test_events_modules_keep_module_top_cold(fresh_sys_modules):
 
     importlib.import_module("event_intel.events.source_capture")
     importlib.import_module("event_intel.events.extraction")
+    importlib.import_module("event_intel.events.evidence")
 
     leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
     assert not leaked, (

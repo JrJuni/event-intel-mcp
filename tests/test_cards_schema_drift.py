@@ -51,13 +51,14 @@ def test_schema_snapshot_matches_current_model():
     )
 
 
-def test_schema_version_is_one():
-    """Snapshot was written under SCHEMA_VERSION=1; mismatch means stale snapshot."""
-    assert SCHEMA_VERSION == 1
+def test_schema_version_is_current():
+    """Snapshot was written under the current SCHEMA_VERSION; mismatch = stale."""
+    assert SCHEMA_VERSION == 2
     schema = CapabilityCards.model_json_schema()
-    # schema_version is a Literal[1], so pydantic emits it as const.
+    # schema_version is now Literal[1, 2] → pydantic emits an enum, default = 2.
     sv = schema["properties"]["schema_version"]
-    assert sv.get("const") == 1, f"schema_version literal drifted: {sv}"
+    assert sv.get("enum") == [1, 2], f"schema_version literal drifted: {sv}"
+    assert sv.get("default") == 2
 
 
 def test_strict_extra_forbid_on_root():

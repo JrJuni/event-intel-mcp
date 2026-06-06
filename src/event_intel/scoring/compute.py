@@ -13,6 +13,7 @@ range from defaults.yaml.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from event_intel.errors import ErrorCode, MCPError, Stage
@@ -127,8 +128,15 @@ def _compute_one(
     weights: dict[str, float],
     tier_rules: dict,
     top_k: int,
+    reference_date: datetime | None = None,
+    half_life_days: float = 180.0,
+    negative_sim_threshold: float = 0.0,
 ) -> ScoredExhibitor:
-    dims = compute_dimensions(row, fit, cards=cards, top_k=top_k)
+    dims = compute_dimensions(
+        row, fit, cards=cards, top_k=top_k,
+        reference_date=reference_date, half_life_days=half_life_days,
+        negative_sim_threshold=negative_sim_threshold,
+    )
 
     raw = (
         dims.capability_fit       * weights.get("capability_fit", 0.0)
@@ -141,10 +149,7 @@ def _compute_one(
     )
     final_score = max(0.0, min(10.0, raw * 10.0))
 
-    floor = compute_evidence_floor(
-        has_official_url=bool(row.official_url),
-        has_news_signals=bool(row.news_signals),
-    )
+    floor = compute_evidence_floor(row)
 
     decision: TierDecision = decide_tier(
         final_score=final_score, evidence_floor=floor, tier_rules=tier_rules
@@ -174,6 +179,8 @@ def score_exhibitors(
     rationale_lang: str = "en",
     rationale_for_tiers: tuple[str, ...] = ("S", "A"),
     rationale_max_tokens: int = 256,
+    reference_date: datetime | None = None,
+    target_mode: str = "customer",
 ) -> ScoringSummary:
     """Score every (enriched, fit_result) pair and decide tier.
 
@@ -197,6 +204,23 @@ def score_exhibitors(
     try:
         weights = dict(config["scoring"]["weights"])
         tier_rules = dict(config["scoring"]["tier_rules"])
+        half_life_days = float(
+            config.get("scoring", {})
+            .get("buying_signal", {})
+            .get("recency_half_life_days", 180.0)
+        )
+        negative_sim_threshold = float(
+            config.get("scoring", {})
+            .get("retrieval", {})
+            .get("negative_sim_threshold", 0.0)
+        )
+        # target_mode penalty factors (Phase 18V item 2): scale competitor/bad_fit
+        # penalty weights down for partner/ecosystem modes. customer → 1.0/1.0.
+        tm_cfg = config.get("scoring", {}).get("target_mode", {}).get(target_mode, {})
+        comp_factor = float(tm_cfg.get("competitor_penalty_factor", 1.0))
+        bad_factor = float(tm_cfg.get("bad_fit_penalty_factor", 1.0))
+        weights["competitor_penalty"] = weights.get("competitor_penalty", 0.0) * comp_factor
+        weights["bad_fit_penalty"] = weights.get("bad_fit_penalty", 0.0) * bad_factor
     except (KeyError, TypeError) as exc:
         raise MCPError(
             error_code=ErrorCode.CONFIG_ERROR,
@@ -210,6 +234,8 @@ def score_exhibitors(
         scored = _compute_one(
             row=row, fit=fit, cards=cards,
             weights=weights, tier_rules=tier_rules, top_k=top_k,
+            reference_date=reference_date, half_life_days=half_life_days,
+            negative_sim_threshold=negative_sim_threshold,
         )
         rows.append(scored)
 
