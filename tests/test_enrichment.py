@@ -474,3 +474,31 @@ def test_search_cache_key_includes_count_and_days(tmp_path):
     assert k_base != _SearchCache._key("acme", "news", "en", 5, 30)
     assert k_base != _SearchCache._key("acme", "news", "en", 20, 180)
     assert k_base == _SearchCache._key("acme", "news", "en", 5, 180)
+
+
+def test_news_gate_drops_offtopic_from_floor_evidence(tmp_path):
+    """Review round-2 #1: an off-topic news article (name not mentioned) is still
+    collected for the buying signal but must NOT become floor activity evidence,
+    so official_url + 1 unrelated article can't reach floor 2."""
+    from event_intel.scoring.rules import compute_evidence_floor
+
+    search = FakeSearch()
+    search.web_by_name["official site"] = [
+        _SR(title="Acme Robotics", url="https://acmerobotics.example", snippet=""),
+    ]
+    search.news_by_name["Acme Robotics"] = [
+        _SR(title="General industry trends 2026", url="https://news.example/x", snippet="market"),
+    ]
+    cands = [
+        ExhibitorCandidate(name="Acme Robotics", source_snippet="robot arms", extraction_confidence=0.9)
+    ]
+    result = enrich_exhibitors(
+        candidates=cands, workspace_id="ng1", lang="en", config=_config(),
+        search_provider=search, cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+    )
+    row = result.rows[0]
+    # news_signal still collected (feeds buying_signal), but not floor evidence.
+    assert len(row.news_signals) == 1
+    ev_types = {e.type for e in row.evidence}
+    assert "news" not in ev_types and "official_url" in ev_types
+    assert compute_evidence_floor(row) == 1  # identity only, no activity

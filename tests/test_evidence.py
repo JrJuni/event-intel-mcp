@@ -112,3 +112,20 @@ def test_third_party_identity_page_does_not_satisfy_floor():
         EvidenceItem("product_page", "https://docs.acme.com/products/x", "docs.acme.com"),
     ])
     assert floor_components(own)[0] is True
+
+
+def test_mentions_name_requires_distinctive_token():
+    from event_intel.events.evidence import mentions_name, name_tokens
+
+    toks = name_tokens("Acme Data")  # ["acme", "data"] — "data" is generic
+    assert mentions_name("Acme raises Series B", toks) is True       # distinctive "acme"
+    assert mentions_name("Top 10 databases of 2026", toks) is False  # only generic-ish, no "acme"
+    assert mentions_name("Cloud and data trends", toks) is False     # lone generic "data"
+
+
+def test_mentions_name_all_generic_requires_all_tokens():
+    from event_intel.events.evidence import mentions_name, name_tokens
+
+    toks = name_tokens("Data Cloud")  # both generic
+    assert mentions_name("data cloud platform launch", toks) is True   # both present
+    assert mentions_name("cloud computing news", toks) is False        # "data" missing

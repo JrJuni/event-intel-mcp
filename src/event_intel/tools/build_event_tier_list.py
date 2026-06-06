@@ -249,6 +249,7 @@ def build_event_tier_list(
             workspace_id=ws, event_name=event_name, event_slug=slug,
             lang=lang, generated_at=datetime.now(UTC),
             target_mode=resolved_target_mode,
+            tier_rules=config.get("scoring", {}).get("tier_rules"),
         )
         needs_review_rows = [
             _enrichment.EnrichedExhibitor(

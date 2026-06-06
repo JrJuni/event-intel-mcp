@@ -521,6 +521,15 @@ def enrich_exhibitors(
                 )
             )
         for n in row.news_signals:
+            # Gate news → floor evidence by relevance too (review round-2 #1):
+            # the news query is name-quoted but Brave isn't exact, so an
+            # off-topic article shouldn't let official_url + 1 article reach
+            # floor 2. news_signals still feed buying_signal (soft-downweighted).
+            if not (
+                mentions_name(f"{n.title or ''} {n.snippet or ''}", cand_name_tokens)
+                or (official_domain and same_site(domain_of(n.url), official_domain))
+            ):
+                continue
             raw_ev.append(
                 EvidenceItem(
                     type=classify_url_type(n.url, from_news=True),

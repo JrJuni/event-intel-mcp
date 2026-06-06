@@ -146,10 +146,11 @@ def ingest_cards(
     embedding_provider: EmbeddingProvider,
     vectorstore_provider: VectorStoreProvider,
 ) -> dict:
-    """Embed + upsert cards into product_{workspace_id}. Returns a summary dict.
+    """Embed + REPLACE cards in product_{workspace_id}. Returns a summary dict.
 
-    Idempotent: re-ingesting the same cards updates rows in place because every
-    chunk id is content-derived and stable across runs.
+    The collection is reset before upsert so a re-ingest fully replaces the prior
+    card set — renamed/removed capabilities don't linger as orphan chunks (review
+    round-2 #5). Re-ingesting identical cards is still idempotent.
     """
     chunks = flatten_cards_to_chunks(cards)
     if not chunks:  # pragma: no cover — flatten always emits product:summary
@@ -168,6 +169,13 @@ def ingest_cards(
         )
 
     collection = product_collection_name(workspace_id)
+    # Full REPLACE, not upsert-over (review round-2 #5): clear first so a renamed
+    # or removed capability/competitor doesn't leave an orphan chunk that retrieval
+    # would still match against. Chunk ids are name-derived, so a rename = new id
+    # + stale old id without this.
+    reset = getattr(vectorstore_provider, "reset_collection", None)
+    if callable(reset):
+        reset(collection)
     vectorstore_provider.upsert(
         collection=collection,
         ids=[c.id for c in chunks],

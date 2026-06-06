@@ -141,6 +141,27 @@ def test_floor_invariant_enforces_s_needs_floor_2():
     render_tier_list_md(summary=_summary(a_at_floor1), needs_review=None, context=_ctx())
 
 
+def test_floor_invariant_respects_config_tier_rules():
+    """Review round-2 #3: if config legitimately lowers S's floor to 1, the report
+    must NOT crash on an S row at floor 1 (the scorer already accepted it)."""
+    s_floor1 = ScoredExhibitor(
+        name="UrlOnlyS", tier="S", final_score=9.0, evidence_floor=1,
+        dimensions=_dims(), weights_used={}, tier_reasons=[],
+        row=EnrichedExhibitor(name="UrlOnlyS", source_snippet="snippet",
+                              official_url="https://urlonly.example"),
+        fit=FitResult(name="UrlOnlyS", capability_fit=0.9, top_hits=[]),
+    )
+    relaxed = {
+        "S": {"min_final_score": 7.5, "evidence_floor_min": 1},
+        "A": {"min_final_score": 6.0, "evidence_floor_min": 1},
+        "B": {"min_final_score": 4.0, "evidence_floor_min": 0},
+        "C": {"min_final_score": 0.0, "evidence_floor_min": 0},
+    }
+    # No raise — config says S needs only floor 1.
+    render_tier_list_md(summary=_summary(s_floor1), needs_review=None,
+                        context=_ctx(tier_rules=relaxed))
+
+
 def test_tier_list_yaml_records_target_mode():
     """Review #7: the resolved target_mode is recorded in the YAML report for
     reproducibility."""

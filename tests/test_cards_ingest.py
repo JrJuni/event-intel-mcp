@@ -44,6 +44,9 @@ class FakeVectorStore:
             col["metadatas"][_id] = metadatas[i]
             col["documents"][_id] = documents[i]
 
+    def reset_collection(self, collection):
+        self.collections.pop(collection, None)
+
     def collection_info(self, collection):
         col = self.collections.get(collection)
         if col is None:
@@ -131,3 +134,24 @@ def test_product_collection_name_matches_preflight_convention():
 
     assert product_collection_name("default") == _product_collection_name("default")
     assert product_collection_name("acme") == _product_collection_name("acme")
+
+
+def test_reingest_replaces_collection_no_orphans(repo_root):
+    """Review round-2 #5: re-ingesting after a capability RENAME must not leave the
+    old (name-derived) chunk id behind — the collection is replaced, not upserted."""
+    cards = _load_fixture_cards(repo_root)
+    vs = FakeVectorStore()
+    emb = FakeEmbedding()
+    coll = product_collection_name("rt")
+
+    ingest_cards(cards=cards, workspace_id="rt", embedding_provider=emb, vectorstore_provider=vs)
+    old_cap0_ids = {i for i in vs.collections[coll]["ids"] if i.startswith("cap:0:")}
+    assert old_cap0_ids  # sanity
+
+    cards.capabilities[0].name = "Totally Renamed Capability"
+    ingest_cards(cards=cards, workspace_id="rt", embedding_provider=emb, vectorstore_provider=vs)
+    new_ids = set(vs.collections[coll]["ids"])
+
+    # The old capability-0 chunk id(s) are gone — no orphan from the rename.
+    assert not (old_cap0_ids & new_ids)
+    assert any(i.startswith("cap:0:") and "Renamed" in i for i in new_ids)

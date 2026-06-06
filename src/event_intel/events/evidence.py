@@ -103,6 +103,16 @@ def same_site(a: str | None, b: str | None) -> bool:
 
 _NAME_TOKEN_RE = re.compile(r"[^a-z0-9가-힣]+")
 
+# Generic words common to many company names — matching ONE alone ("data",
+# "cloud", "ai") would let an unrelated article/page count as being about the
+# company (review round-2 #1). They only count in combination.
+_GENERIC_NAME_TOKENS = {
+    "data", "cloud", "ai", "ml", "tech", "labs", "lab", "inc", "app",
+    "apps", "systems", "system", "solutions", "solution", "group", "global",
+    "digital", "soft", "software", "corp", "platform", "network", "networks",
+    "the", "and", "company", "technologies", "technology", "studio",
+}
+
 
 def name_tokens(name: str | None) -> list[str]:
     """Significant lowercased tokens of a company name for relevance checks
@@ -115,12 +125,20 @@ def name_tokens(name: str | None) -> list[str]:
 
 
 def mentions_name(text: str | None, tokens: list[str]) -> bool:
-    """Whole-token match (NOT substring) so a generic name token like 'data'
-    doesn't match 'databases' and let an unrelated page through."""
+    """Whole-token match (NOT substring) with a generic-token guard.
+
+    A single generic token ("data"/"cloud"/"ai") is too weak to mean "about this
+    company", so a match requires at least one DISTINCTIVE token. If the name is
+    entirely generic (e.g. "Data Cloud"), require ALL its tokens present
+    (phrase-like) rather than any one (review round-2 #1).
+    """
     if not tokens or not text:
         return False
     hay = {t for t in _NAME_TOKEN_RE.split(text.lower()) if t}
-    return any(t in hay for t in tokens)
+    distinctive = [t for t in tokens if t not in _GENERIC_NAME_TOKENS]
+    if distinctive:
+        return any(t in hay for t in distinctive)
+    return all(t in hay for t in tokens)
 
 
 def canonical_url(url: str) -> str:

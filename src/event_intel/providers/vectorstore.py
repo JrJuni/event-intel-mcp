@@ -33,6 +33,13 @@ class VectorStoreProvider(ABC):
     @abstractmethod
     def ensure_writable(self) -> dict: ...
 
+    def reset_collection(self, collection: str) -> None:
+        """Remove every chunk in a collection so a re-ingest fully REPLACES it
+        rather than upserting over stale rows (review round-2 #5: renamed/removed
+        capabilities left orphaned vectors). Default no-op; persistent providers
+        override."""
+        return None
+
 
 class ChromaProvider(VectorStoreProvider):
     """Default VectorStoreProvider using Chroma persistent client.
@@ -101,6 +108,13 @@ class ChromaProvider(VectorStoreProvider):
                 )
             results.append(hits)
         return results
+
+    def reset_collection(self, collection: str) -> None:
+        client = self._get_client()
+        try:
+            client.delete_collection(name=collection)
+        except Exception:
+            pass  # absent → nothing to remove; recreated on next upsert
 
     def collection_info(self, collection: str) -> dict:
         try:
