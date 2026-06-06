@@ -16,7 +16,9 @@
   - **CI가 잡은 크로스플랫폼 버그 2건**: (a) eval가 핵심 미검증(#2), (b) `load_tier_list_yaml`이 Windows는 통과/Linux는 `OSError errno 36`(긴 YAML 문자열을 경로로 probe) — `is_file()` guard로 수정. → **Windows 단독 통과 버그를 Linux 러너가 차단**.
   - **테스트**: 430 passed, ruff clean. PR #1,#2,#7,#4,#5,#6,#8,#9 머지, 브랜치 정리(`main`만).
   - **round-2 정제 (2026-06-06)** — 머지된 main에 2차 정적 blind review 7건(전부 valid, HEAD 대조). HIGH 3(PR #11): #1 news floor-evidence 게이트+generic-token name 매칭, #3 report floor invariant를 effective tier_rules로(하드코딩 제거), #5 카드↔vector ingest replace(orphan 제거). MEDIUM 2(PR #12): #7 멀티테넌트 same_site(github.io/vercel.app 등 분리), #4 top-N·recency eval 실검증(retriever→scorer + news published_at). 잔여 #2(캐시 TTL/resume 신선도)·#6(예산 round-robin) → backlog #13. **438 passed**.
-  - **남은 갭(18W)**: backlog #13 참조.
+  - **round-3 정제 (2026-06-06)** — 3차 5건(전부 valid). P1 2건이 *직전 라운드 수정의 빈틈*: #1 카드 replace 비원자성(delete→upsert) → **upsert-first + orphan prune**(PR #14, `existing_ids`/`delete_ids`), #2 buying_signal이 floor와 다른 substring matcher 사용 → **evidence.mentions_name로 단일화**. #4 top-N eval이 tier 변화 미단언 → A/B 경계 단언. #3(generic 단일토큰)·#5(same_site allowlist) → backlog #13 P3 known-limitation. **439 passed**.
+  - **round-4 fresh-vendor skeptic (2026-06-07)** — 같은 벤더 3라운드의 mutual blind spot 차단 위해 **다른 벤더**에 context-starved skeptic 1회. 3라운드+내 수정이 놓친 실버그 1건 발견(PR #15): `score_buying_signal`이 unmatched news에 base만 반감하고 **recency·trigger 보너스는 전체 news에서** 계산 → 최신·trigger 포함 무관 기사가 signal을 1.0까지 올림. **보너스도 name-matched news로 게이트**. skeptic은 packet anchoring(SHA 미고정·평가성 표현)도 정확히 지적 — 코드 아닌 packet 이슈. **440 passed**. → 수렴 신호(material 1건), 18V.1 종료.
+  - **남은 갭(18W)**: backlog #13 참조 (전부 P3 known-limitation + #2 캐시TTL/#6 round-robin).
 
 - **Phase 18V — 범용 exhibition intelligence 엔진 (2026-06-06, plan `snoopy-weaving-robin.md`, branch `phase-18v`)**
   - **계기.** 18U는 MongoDB×GTC 단일 gold set 기준 MVP 합격. 모든 제품·전시회 범용화에 backlog #12의 4개 P1 필요. 18U 교훈("측정 먼저, 튜닝 마지막")에 따라 **eval matrix를 먼저** 짓고 모든 변경을 거기에 회귀 검증. plan v1→v3 (blind review 2라운드, 코드 대조 후 14건 전부 수용).
