@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from event_intel.cards.ingest import (
     flatten_cards_to_chunks,
     ingest_cards,
@@ -44,8 +46,17 @@ class FakeVectorStore:
             col["metadatas"][_id] = metadatas[i]
             col["documents"][_id] = documents[i]
 
-    def reset_collection(self, collection):
-        self.collections.pop(collection, None)
+    def existing_ids(self, collection):
+        col = self.collections.get(collection)
+        return set(col["ids"].keys()) if col else set()
+
+    def delete_ids(self, collection, ids):
+        col = self.collections.get(collection)
+        if not col:
+            return
+        for _id in ids:
+            for k in ("ids", "embeddings", "metadatas", "documents"):
+                col[k].pop(_id, None)
 
     def collection_info(self, collection):
         col = self.collections.get(collection)
@@ -155,3 +166,28 @@ def test_reingest_replaces_collection_no_orphans(repo_root):
     # The old capability-0 chunk id(s) are gone — no orphan from the rename.
     assert not (old_cap0_ids & new_ids)
     assert any(i.startswith("cap:0:") and "Renamed" in i for i in new_ids)
+
+
+def test_ingest_upsert_failure_preserves_existing_context(repo_root):
+    """Review round-3 #1: replace is atomic — a failed upsert must NOT have wiped
+    the prior product context (the old delete-then-upsert would empty it first)."""
+    cards = _load_fixture_cards(repo_root)
+    emb = FakeEmbedding()
+    vs = FakeVectorStore()
+    coll = product_collection_name("atom")
+    ingest_cards(cards=cards, workspace_id="atom", embedding_provider=emb, vectorstore_provider=vs)
+    before = set(vs.collections[coll]["ids"])
+    assert before  # context present
+
+    class _Boom(Exception):
+        pass
+
+    def _boom(**kwargs):
+        raise _Boom("upsert down")
+
+    vs.upsert = _boom
+    with pytest.raises(_Boom):
+        ingest_cards(cards=cards, workspace_id="atom", embedding_provider=emb, vectorstore_provider=vs)
+
+    # Prior context still intact — not emptied ahead of the (failed) write.
+    assert set(vs.collections[coll]["ids"]) == before
