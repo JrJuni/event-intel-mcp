@@ -124,6 +124,43 @@ def score_buying_signal(
 # (incl. hyphens/parens) so "generative-AI" → {"generative", "ai"}.
 _CATEGORY_TOKEN_SPLIT = re.compile(r"[\s,;/()\[\]\-–—.|:&]+")
 
+# CJK ranges (Hiragana/Katakana, CJK Unified incl. ext-A, Hangul syllables, CJK
+# compat). ASCII whitespace/punctuation never separates CJK words, so a run like
+# "삼성전자" arrives as one token; we emit character bigrams ("삼성","성전","전자")
+# so token-boundary overlap works for Korean/Japanese/Chinese without a heavy
+# morphological segmenter (review round-2: rule-based, cold-start safe).
+_CJK_CHAR = re.compile(r"[぀-ヿ㐀-鿿가-힯豈-﫿]")
+
+
+def _cjk_bigrams(run: str) -> set[str]:
+    if len(run) <= 1:
+        return {run} if run else set()
+    return {run[i : i + 2] for i in range(len(run) - 1)}
+
+
+def _expand_token(tok: str) -> set[str]:
+    """Split a rough token into ASCII alnum runs (kept whole) + CJK runs (→ char
+    bigrams). 'ai반도체' → {'ai', '반도', '도체'}."""
+    out: set[str] = set()
+    cjk: list[str] = []
+    other: list[str] = []
+    for ch in tok:
+        if _CJK_CHAR.match(ch):
+            if other:
+                out.add("".join(other))
+                other = []
+            cjk.append(ch)
+        else:
+            if cjk:
+                out |= _cjk_bigrams("".join(cjk))
+                cjk = []
+            other.append(ch)
+    if other:
+        out.add("".join(other))
+    if cjk:
+        out |= _cjk_bigrams("".join(cjk))
+    return {t for t in out if t}
+
 # Dropped regardless of length — function words that matched everything under
 # the old substring logic.
 _CATEGORY_STOPWORDS = {
@@ -141,18 +178,24 @@ _SHORT_TOKEN_WHITELIST = {
 def _tokens_lower(text: str) -> set[str]:
     if not text:
         return set()
-    return {t for t in _CATEGORY_TOKEN_SPLIT.split(text.lower()) if t}
+    out: set[str] = set()
+    for raw in _CATEGORY_TOKEN_SPLIT.split(text.lower()):
+        if raw:
+            out |= _expand_token(raw)
+    return out
 
 
 def _category_needles(*groups: list[str]) -> set[str]:
-    """Build the matchable needle set: drop stopwords; drop <3-char tokens
-    unless whitelisted (acronyms/geo)."""
+    """Build the matchable needle set: drop stopwords; drop <3-char tokens unless
+    whitelisted (acronyms/geo) — but always keep CJK bigrams (length 2)."""
     needles: set[str] = set()
     for group in groups:
         for tok in _tokens_lower(", ".join(group)):
             if tok in _CATEGORY_STOPWORDS:
                 continue
-            if len(tok) >= 3 or tok in _SHORT_TOKEN_WHITELIST:
+            if _CJK_CHAR.search(tok):
+                needles.add(tok)
+            elif len(tok) >= 3 or tok in _SHORT_TOKEN_WHITELIST:
                 needles.add(tok)
     return needles
 

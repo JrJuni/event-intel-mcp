@@ -184,6 +184,49 @@ def test_category_fit_matches_short_acronym_token(repo_root):
     assert score_category_fit(row, cards=cards) > 0.0
 
 
+def test_cjk_tokenizer_emits_bigrams():
+    from event_intel.scoring.dimensions import _tokens_lower
+
+    toks = _tokens_lower("삼성전자 ai반도체")
+    assert {"삼성", "성전", "전자"} <= toks
+    assert "ai" in toks
+    assert {"반도", "도체"} <= toks
+
+
+def test_cjk_needles_survive_length_filter_and_overlap():
+    from event_intel.scoring.dimensions import _category_needles, _tokens_lower
+
+    needles = _category_needles(["반도체 장비"])
+    # 2-char CJK bigrams must NOT be dropped by the <3-char filter.
+    assert {"반도", "도체", "장비"} <= needles
+    hay = _tokens_lower("국내 반도체 장비 공급 기업")
+    assert needles & hay  # non-empty overlap → category_fit > 0
+
+
+def test_category_fit_matches_korean_industry():
+    """4c: a Korean exhibitor description overlapping a Korean ideal_customer
+    industry yields category_fit > 0 (was a structural false-zero, ASCII-only)."""
+    from event_intel.cards.schema import Capability, CapabilityCards, IdealCustomer
+
+    cards = CapabilityCards(
+        product_name="엣지 AI 칩",
+        one_liner="온디바이스 추론 반도체",
+        capabilities=[
+            Capability(
+                name="추론 가속",
+                keywords=["추론", "가속", "npu"],
+                buyer_pains=["전력"],
+                evidence_queries=["반도체 장비"],
+            )
+        ],
+        ideal_customer=IdealCustomer(
+            industries=["반도체 장비"], company_signals=["제조"], geo=["kr"]
+        ),
+    )
+    row = _row("국내장비사", description="국내 반도체 장비 공급 기업", news_signals=[])
+    assert score_category_fit(row, cards=cards) > 0.0
+
+
 # ---------- rules ----------
 
 
