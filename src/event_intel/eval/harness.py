@@ -51,6 +51,7 @@ class CellMetrics:
     auc: float | None
     precision_at_10: float | None
     competitor_leakage_rate: float | None
+    bad_fit_leakage_rate: float | None
     evidence_false_positive_rate: float
     tier_counts: dict[str, int] = field(default_factory=dict)
 
@@ -62,6 +63,7 @@ class CellMetrics:
             "auc": self.auc,
             "precision_at_10": self.precision_at_10,
             "competitor_leakage_rate": self.competitor_leakage_rate,
+            "bad_fit_leakage_rate": self.bad_fit_leakage_rate,
             "evidence_false_positive_rate": self.evidence_false_positive_rate,
             "tier_counts": self.tier_counts,
         }
@@ -188,6 +190,7 @@ def run_scoring_cell(cell: dict, *, config: dict) -> CellMetrics:
         auc=_metrics.ranking_accuracy_auc(scored, labels),
         precision_at_10=_metrics.precision_at_10(scored, labels, positive),
         competitor_leakage_rate=_metrics.competitor_leakage_rate(tiers, labels),
+        bad_fit_leakage_rate=_metrics.bad_fit_leakage_rate(tiers, labels),
         evidence_false_positive_rate=_metrics.evidence_false_positive_rate(
             present_ev, expected_ev
         ),

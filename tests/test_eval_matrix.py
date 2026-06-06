@@ -55,8 +55,12 @@ def test_scoring_cell_metrics_hold(cell_path):
     # AUC is defined only when both target and bad_fit are present.
     if cm.auc is not None:
         assert cm.auc >= 0.9, f"{cm.cell}: AUC {cm.auc} below 0.9"
+    # competitor is a negative class only in customer mode (P2-3 mode policy).
     if cm.competitor_leakage_rate is not None and cell.get("target_mode", "customer") == "customer":
         assert cm.competitor_leakage_rate == 0.0, f"{cm.cell}: competitor leaked into S/A"
+    # bad_fit is a negative class in EVERY mode — must never reach S/A.
+    if cm.bad_fit_leakage_rate is not None:
+        assert cm.bad_fit_leakage_rate == 0.0, f"{cm.cell}: bad_fit leaked into S/A"
     assert cm.evidence_false_positive_rate <= 0.1, f"{cm.cell}: evidence FP too high"
 
 
@@ -125,6 +129,24 @@ def test_partner_mode_neutralizes_penalty_through_harness():
     assert order.index(partner["Snowflake"].tier) > order.index(customer["Snowflake"].tier)
 
 
+def test_ecosystem_mode_recovers_competitor_but_keeps_bad_fit_penalty():
+    """P2-3 mode policy: in ecosystem mode the competitor penalty is zeroed (a
+    competitor is a legitimate ecosystem target) but bad_fit STAYS penalized (a
+    card-declared unfit company shouldn't rank in any mode — B-option config)."""
+    cell = load_cell(_FIXTURES / f"{BASELINE_CELL}.yaml")
+    customer = _score_cell_rows(cell, config=_config(), target_mode="customer")
+    eco = _score_cell_rows(cell, config=_config(), target_mode="ecosystem")
+
+    # Competitor recovers (penalty factor 0.0).
+    assert eco["Snowflake"].final_score > customer["Snowflake"].final_score
+    # bad_fit stays penalized (factor 1.0) → no bad_fit leaks into S/A.
+    for name in ("MaxLinear", "Cloudflare", "Tailscale"):
+        assert eco[name].tier not in ("S", "A"), name
+    bad_labels = {n: "bad_fit" for n in ("MaxLinear", "Cloudflare", "Tailscale")}
+    eco_tiers = {n: r.tier for n, r in eco.items()}
+    assert M.bad_fit_leakage_rate(eco_tiers, bad_labels) == 0.0
+
+
 # ---------- metric unit coverage ----------
 
 
@@ -149,10 +171,21 @@ def test_evidence_fp_rate_counts_unexpected_types():
 def test_precision_at_10_is_mode_aware():
     scored = [(f"t{i}", 10 - i) for i in range(5)]
     labels = {"t0": "target", "t1": "competitor", "t2": "target", "t3": "neutral", "t4": "bad_fit"}
-    # customer: only target counts → 2/5
+    # customer positive = {target} → 2/5
     assert M.precision_at_10(scored, labels, {"target"}) == pytest.approx(2 / 5)
-    # partner: target+competitor → 3/5
+    # a wider positive set (ecosystem-like, includes competitor) → 3/5
     assert M.precision_at_10(scored, labels, {"target", "competitor"}) == pytest.approx(3 / 5)
+
+
+def test_competitor_and_bad_fit_leakage_are_separate():
+    """Review r2 #5: keep the two leakage rates separate so a glut of bad_fit can't
+    dilute a real competitor leak in a single combined denominator."""
+    tiers = {"comp": "A", "bf1": "C", "bf2": "C", "tgt": "S"}
+    labels = {"comp": "competitor", "bf1": "bad_fit", "bf2": "bad_fit", "tgt": "target"}
+    assert M.competitor_leakage_rate(tiers, labels) == 1.0   # 1/1 competitor leaked
+    assert M.bad_fit_leakage_rate(tiers, labels) == 0.0      # 0/2 bad_fit leaked
+    # None when the class is absent.
+    assert M.bad_fit_leakage_rate({"x": "S"}, {"x": "target"}) is None
 
 
 # ---------- 1B pipeline-contract matrix ----------
