@@ -425,3 +425,54 @@ def test_extra_evidence_query_drops_irrelevant_third_party(tmp_path):
     urls = {e.url for e in result.rows[0].evidence}
     assert "https://acmedata.example/products/store" in urls
     assert "https://randomblog.example/products/list" not in urls
+
+
+def test_evidence_budget_per_company_no_starvation(tmp_path):
+    """Review #3: with a per-company cap and no event ceiling, EVERY company gets
+    its extra queries — later companies aren't starved by earlier ones."""
+    search = FakeSearch()
+    cands = _candidates_5()
+    cfg = _config(
+        evidence_queries={"product": True, "partners": True, "press_release": True,
+                          "max_per_company": 3, "max_extra_calls_per_event": 0}
+    )
+    enrich_exhibitors(
+        candidates=cands, workspace_id="evb1", lang="en", config=cfg,
+        search_provider=search, cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+    )
+    extra = [
+        c for c in search.calls
+        if c["kind"] == "web" and any(s in c["query"] for s in ("product", "partners", "press release"))
+    ]
+    # 5 companies x 3 query types, none starved.
+    assert len(extra) == 15
+    assert any("Quanta MedAI" in c["query"] for c in extra)  # the LAST candidate served
+
+
+def test_evidence_budget_per_company_cap(tmp_path):
+    search = FakeSearch()
+    cands = _candidates_5()
+    cfg = _config(
+        evidence_queries={"product": True, "partners": True, "press_release": True,
+                          "max_per_company": 2, "max_extra_calls_per_event": 0}
+    )
+    enrich_exhibitors(
+        candidates=cands, workspace_id="evb2", lang="en", config=cfg,
+        search_provider=search, cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+    )
+    extra = [
+        c for c in search.calls
+        if c["kind"] == "web" and any(s in c["query"] for s in ("product", "partners", "press release"))
+    ]
+    assert len(extra) == 10  # 5 companies x 2 per company
+
+
+def test_search_cache_key_includes_count_and_days(tmp_path):
+    """Review #4: count + days are part of the cache key — a 30-day news request
+    must not be served a cached 180-day payload, nor a count=5 a count=20 one."""
+    from event_intel.events.enrichment import _SearchCache
+
+    k_base = _SearchCache._key("acme", "news", "en", 5, 180)
+    assert k_base != _SearchCache._key("acme", "news", "en", 5, 30)
+    assert k_base != _SearchCache._key("acme", "news", "en", 20, 180)
+    assert k_base == _SearchCache._key("acme", "news", "en", 5, 180)
