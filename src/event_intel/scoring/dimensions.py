@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from event_intel.events.evidence import mentions_name, name_tokens
 from event_intel.timeutil import recency_weight
 
 if TYPE_CHECKING:
@@ -52,26 +53,6 @@ def score_website_verification(row: EnrichedExhibitor) -> float:
     return 1.0 if row.official_url else 0.0
 
 
-def _name_match_tokens(name: str) -> list[str]:
-    """Significant lowercased tokens of a company name for news relevance.
-
-    Prefer tokens of length >= 3 (avoids 'a'/'io' matching everything); fall
-    back to the whole lowercased name if a short name has no such token.
-    """
-    toks = [t for t in re.split(r"\W+", (name or "").lower()) if len(t) >= 3]
-    if toks:
-        return toks
-    whole = (name or "").lower().strip()
-    return [whole] if whole else []
-
-
-def _news_matches_name(signal, name_tokens: list[str]) -> bool:
-    if not name_tokens:
-        return False
-    hay = f"{signal.title or ''} {signal.snippet or ''}".lower()
-    return any(t in hay for t in name_tokens)
-
-
 def score_buying_signal(
     row: EnrichedExhibitor,
     *,
@@ -97,8 +78,13 @@ def score_buying_signal(
         return 0.0
     base = 0.4 if len(news) <= 2 else 0.6
 
-    name_tokens = _name_match_tokens(row.name)
-    matched = [n for n in news if _news_matches_name(n, name_tokens)]
+    # Same relevance test as the floor evidence gate (review round-3 #2): the old
+    # substring matcher let "data"⊂"database" / "meta"⊂"metadata" count unrelated
+    # articles. evidence.mentions_name is token-boundary + generic-token guarded.
+    tokens = name_tokens(row.name)
+    matched = [
+        n for n in news if mentions_name(f"{n.title or ''} {n.snippet or ''}", tokens)
+    ]
     if not matched:
         base *= 0.5
 

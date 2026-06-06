@@ -169,26 +169,44 @@ def ingest_cards(
         )
 
     collection = product_collection_name(workspace_id)
-    # Full REPLACE, not upsert-over (review round-2 #5): clear first so a renamed
-    # or removed capability/competitor doesn't leave an orphan chunk that retrieval
-    # would still match against. Chunk ids are name-derived, so a rename = new id
-    # + stale old id without this.
-    reset = getattr(vectorstore_provider, "reset_collection", None)
-    if callable(reset):
-        reset(collection)
+    new_ids = [c.id for c in chunks]
+
+    # ATOMIC replace (review round-3 #1): write the new set FIRST, then delete only
+    # the orphans (existing − new). Never delete-then-upsert — an upsert failure
+    # there would wipe a healthy product context. Chunk ids are name-derived, so a
+    # renamed/removed capability becomes an orphan that we prune here.
+    existing_fn = getattr(vectorstore_provider, "existing_ids", None)
+    existing = set(existing_fn(collection)) if callable(existing_fn) else set()
+
     vectorstore_provider.upsert(
         collection=collection,
-        ids=[c.id for c in chunks],
+        ids=new_ids,
         embeddings=embeddings,
         metadatas=[c.metadata for c in chunks],
         documents=texts,
     )
 
+    orphans = existing - set(new_ids)
+    orphans_removed = 0
+    orphan_cleanup_ok = True
+    if orphans:
+        deleter = getattr(vectorstore_provider, "delete_ids", None)
+        if callable(deleter):
+            try:
+                deleter(collection, sorted(orphans))
+                orphans_removed = len(orphans)
+            except Exception:
+                # New data is already written and correct; a failed prune leaves
+                # stale chunks but is NOT data loss — surface it, don't fail.
+                orphan_cleanup_ok = False
+
     return {
         "ok": True,
         "collection": collection,
         "chunks": len(chunks),
-        "ids": [c.id for c in chunks],
+        "ids": new_ids,
+        "orphans_removed": orphans_removed,
+        "orphan_cleanup_ok": orphan_cleanup_ok,
         "product_name": cards.product_name,
         "schema_version": cards.schema_version,
     }

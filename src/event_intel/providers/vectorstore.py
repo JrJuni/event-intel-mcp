@@ -33,11 +33,14 @@ class VectorStoreProvider(ABC):
     @abstractmethod
     def ensure_writable(self) -> dict: ...
 
-    def reset_collection(self, collection: str) -> None:
-        """Remove every chunk in a collection so a re-ingest fully REPLACES it
-        rather than upserting over stale rows (review round-2 #5: renamed/removed
-        capabilities left orphaned vectors). Default no-op; persistent providers
-        override."""
+    def existing_ids(self, collection: str) -> set[str]:
+        """Current chunk ids in a collection. Used for an ATOMIC re-ingest:
+        upsert the new set, then delete only the orphans (existing − new) — never
+        empty the collection first (review round-3 #1). Default empty = no cleanup."""
+        return set()
+
+    def delete_ids(self, collection: str, ids) -> None:
+        """Delete specific chunk ids. Default no-op; persistent providers override."""
         return None
 
 
@@ -109,12 +112,18 @@ class ChromaProvider(VectorStoreProvider):
             results.append(hits)
         return results
 
-    def reset_collection(self, collection: str) -> None:
-        client = self._get_client()
+    def existing_ids(self, collection: str) -> set[str]:
         try:
-            client.delete_collection(name=collection)
+            col = self._get_client().get_collection(name=collection)
+            return set(col.get(include=[]).get("ids", []))
         except Exception:
-            pass  # absent → nothing to remove; recreated on next upsert
+            return set()
+
+    def delete_ids(self, collection: str, ids) -> None:
+        ids = list(ids)
+        if not ids:
+            return
+        self._get_collection(collection).delete(ids=ids)
 
     def collection_info(self, collection: str) -> dict:
         try:

@@ -282,11 +282,11 @@ def test_pipeline_contract_retriever_pool_split_and_similarity():
 # ---------- #4: top-N + recency exercised end-to-end (review round-2 #4) ----------
 
 
-def test_topn_aggregation_raises_production_score_end_to_end():
-    """retriever (top-N) → scorer with REAL config: top-3 aggregation must lift the
-    production final_score vs mean-of-all, proving #5(top-N) affects real tiers —
-    not just a unit test on capability_fit."""
-    from event_intel.events.enrichment import EnrichedExhibitor
+def test_topn_aggregation_changes_tier_end_to_end():
+    """retriever (top-N) → scorer with REAL config: top-3 aggregation must move the
+    company across a TIER boundary (A) vs mean-of-all (B) — proving top-N affects
+    real tiers, not just a higher number (review round-3 #4)."""
+    from event_intel.events.enrichment import EnrichedExhibitor, NewsSignal
     from event_intel.rag.retriever import retrieve_fit_event_to_product
     from event_intel.scoring.compute import score_exhibitors
 
@@ -304,8 +304,12 @@ def test_topn_aggregation_raises_production_score_end_to_end():
                 hits = []
             return [list(hits) for _ in query_embeddings]
 
-    rows = [EnrichedExhibitor(name="X", source_snippet="cap evidence",
-                              official_url="https://x.example", news_signals=[])]
+    # official_url + name-matched news → floor 2, buying signal fires (so the
+    # capability_fit delta from top-N is what tips A vs B).
+    rows = [EnrichedExhibitor(
+        name="Acme", source_snippet="cap evidence", official_url="https://acme.example",
+        news_signals=[NewsSignal(title=f"Acme news {i}", url=f"u{i}", snippet="") for i in range(3)],
+    )]
     cfg = _config()
 
     def _run(top_n):
@@ -318,7 +322,9 @@ def test_topn_aggregation_raises_production_score_end_to_end():
             enriched=rows, fit_results=fits, cards=None, config=cfg, top_k=5,
         ).rows[0]
 
-    assert _run(3).final_score > _run(0).final_score  # top-3 beats mean-of-all
+    top3, all_mean = _run(3), _run(0)
+    assert top3.final_score > all_mean.final_score
+    assert top3.tier == "A" and all_mean.tier == "B"  # top-N tips the tier
 
 
 def test_recency_changes_score_through_harness():

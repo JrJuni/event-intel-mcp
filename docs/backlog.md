@@ -36,6 +36,8 @@
 - **ecosystem 셀 leakage 재정의 (P2)** — partner/ecosystem 모드에서 competitor leakage 지표 의미 반전 → mode별 positive label·기대치 fixture 정비.
 - **캐시 TTL / resume 신선도 (P2, blind review r2 #2)** — 검색 캐시 키에 만료(주차 버킷 등) 없음 → "최근 180일" 결과가 수개월 뒤 재사용. resume도 event_slug+회사명 기준이라 같은 이벤트 재실행 시 변경된 뉴스/snippet/confidence 무기한 skip. → 캐시 만료 정책 + resume `--refresh`/변경감지.
 - **evidence 예산 round-robin (P2, blind review r2 #6)** — 현재 per-company 예산(default event cap 0)이라 starvation 없음. 단 event cap을 다시 켜면 순차 루프상 뒤 후보가 굶음 → 전역 round-robin 분배로 재설계해야 cap+공정성 양립.
+- **generic 단일토큰 회사명 floor 오탐 (P3, blind review r3 #3)** — `mentions_name`이 토큰경계+generic guard로 강화됐지만, 토큰이 단일 generic 단어뿐인 회사명("Data"/"Cloud")이나 distinctive 토큰이 전부 <3자라 `name_tokens`가 떨군 경우("Data AI"→["data"])는 여전히 느슨하게 매칭. 단일 generic-word 회사명은 본질적 모호 — 추후 phrase 요구/사전 보강 검토.
+- **same_site allowlist 한계 (P3, blind review r3 #5)** — `registrable_domain`이 알려진 멀티테넌트 suffix(github.io/vercel.app 등) 목록 기반. 목록 밖 호스팅 도메인은 동일 회사로 오판 가능. cold-start 제약상 PSL 라이브러리 미도입(현 절충 수용). 필요 시 목록 확장 또는 lazy PSL.
 - **lint 추가 룰 (P3)** — 현 ruff select(E/F/I/W/B/UP)에 D(docstring)·ANN(type annotation) 등 점진 도입 검토.
 
 **18V.1 round-2 정제 완료분(2026-06-06, 참고)**: HIGH 3건(#1 news 게이트+generic-token, #3 report invariant config화, #5 카드↔vector replace) + MEDIUM 2건(#7 멀티테넌트 same_site, #4 top-N/recency eval 실검증) 머지. 상세 `status.md`.
