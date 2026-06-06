@@ -206,6 +206,7 @@ def build_event_cmd(
     no_enrich: bool = typer.Option(False, "--no-enrich", help="Skip Brave enrichment (snippet-only scoring)."),
     no_rationale: bool = typer.Option(False, "--no-rationale", help="Skip Sonnet rationale calls."),
     resume_from: str | None = typer.Option(None, "--resume-from", help="Path to a per-row JSONL resume artifact."),
+    refresh: bool = typer.Option(False, "--refresh", help="Bypass resume + search cache — re-fetch every company (real refresh)."),
     target_mode: str | None = typer.Option(None, "--target-mode", help="customer | partner | ecosystem (default: config/card → customer)."),
 ) -> None:
     """Build a tiered exhibitor list for an event from a saved source file."""
@@ -234,6 +235,7 @@ def build_event_cmd(
         enrichment_enabled=not no_enrich,
         run_rationale=not no_rationale,
         resume_from=resume_from,
+        refresh=refresh,
         target_mode=target_mode,
     )
     _print_json(result)

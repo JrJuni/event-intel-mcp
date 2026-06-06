@@ -17,6 +17,8 @@ enrichment:
   fetch_timeout_seconds: 10
   fetch_body_max_chars: 2000
   cache_enabled: true              # Cache Brave responses per (query, kind) hash
+  cache_ttl_days: 7                # Search-cache freshness (Phase 18W P2-1). 0 = never reuse, null = infinite
+  resume_ttl_days: 7               # Resume-row freshness. Changed input (name/url/snippet/confidence/config) re-enriches regardless
   official_url_levenshtein_threshold: 0.7
   evidence_queries:                # Phase 18V item 1 — extra typed-evidence queries
     product: true                  # "{name}" product → product_page evidence

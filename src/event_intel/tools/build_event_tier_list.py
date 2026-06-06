@@ -125,6 +125,7 @@ def build_event_tier_list(
     max_companies: int | None = None,
     enrichment_enabled: bool = True,
     resume_from: str | None = None,
+    refresh: bool = False,
     run_rationale: bool = True,
     rationale_for_tiers: tuple[str, ...] = ("S", "A"),
     target_mode: str | None = None,
@@ -190,6 +191,7 @@ def build_event_tier_list(
                 search_provider=search_provider,
                 resume_path=resume_path,
                 max_companies=max_companies,
+                refresh=refresh,
             )
             enriched_rows = enrich_result.rows
         else:
