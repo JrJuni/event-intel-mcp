@@ -277,3 +277,58 @@ def test_pipeline_contract_retriever_pool_split_and_similarity():
     assert {"kind": "capability"} in wheres
     assert {"kind": {"$in": ["competitor", "bad_fit"]}} in wheres
     assert any(c["top_k"] == 20 for c in vs.calls)  # capability pool larger
+
+
+# ---------- #4: top-N + recency exercised end-to-end (review round-2 #4) ----------
+
+
+def test_topn_aggregation_raises_production_score_end_to_end():
+    """retriever (top-N) → scorer with REAL config: top-3 aggregation must lift the
+    production final_score vs mean-of-all, proving #5(top-N) affects real tiers —
+    not just a unit test on capability_fit."""
+    from event_intel.events.enrichment import EnrichedExhibitor
+    from event_intel.rag.retriever import retrieve_fit_event_to_product
+    from event_intel.scoring.compute import score_exhibitors
+
+    sims = [0.95, 0.92, 0.90, 0.15, 0.10]  # 3 strong + 2 weak capabilities
+
+    class _VS:
+        def query(self, *, collection, query_embeddings, top_k, where=None):
+            if (where or {}).get("kind") == "capability":
+                hits = [
+                    {"id": f"cap:{i}", "distance": 2 * (1 - s),
+                     "metadata": {"kind": "capability", "capability_name": f"C{i}"}}
+                    for i, s in enumerate(sims)
+                ]
+            else:
+                hits = []
+            return [list(hits) for _ in query_embeddings]
+
+    rows = [EnrichedExhibitor(name="X", source_snippet="cap evidence",
+                              official_url="https://x.example", news_signals=[])]
+    cfg = _config()
+
+    def _run(top_n):
+        fits = retrieve_fit_event_to_product(
+            exhibitors=rows, workspace_id="w", embedding_provider=_FakeEmbed(),
+            vectorstore_provider=_VS(), top_k=5, capability_top_k=20,
+            capability_aggregate_top_n=top_n,
+        )
+        return score_exhibitors(
+            enriched=rows, fit_results=fits, cards=None, config=cfg, top_k=5,
+        ).rows[0]
+
+    assert _run(3).final_score > _run(0).final_score  # top-3 beats mean-of-all
+
+
+def test_recency_changes_score_through_harness():
+    """Same row, recent vs stale news date → recent scores higher when run through
+    the harness with a fixed reference_date (recency is live in the matrix, #4)."""
+    base = {"target_mode": "customer", "reference_date": "2026-06-01T00:00:00+00:00"}
+    row = {"name": "R", "label": "target", "official_url": "https://r.example",
+           "news": 1, "capability_fit": 0.7}
+    recent = _score_cell_rows({**base, "rows": [{**row, "news_published_at": "2026-05-25"}]},
+                              config=_config())["R"]
+    stale = _score_cell_rows({**base, "rows": [{**row, "news_published_at": "2023-01-01"}]},
+                             config=_config())["R"]
+    assert recent.final_score > stale.final_score

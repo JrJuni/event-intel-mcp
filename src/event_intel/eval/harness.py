@@ -100,8 +100,17 @@ def _build_scoring_inputs(cell: dict):
     for r in cell["rows"]:
         name = r["name"]
         n_news = int(r.get("news", 0))
+        # Optional per-row news publish date so recency (4a) is actually exercised
+        # in the matrix, not inert (review round-2 #4). Title includes the name so
+        # buying_signal's name-match relevance fires.
+        news_pub = r.get("news_published_at")
         news = [
-            NewsSignal(title=f"{name} news {i}", url=f"https://news.example/{name}/{i}", snippet="")
+            NewsSignal(
+                title=f"{name} news {i}",
+                url=f"https://news.example/{name}/{i}",
+                snippet="",
+                published_at=news_pub,
+            )
             for i in range(n_news)
         ]
         enriched.append(
