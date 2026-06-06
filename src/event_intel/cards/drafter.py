@@ -112,7 +112,7 @@ def draft_cards(
     source_content: str = "",
     source_paths: list[str] | None = None,
     lang: str = "en",
-    llm_provider: "LLMProvider",
+    llm_provider: LLMProvider,
     max_input_chars: int = DEFAULT_MAX_INPUT_CHARS,
     max_tokens: int = 4096,
 ) -> DraftResult:

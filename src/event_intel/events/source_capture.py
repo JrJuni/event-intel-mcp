@@ -113,7 +113,7 @@ def _structured_strip_html(html: str) -> str:
     s = re.sub(r"<script[\s\S]*?</script>", " ", html, flags=re.I)
     s = re.sub(r"<style[\s\S]*?</style>", " ", s, flags=re.I)
 
-    def _anchor(m: "re.Match[str]") -> str:
+    def _anchor(m: re.Match[str]) -> str:
         href = (m.group(1) or "").strip()
         text = _htmllib.unescape(re.sub(r"<[^>]+>", " ", m.group(2))).strip()
         if not href:

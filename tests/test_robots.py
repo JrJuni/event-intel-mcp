@@ -17,8 +17,8 @@ import httpx
 import pytest
 
 from event_intel.acquisition import robots as _robots_mod
-from event_intel.acquisition.robots import _CacheEntry, clear_cache, is_allowed
 from event_intel.acquisition.raw_fetch import get_user_agent
+from event_intel.acquisition.robots import _CacheEntry, clear_cache, is_allowed
 
 
 @pytest.fixture(autouse=True)

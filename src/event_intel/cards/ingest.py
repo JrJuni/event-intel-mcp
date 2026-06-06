@@ -143,8 +143,8 @@ def ingest_cards(
     *,
     cards: CapabilityCards,
     workspace_id: str,
-    embedding_provider: "EmbeddingProvider",
-    vectorstore_provider: "VectorStoreProvider",
+    embedding_provider: EmbeddingProvider,
+    vectorstore_provider: VectorStoreProvider,
 ) -> dict:
     """Embed + upsert cards into product_{workspace_id}. Returns a summary dict.
 

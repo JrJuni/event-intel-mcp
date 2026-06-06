@@ -9,10 +9,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from event_intel.cards import drafter as _drafter
-from event_intel.cards import ingest as _ingest
 from event_intel.cards import validator as _validator
 from event_intel.errors import ErrorCode, MCPError, Stage
 from event_intel.providers import embedding as _embedding
@@ -22,7 +18,6 @@ from event_intel.runtime import preflight as _preflight
 from event_intel.tools.draft_capability_cards import draft_capability_cards
 from event_intel.tools.ingest_capability_cards import ingest_product_context
 from event_intel.tools.validate_capability_cards import validate_capability_cards
-
 
 # ---------- validate boundary ----------
 

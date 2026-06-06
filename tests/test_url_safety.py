@@ -6,7 +6,6 @@ import pytest
 from event_intel.acquisition.url_safety import host_relation, validate_url
 from event_intel.errors import ErrorCode, MCPError
 
-
 # ---------- validate_url — rejection cases ----------
 
 

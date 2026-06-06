@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from event_intel.timeutil import recency_weight
@@ -40,15 +40,15 @@ class DimensionScores:
     bad_fit_penalty: float
 
 
-def score_capability_fit(fit: "FitResult") -> float:
+def score_capability_fit(fit: FitResult) -> float:
     return max(0.0, min(1.0, float(fit.capability_fit)))
 
 
-def score_source_confidence(row: "EnrichedExhibitor") -> float:
+def score_source_confidence(row: EnrichedExhibitor) -> float:
     return max(0.0, min(1.0, float(row.extraction_confidence)))
 
 
-def score_website_verification(row: "EnrichedExhibitor") -> float:
+def score_website_verification(row: EnrichedExhibitor) -> float:
     return 1.0 if row.official_url else 0.0
 
 
@@ -73,7 +73,7 @@ def _news_matches_name(signal, name_tokens: list[str]) -> bool:
 
 
 def score_buying_signal(
-    row: "EnrichedExhibitor",
+    row: EnrichedExhibitor,
     *,
     triggers: list[str] | None = None,
     reference_date: datetime | None = None,
@@ -102,7 +102,7 @@ def score_buying_signal(
     if not matched:
         base *= 0.5
 
-    ref = reference_date or datetime.now(timezone.utc)
+    ref = reference_date or datetime.now(UTC)
     rec = max(
         (
             recency_weight(n.published_at, reference_date=ref, half_life_days=half_life_days)
@@ -201,7 +201,7 @@ def _category_needles(*groups: list[str]) -> set[str]:
 
 
 def score_category_fit(
-    row: "EnrichedExhibitor", *, cards: "CapabilityCards | None"
+    row: EnrichedExhibitor, *, cards: CapabilityCards | None
 ) -> float:
     """Industries/geo overlap between exhibitor evidence and ideal_customer.
 
@@ -230,7 +230,7 @@ def score_category_fit(
     return hits / (hits + 1.0)
 
 
-def score_competitor_penalty(fit: "FitResult", *, threshold: float = 0.0) -> float:
+def score_competitor_penalty(fit: FitResult, *, threshold: float = 0.0) -> float:
     """Penalty driven by the MAX competitor-chunk similarity, gated by threshold.
 
     Count-based penalties saturate: a competitor-only retrieval pool returns all
@@ -242,17 +242,17 @@ def score_competitor_penalty(fit: "FitResult", *, threshold: float = 0.0) -> flo
     return sim if sim >= threshold else 0.0
 
 
-def score_bad_fit_penalty(fit: "FitResult", *, threshold: float = 0.0) -> float:
+def score_bad_fit_penalty(fit: FitResult, *, threshold: float = 0.0) -> float:
     """Penalty driven by the MAX bad_fit-chunk similarity, gated by threshold."""
     sim = max(0.0, min(1.0, float(getattr(fit, "bad_fit_similarity", 0.0) or 0.0)))
     return sim if sim >= threshold else 0.0
 
 
 def compute_dimensions(
-    row: "EnrichedExhibitor",
-    fit: "FitResult",
+    row: EnrichedExhibitor,
+    fit: FitResult,
     *,
-    cards: "CapabilityCards | None",
+    cards: CapabilityCards | None,
     top_k: int,
     reference_date: datetime | None = None,
     half_life_days: float = 180.0,

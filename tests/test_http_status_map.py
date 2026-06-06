@@ -5,8 +5,6 @@ Special focus on the R2-2 SPA-shell short-body rule.
 """
 from __future__ import annotations
 
-import pytest
-
 from event_intel.acquisition.http_status_map import map_http_response
 from event_intel.acquisition.raw_fetch import RawResponse
 from event_intel.errors import ErrorCode

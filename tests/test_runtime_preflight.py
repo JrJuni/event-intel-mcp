@@ -19,7 +19,6 @@ from event_intel.runtime.preflight import (
 )
 from event_intel.tools.check_runtime import check_runtime as check_runtime_tool
 
-
 # ---------- Fakes ----------
 
 

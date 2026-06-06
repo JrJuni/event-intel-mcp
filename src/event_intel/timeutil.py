@@ -11,7 +11,7 @@ Pure stdlib — safe to import from cold provider/scoring modules.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def normalize_utc(dt: datetime | None) -> datetime | None:
@@ -19,8 +19,8 @@ def normalize_utc(dt: datetime | None) -> datetime | None:
     if dt is None:
         return None
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def parse_iso_utc(raw: str | None) -> datetime | None:

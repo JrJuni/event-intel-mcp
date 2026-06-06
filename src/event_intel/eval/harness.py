@@ -25,7 +25,7 @@ Cell YAML shape:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from event_intel.eval import metrics as _metrics
@@ -137,10 +137,10 @@ def _parse_reference_date(cell: dict) -> datetime:
     raw = cell.get("reference_date")
     if isinstance(raw, str) and raw:
         dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     if isinstance(raw, datetime):
-        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
-    return datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return raw if raw.tzinfo else raw.replace(tzinfo=UTC)
+    return datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def run_scoring_cell(cell: dict, *, config: dict) -> CellMetrics:

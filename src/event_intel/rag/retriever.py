@@ -35,7 +35,7 @@ class FitResult:
     bad_fit_similarity: float = 0.0                       # max sim over bad_fit chunks → penalty
 
 
-def _exhibitor_query_text(row: "EnrichedExhibitor") -> str:
+def _exhibitor_query_text(row: EnrichedExhibitor) -> str:
     parts: list[str] = [row.name]
     if row.source_snippet:
         parts.append(row.source_snippet)
@@ -66,10 +66,10 @@ def _similarity_from_distance(distance: float | None) -> float:
 
 def retrieve_fit_event_to_product(
     *,
-    exhibitors: list["EnrichedExhibitor"],
+    exhibitors: list[EnrichedExhibitor],
     workspace_id: str,
-    embedding_provider: "EmbeddingProvider",
-    vectorstore_provider: "VectorStoreProvider",
+    embedding_provider: EmbeddingProvider,
+    vectorstore_provider: VectorStoreProvider,
     top_k: int = 5,
     capability_top_k: int | None = None,
     capability_aggregate_top_n: int = 3,

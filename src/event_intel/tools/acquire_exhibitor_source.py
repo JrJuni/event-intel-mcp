@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from event_intel.acquisition import acquire as _acquire
 from event_intel.errors import Stage, envelope_from_exception
-from event_intel.storage import identifiers as _ids
 
 
 def acquire_exhibitor_source(

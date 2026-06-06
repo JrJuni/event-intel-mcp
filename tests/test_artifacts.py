@@ -2,14 +2,8 @@
 from __future__ import annotations
 
 import hashlib
-import json
-import os
-from pathlib import Path
-
-import pytest
 
 from event_intel.storage.artifacts import (
-    ManifestModel,
     artifact_dir,
     make_manifest,
     read_manifest,
@@ -18,7 +12,6 @@ from event_intel.storage.artifacts import (
     write_artifact,
     write_manifest,
 )
-
 
 # ---- helpers ----
 

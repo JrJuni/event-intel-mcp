@@ -13,7 +13,7 @@ range from defaults.yaml.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from event_intel.errors import ErrorCode, MCPError, Stage
@@ -42,8 +42,8 @@ class ScoredExhibitor:
     tier_reasons: list[str]
     rationale: str | None = None
     angle: str | None = None
-    row: "EnrichedExhibitor" = None       # carry forward for report stage
-    fit: "FitResult" = None               # carry forward for explainability
+    row: EnrichedExhibitor = None       # carry forward for report stage
+    fit: FitResult = None               # carry forward for explainability
 
 
 @dataclass
@@ -78,7 +78,7 @@ _RATIONALE_PROMPT_KO = (
 
 
 def _build_rationale_user_message(
-    *, scored: ScoredExhibitor, cards: "CapabilityCards | None"
+    *, scored: ScoredExhibitor, cards: CapabilityCards | None
 ) -> str:
     parts: list[str] = []
     parts.append(f"EXHIBITOR: {scored.row.name}")
@@ -122,9 +122,9 @@ def _parse_rationale_response(text: str) -> tuple[str | None, str | None]:
 
 def _compute_one(
     *,
-    row: "EnrichedExhibitor",
-    fit: "FitResult",
-    cards: "CapabilityCards | None",
+    row: EnrichedExhibitor,
+    fit: FitResult,
+    cards: CapabilityCards | None,
     weights: dict[str, float],
     tier_rules: dict,
     top_k: int,
@@ -170,12 +170,12 @@ def _compute_one(
 
 def score_exhibitors(
     *,
-    enriched: list["EnrichedExhibitor"],
-    fit_results: list["FitResult"],
-    cards: "CapabilityCards | None",
+    enriched: list[EnrichedExhibitor],
+    fit_results: list[FitResult],
+    cards: CapabilityCards | None,
     config: dict,
     top_k: int,
-    llm_provider: "LLMProvider | None" = None,
+    llm_provider: LLMProvider | None = None,
     rationale_lang: str = "en",
     rationale_for_tiers: tuple[str, ...] = ("S", "A"),
     rationale_max_tokens: int = 256,

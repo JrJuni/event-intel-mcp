@@ -1,8 +1,6 @@
 """Phase 18V item 2 — target_mode resolution, card-load contract, mode factors."""
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from event_intel.errors import ErrorCode, MCPError

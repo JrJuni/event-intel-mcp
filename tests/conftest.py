@@ -5,8 +5,6 @@ opt-in — keep this conftest cheap so the test collection phase stays fast.
 """
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
 
 import pytest

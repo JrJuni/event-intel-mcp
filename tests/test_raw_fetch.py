@@ -16,7 +16,6 @@ import pytest
 from event_intel.acquisition.raw_fetch import RawResponse, fetch_raw
 from event_intel.errors import ErrorCode, MCPError
 
-
 # ---------- helpers ----------
 
 def _make_httpx_response(*, status: int, text: str, url: str, headers: dict | None = None, history=None):

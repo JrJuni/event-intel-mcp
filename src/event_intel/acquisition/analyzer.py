@@ -21,9 +21,9 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from event_intel.errors import ErrorCode, MCPError, Stage
 
@@ -237,7 +237,7 @@ def analyze_page(
     *,
     url: str,
     lang: str = "en",
-    llm_provider: "LLMProvider",
+    llm_provider: LLMProvider,
     max_tokens: int = 2048,
 ) -> dict[str, Any]:
     """Fetch the page, call Sonnet once, return the analysis envelope dict.
@@ -249,9 +249,9 @@ def analyze_page(
         ok, verdict, confidence, hints, page_meta, usage, url, lang
     Raises MCPError on any failure (caller wraps in envelope_from_exception).
     """
-    from event_intel.acquisition import robots as _robots
-    from event_intel.acquisition import raw_fetch as _raw_fetch
     from event_intel.acquisition import http_status_map as _status_map
+    from event_intel.acquisition import raw_fetch as _raw_fetch
+    from event_intel.acquisition import robots as _robots
     from event_intel.acquisition.url_safety import validate_url
 
     # 1. URL safety + robots

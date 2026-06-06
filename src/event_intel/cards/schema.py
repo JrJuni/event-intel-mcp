@@ -70,7 +70,7 @@ class CapabilityCards(_StrictBase):
     competitors: Annotated[list[Competitor], Field(default_factory=list, max_length=20)]
 
     @model_validator(mode="after")
-    def _migrate_to_current(self) -> "CapabilityCards":
+    def _migrate_to_current(self) -> CapabilityCards:
         # v1 → v2 migration: target_mode already defaulted to "customer" above;
         # normalize the version stamp so downstream only ever sees the current one.
         if self.schema_version != SCHEMA_VERSION:
