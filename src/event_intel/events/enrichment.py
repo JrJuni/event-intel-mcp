@@ -421,6 +421,37 @@ def _evidence_from_dicts(items: list[dict]) -> list[EvidenceItem]:
     ]
 
 
+def allocate_round_robin(
+    company_names: list[str], suffixes: list[str], *,
+    per_company_cap: int, event_cap: int,
+) -> dict[str, list[str]]:
+    """Fairly distribute extra evidence-query slots across companies (Phase 18W
+    P2-2, review r2 #6). An event-wide cap consumed greedily in company order
+    starves later companies; round-robin gives every company its 1st slot before
+    any gets its 2nd.
+
+    - per_company_cap: max suffixes per company (0 = no cap → all suffixes).
+    - event_cap: max total queries across the event (0 = unlimited → every company
+      gets its full per-company allowance; this is the default, equivalent to the
+      pre-P2-2 per-company-only behavior).
+    Deterministic: company order + suffix order are fixed inputs, so the allocation
+    is independent of cache warmth and API timing.
+    """
+    per = len(suffixes) if not per_company_cap else min(per_company_cap, len(suffixes))
+    allowed = suffixes[:per]
+    if not event_cap:
+        return {name: list(allowed) for name in company_names}
+    assigned: dict[str, list[str]] = {name: [] for name in company_names}
+    total = 0
+    for rank in range(per):
+        for name in company_names:
+            if total >= event_cap:
+                return assigned
+            assigned[name].append(allowed[rank])
+            total += 1
+    return assigned
+
+
 def enrich_exhibitors(
     *,
     candidates: list[ExhibitorCandidate],
@@ -468,8 +499,9 @@ def enrich_exhibitors(
             "press_release": (bool(ev_cfg.get("press_release", False)), "press release"),
         }
         # Budget is per-company (deterministic, order-independent — review #3) with
-        # an OPTIONAL event-wide ATTEMPT ceiling (0 = off). Counting attempts, not
-        # cache misses, makes the queried set independent of cache warmth.
+        # an OPTIONAL event-wide ceiling (0 = off). When the ceiling is set, slots
+        # are allocated round-robin across companies (P2-2) so later companies are
+        # not starved by earlier ones; the queried set stays cache-independent.
         ev_max_per_company = int(ev_cfg.get("max_per_company", 3))
         ev_max_extra = int(ev_cfg.get("max_extra_calls_per_event", 0))
     except (KeyError, TypeError, ValueError) as exc:
@@ -503,28 +535,43 @@ def enrich_exhibitors(
             "(set enrichment.max_companies in config to raise)"
         )
 
-    cache_hits = 0
-    cache_misses = 0
-    skipped = 0
-    extra_query_attempts = 0     # event-wide extra evidence-query ATTEMPTS (cache-independent)
-    rows: list[EnrichedExhibitor] = []
-
+    # Decide reuse vs re-enrich per candidate up front (P2-1 fp + TTL gate): a row
+    # is reusable only if inputs are unchanged AND within resume TTL. This lets the
+    # round-robin evidence budget (P2-2) be allocated ONLY over companies we will
+    # actually enrich — skipped ones must not consume the event-wide query budget.
+    fp_by_name: dict[str, str] = {}
+    reusable: dict[str, dict] = {}
+    to_enrich_names: list[str] = []
     for cand in capped:
         expected_fp = _input_fingerprint(
             cand.name, cand.url, cand.source_snippet,
             cand.extraction_confidence, config_fp,
         )
+        fp_by_name[cand.name] = expected_fp
         done_row = done_by_name.get(cand.name)
-        if done_row is not None:
-            # Reuse only if the inputs are unchanged (fp match) AND the row is
-            # within resume TTL. A changed snippet/url/confidence or an expired
-            # row falls through to re-enrich instead of being skipped forever.
-            fp_ok = done_row.get("input_fp") == expected_fp
-            fresh = _is_fresh(done_row.get("enriched_at"), now=now, ttl_days=resume_ttl_days)
-            if fp_ok and fresh:
-                rows.append(_from_dict(done_row))
-                skipped += 1
-                continue
+        if done_row is not None and done_row.get("input_fp") == expected_fp and _is_fresh(
+            done_row.get("enriched_at"), now=now, ttl_days=resume_ttl_days
+        ):
+            reusable[cand.name] = done_row
+        else:
+            to_enrich_names.append(cand.name)
+
+    enabled_suffixes = [suffix for enabled, suffix in ev_enabled.values() if enabled]
+    assigned_queries = allocate_round_robin(
+        to_enrich_names, enabled_suffixes,
+        per_company_cap=ev_max_per_company, event_cap=ev_max_extra,
+    )
+
+    cache_hits = 0
+    cache_misses = 0
+    skipped = 0
+    rows: list[EnrichedExhibitor] = []
+
+    for cand in capped:
+        if cand.name in reusable:
+            rows.append(_from_dict(reusable[cand.name]))
+            skipped += 1
+            continue
 
         row = EnrichedExhibitor(
             name=cand.name,
@@ -641,18 +688,9 @@ def enrich_exhibitors(
                     published_at=n.published_at,
                 )
             )
-        per_company_extra = 0
-        for enabled, suffix in ev_enabled.values():
-            if not enabled:
-                continue
-            if ev_max_per_company and per_company_extra >= ev_max_per_company:
-                break
-            if ev_max_extra and extra_query_attempts >= ev_max_extra:
-                break
-            # Count the ATTEMPT before the call so cache hits and misses consume
-            # budget identically → the queried set is deterministic (review #3).
-            extra_query_attempts += 1
-            per_company_extra += 1
+        # Extra evidence queries are allocated round-robin up front (P2-2) so the
+        # event-wide budget is shared fairly, not consumed by early companies.
+        for suffix in assigned_queries.get(cand.name, []):
             ev_hits = _search_with_cache(
                 cache=cache, cache_enabled=cache_enabled,
                 search_provider=search_provider, query=f'"{cand.name}" {suffix}',
@@ -685,8 +723,10 @@ def enrich_exhibitors(
             row.enrichment_warnings.append("missing source_snippet after extraction")
 
         rows.append(row)
+        # Append per-company AS SOON AS the row finishes (durability — review r2 #4):
+        # a later company's API error never loses an already-completed row.
         resume.append(_to_dict(
-            row, input_fp=expected_fp, enriched_at=now.isoformat(),
+            row, input_fp=fp_by_name[cand.name], enriched_at=now.isoformat(),
         ))
 
     return EnrichmentResult(

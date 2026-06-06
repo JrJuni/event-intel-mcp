@@ -616,3 +616,68 @@ def test_ttl_days_zero_never_reuses_cache(tmp_path):
     _enrich_once(cand, cfg=cfg, search=search, cache_dir=cache_dir,
                  resume_path=tmp_path / "r2.jsonl", now=_T0)
     assert len(search.calls) > 0
+
+
+# ---------- P2-2: round-robin evidence allocation + resume durability ----------
+
+
+def test_round_robin_no_starvation():
+    """Event cap 4 across 4 companies → each gets exactly 1 (round-robin), not
+    company A grabbing 3 and B getting 1 (review r2 #6)."""
+    from event_intel.events.enrichment import allocate_round_robin
+
+    names = ["A", "B", "C", "D"]
+    suffixes = ["product", "partners", "press release"]
+    alloc = allocate_round_robin(names, suffixes, per_company_cap=3, event_cap=4)
+    assert [len(alloc[n]) for n in names] == [1, 1, 1, 1]
+    assert sum(len(v) for v in alloc.values()) == 4
+
+
+def test_round_robin_unlimited_gives_full_allowance():
+    """event_cap=0 (default) → every company gets its full per-company allowance,
+    equivalent to the pre-P2-2 per-company-only behavior."""
+    from event_intel.events.enrichment import allocate_round_robin
+
+    alloc = allocate_round_robin(
+        ["A", "B"], ["product", "partners", "press release"],
+        per_company_cap=2, event_cap=0,
+    )
+    assert alloc == {"A": ["product", "partners"], "B": ["product", "partners"]}
+
+
+def test_round_robin_cap_smaller_than_company_count():
+    """event_cap 2 with 4 companies → only the first two (rank-0 pass) get a slot."""
+    from event_intel.events.enrichment import allocate_round_robin
+
+    alloc = allocate_round_robin(
+        ["A", "B", "C", "D"], ["product", "partners"], per_company_cap=2, event_cap=2,
+    )
+    assert alloc["A"] == ["product"] and alloc["B"] == ["product"]
+    assert alloc["C"] == [] and alloc["D"] == []
+
+
+def test_resume_durable_when_later_company_fails(tmp_path):
+    """P2-2 keeps per-company resume.append immediate: a later company's API error
+    never loses an already-completed earlier company (review r2 #4)."""
+    resume_path = tmp_path / "r.jsonl"
+    search = FakeSearch()
+    search.web_by_name["Mobius Labs"] = [
+        _SR(title="Mobius", url="https://mobiuslabs.example.com", snippet=""),
+    ]
+    search.fail_for.add('"NeuroDrive Inc." official site')  # 2nd company blows up
+    cands = [
+        ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30),
+        ExhibitorCandidate(name="NeuroDrive Inc.", source_snippet="y" * 30),
+    ]
+    with pytest.raises(MCPError):
+        enrich_exhibitors(
+            candidates=cands, workspace_id="dur", lang="en", config=_config(),
+            search_provider=search, cache_dir=tmp_path / "c", resume_path=resume_path,
+        )
+    lines = [
+        json.loads(ln)
+        for ln in resume_path.read_text(encoding="utf-8").splitlines() if ln.strip()
+    ]
+    names = {r["name"] for r in lines}
+    assert "Mobius Labs" in names           # finished + durably persisted
+    assert "NeuroDrive Inc." not in names   # failed before append
