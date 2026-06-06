@@ -171,6 +171,27 @@ def test_retrieve_all_competitor_hits_yield_zero_capability_fit():
     assert fit.capability_fit_breakdown == {}
 
 
+def test_capability_fit_uses_top_n_not_mean_of_all():
+    """Review #5: a strong specific capability match must not be diluted by weak
+    ones. With sims [0.95, 0.90, 0.85, 0.20, 0.10], mean-of-all = 0.60 but
+    mean-of-top-3 = 0.90."""
+    rows = [_row("Sharp")]
+    vs = FakeVS()
+    sims = [0.95, 0.90, 0.85, 0.20, 0.10]
+    # distance = 2*(1 - sim) so _similarity_from_distance inverts back to sim.
+    vs.hits_per_query = [[
+        {"id": f"cap:{i}", "distance": 2 * (1 - s),
+         "metadata": {"kind": "capability", "capability_name": f"Cap {i}"}}
+        for i, s in enumerate(sims)
+    ]]
+    fit = retrieve_fit_event_to_product(
+        exhibitors=rows, workspace_id="acme",
+        embedding_provider=FakeEmbed(), vectorstore_provider=vs,
+        top_k=5, capability_top_k=20, capability_aggregate_top_n=3,
+    )[0]
+    assert fit.capability_fit == pytest.approx((0.95 + 0.90 + 0.85) / 3, abs=1e-6)
+
+
 def test_retrieve_only_queries_product_collection_not_event_collection():
     """v0 is unidirectional. Confirm we never query an event_* collection."""
     rows = [_row("Mobius"), _row("Neuro")]

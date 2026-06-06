@@ -7,6 +7,7 @@ tier_list is a *report* not a long-lived artifact):
     workspace_id: str
     event_name: str
     event_slug: str
+    target_mode: "customer" | "partner" | "ecosystem"   # v3 (18V item 2)
     generated_at: str (ISO-8601 UTC)
     tier_counts: {S: int, A: int, B: int, C: int, needs_review: int}
     exhibitors:
@@ -44,7 +45,7 @@ if TYPE_CHECKING:
     from event_intel.scoring.compute import ScoringSummary
 
 
-REPORT_SCHEMA_VERSION = 2   # v2: typed `evidence` list added per exhibitor (18V item 1)
+REPORT_SCHEMA_VERSION = 3   # v2: typed `evidence` per exhibitor; v3: top-level `target_mode` (18V item 2)
 
 
 def _exhibitor_to_dict(scored) -> dict:
@@ -93,6 +94,7 @@ def build_tier_list_payload(
         "event_name": context.event_name,
         "event_slug": context.event_slug,
         "lang": context.lang,
+        "target_mode": getattr(context, "target_mode", "customer"),
         "generated_at": generated_at.isoformat(),
         "tier_counts": counts,
         "exhibitors": [_exhibitor_to_dict(s) for s in summary.rows],

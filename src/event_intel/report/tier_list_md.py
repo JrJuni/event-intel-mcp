@@ -31,6 +31,7 @@ class ReportContext:
     event_slug: str
     lang: str = "en"
     generated_at: datetime | None = None
+    target_mode: str = "customer"   # resolved mode, recorded for reproducibility (review #7)
 
 
 _TIER_HEADINGS_EN = {
@@ -106,19 +107,27 @@ def _render_row(scored: "ScoredExhibitor", *, lang: str) -> str:
     return "\n".join(lines)
 
 
+# Mirrors shipped scoring.tier_rules.evidence_floor_min — the contract this
+# backstop guards. Update both together if the tier rules change.
+_TIER_FLOOR_MIN = {"S": 2, "A": 1}
+
+
 def _assert_floor_invariant(summary: "ScoringSummary") -> None:
     # Use the single floor authority (rules.compute_evidence_floor) so this can
-    # never diverge from the scoring-stage formula again (18V item 1).
+    # never diverge from the scoring-stage formula again (18V item 1). Enforce the
+    # PER-TIER minimum (S needs floor 2, A needs 1) — not a blanket floor>=1 — so
+    # a scorer/config regression that put an S row at floor 1 is caught (review #7).
     from event_intel.scoring.rules import compute_evidence_floor
 
     for scored in summary.rows:
-        if scored.tier not in ("S", "A"):
+        need = _TIER_FLOOR_MIN.get(scored.tier)
+        if need is None:
             continue
         floor = compute_evidence_floor(scored.row)
-        if floor < 1:
+        if floor < need:
             raise RuntimeError(
                 f"floor invariant broken: {scored.row.name} is tier {scored.tier} "
-                f"but evidence_floor={floor} (needs >= 1). Check scoring.tier_rules."
+                f"but evidence_floor={floor} (needs >= {need}). Check scoring.tier_rules."
             )
 
 

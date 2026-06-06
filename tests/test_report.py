@@ -116,6 +116,42 @@ def test_tier_list_md_renders_floor_invariant_safe():
         render_tier_list_md(summary=summary, needs_review=None, context=_ctx())
 
 
+def test_floor_invariant_enforces_s_needs_floor_2():
+    """Review #7: an S row at floor 1 (url only, no activity signal) must be
+    caught — the invariant enforces the per-tier minimum, not a blanket >=1.
+    The same row at tier A (which only needs floor 1) renders fine."""
+    s_at_floor1 = ScoredExhibitor(
+        name="UrlOnlyS", tier="S", final_score=9.0, evidence_floor=1,
+        dimensions=_dims(), weights_used={}, tier_reasons=[],
+        row=EnrichedExhibitor(name="UrlOnlyS", source_snippet="snippet",
+                              official_url="https://urlonly.example"),
+        fit=FitResult(name="UrlOnlyS", capability_fit=0.9, top_hits=[]),
+    )
+    with pytest.raises(RuntimeError, match="floor invariant"):
+        render_tier_list_md(summary=_summary(s_at_floor1), needs_review=None, context=_ctx())
+
+    a_at_floor1 = ScoredExhibitor(
+        name="UrlOnlyA", tier="A", final_score=6.5, evidence_floor=1,
+        dimensions=_dims(), weights_used={}, tier_reasons=[],
+        row=EnrichedExhibitor(name="UrlOnlyA", source_snippet="snippet",
+                              official_url="https://urlonly.example"),
+        fit=FitResult(name="UrlOnlyA", capability_fit=0.9, top_hits=[]),
+    )
+    # No raise — A's minimum floor is 1.
+    render_tier_list_md(summary=_summary(a_at_floor1), needs_review=None, context=_ctx())
+
+
+def test_tier_list_yaml_records_target_mode():
+    """Review #7: the resolved target_mode is recorded in the YAML report for
+    reproducibility."""
+    summary = _summary(_scored("A1", "A", score=6.5, floor=1))
+    payload = build_tier_list_payload(
+        summary=summary, needs_review=None, context=_ctx(target_mode="partner"),
+    )
+    reloaded = load_tier_list_yaml(dump_tier_list_yaml(payload))
+    assert reloaded["target_mode"] == "partner"
+
+
 def test_tier_list_md_needs_review_isolated_from_tier_sections():
     """needs_review rows must not appear inside any tier section."""
     summary = _summary(_scored("Real", "B", score=4.5, floor=0))

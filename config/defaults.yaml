@@ -42,6 +42,7 @@ scoring:
     # a negative-only pool would saturate to top_k for everyone).
     top_k: 5
     capability_top_k: 20
+    capability_aggregate_top_n: 3   # capability_fit = mean of top-N strongest matches, not all (review #5)
     negative_sim_threshold: 0.5
 
   target_mode:
