@@ -26,11 +26,13 @@ if TYPE_CHECKING:
 @dataclass
 class FitResult:
     name: str
-    capability_fit: float                                  # avg(top_k cosine), 0..1
-    top_hits: list[dict]                                   # raw vectorstore hits
+    capability_fit: float                                  # avg capability-pool cosine, 0..1
+    top_hits: list[dict]                                   # capability-pool hits (explainability)
     capability_fit_breakdown: dict[str, int] = field(default_factory=dict)
-    competitor_hits: int = 0
-    bad_fit_hits: int = 0
+    competitor_hits: int = 0                               # explanatory only (NOT penalty driver)
+    bad_fit_hits: int = 0                                  # explanatory only (NOT penalty driver)
+    competitor_similarity: float = 0.0                    # max sim over competitor chunks → penalty
+    bad_fit_similarity: float = 0.0                       # max sim over bad_fit chunks → penalty
 
 
 def _exhibitor_query_text(row: "EnrichedExhibitor") -> str:
@@ -69,11 +71,22 @@ def retrieve_fit_event_to_product(
     embedding_provider: "EmbeddingProvider",
     vectorstore_provider: "VectorStoreProvider",
     top_k: int = 5,
+    capability_top_k: int | None = None,
 ) -> list[FitResult]:
     """For each exhibitor, embed its evidence and query the product collection.
 
-    Returns a `FitResult` per input exhibitor, in the same order. Empty input
-    returns an empty list.
+    **Two pools** (Phase 18V 4b):
+      - capability pool — `where kind=capability`, larger `capability_top_k`, so
+        capability_fit averages over a fuller view of positive matches.
+      - negative pool — `where kind in {competitor, bad_fit}`, `top_k`, used for
+        the penalty SIMILARITY (max cosine per kind), NOT a raw count. A
+        negative-only query would saturate any count to ~top_k for everyone;
+        the max-similarity is what tells a true competitor from a coincidental
+        neighbor (review round-2 #1).
+
+    `where` is honored by Chroma; fakes that ignore it still produce correct
+    results because we re-filter by `metadata.kind` here. Returns one FitResult
+    per exhibitor, same order. Empty input → empty list.
     """
     if not exhibitors:
         return []
@@ -86,45 +99,62 @@ def retrieve_fit_event_to_product(
             f"embedding count mismatch: {len(embeddings)} for {len(exhibitors)} exhibitors"
         )
 
-    hits_batch = vectorstore_provider.query(
+    cap_k = capability_top_k if capability_top_k and capability_top_k > 0 else top_k
+    cap_batch = vectorstore_provider.query(
+        collection=collection,
+        query_embeddings=embeddings,
+        top_k=cap_k,
+        where={"kind": "capability"},
+    )
+    neg_batch = vectorstore_provider.query(
         collection=collection,
         query_embeddings=embeddings,
         top_k=top_k,
+        where={"kind": {"$in": ["competitor", "bad_fit"]}},
     )
 
     results: list[FitResult] = []
-    for exh, hits in zip(exhibitors, hits_batch, strict=True):
+    for exh, cap_hits, neg_hits in zip(exhibitors, cap_batch, neg_batch, strict=True):
         breakdown: dict[str, int] = {}
+        cap_sims: list[float] = []
+        for h in cap_hits:
+            md = h.get("metadata") or {}
+            if md.get("kind") != "capability":
+                continue
+            cap_name = md.get("capability_name", "?")
+            breakdown[cap_name] = breakdown.get(cap_name, 0) + 1
+            cap_sims.append(_similarity_from_distance(h.get("distance")))
+
         competitor_hits = 0
         bad_fit_hits = 0
-        cap_sims: list[float] = []
-        for h in hits:
+        comp_sims: list[float] = []
+        bad_sims: list[float] = []
+        for h in neg_hits:
             md = h.get("metadata") or {}
             kind = md.get("kind", "")
-            if kind == "capability":
-                cap_name = md.get("capability_name", "?")
-                breakdown[cap_name] = breakdown.get(cap_name, 0) + 1
-                cap_sims.append(_similarity_from_distance(h.get("distance")))
-            elif kind == "competitor":
+            sim = _similarity_from_distance(h.get("distance"))
+            if kind == "competitor":
                 competitor_hits += 1
+                comp_sims.append(sim)
             elif kind == "bad_fit":
                 bad_fit_hits += 1
-        # capability_fit averages ONLY capability-kind hits. Averaging all kinds
-        # let a company sitting next to its own `competitor:<name>` chunk inflate
-        # its fit (e.g. Snowflake 0.62 > LlamaIndex 0.56) — exactly backwards for
-        # BD. A row whose top-k is crowded by competitor/bad_fit chunks now gets
-        # a LOW capability_fit, and the hit counts drive the penalties.
-        # NOTE: a 1-capability-hit average and a 3-hit average are treated with
-        # equal confidence here — count-weighting is deferred (see backlog).
+                bad_sims.append(sim)
+
+        # capability_fit averages ONLY capability-kind hits — never inflated by a
+        # competitor/bad_fit neighbor (the Phase-18U contamination fix). A 1-hit
+        # and a 3-hit average are treated with equal confidence (count-weighting
+        # deferred — backlog).
         avg = sum(cap_sims) / len(cap_sims) if cap_sims else 0.0
         results.append(
             FitResult(
                 name=exh.name,
                 capability_fit=avg,
-                top_hits=hits,
+                top_hits=cap_hits,
                 capability_fit_breakdown=breakdown,
                 competitor_hits=competitor_hits,
                 bad_fit_hits=bad_fit_hits,
+                competitor_similarity=max(comp_sims, default=0.0),
+                bad_fit_similarity=max(bad_sims, default=0.0),
             )
         )
     return results

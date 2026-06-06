@@ -143,6 +143,9 @@ def test_retrieve_counts_competitor_and_bad_fit_hits():
     # capability_fit comes from the single capability hit only (dist 0.5 → 0.75),
     # NOT diluted/inflated by the competitor + bad_fit chunks.
     assert fit.capability_fit == pytest.approx(0.75, abs=1e-6)
+    # 4b: penalty drivers are the max similarity per kind (dist 0.5 → 0.75).
+    assert fit.competitor_similarity == pytest.approx(0.75, abs=1e-6)
+    assert fit.bad_fit_similarity == pytest.approx(0.75, abs=1e-6)
 
 
 def test_retrieve_all_competitor_hits_yield_zero_capability_fit():
@@ -179,10 +182,13 @@ def test_retrieve_only_queries_product_collection_not_event_collection():
     )
     collections_queried = {c["collection"] for c in vs.calls}
     assert collections_queried == {"product_acme"}, vs.calls
-    # Single batched query call (not one per exhibitor).
-    assert len(vs.calls) == 1
-    # And both exhibitors were embedded in the same batch.
-    assert vs.calls[0]["n_queries"] == 2
+    # Two batched query calls (capability pool + negative pool), not one per
+    # exhibitor. Both carry a kind `where` filter.
+    assert len(vs.calls) == 2
+    assert all(c["n_queries"] == 2 for c in vs.calls)
+    wheres = [c["where"] for c in vs.calls]
+    assert {"kind": "capability"} in wheres
+    assert {"kind": {"$in": ["competitor", "bad_fit"]}} in wheres
 
 
 def test_retrieve_empty_input_returns_empty_list():

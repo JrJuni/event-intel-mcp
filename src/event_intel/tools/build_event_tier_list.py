@@ -169,12 +169,14 @@ def build_event_tier_list(
 
         # 6. Fit retrieval (S4, single-direction).
         if enriched_rows:
+            _retrieval_cfg = config.get("scoring", {}).get("retrieval", {})
             fit_results = _retriever.retrieve_fit_event_to_product(
                 exhibitors=enriched_rows,
                 workspace_id=ws,
                 embedding_provider=_embedding.BgeM3Provider(),
                 vectorstore_provider=_vectorstore.ChromaProvider(),
-                top_k=_DEFAULT_TOP_K,
+                top_k=int(_retrieval_cfg.get("top_k", _DEFAULT_TOP_K)),
+                capability_top_k=int(_retrieval_cfg.get("capability_top_k", _DEFAULT_TOP_K)),
             )
         else:
             fit_results = []

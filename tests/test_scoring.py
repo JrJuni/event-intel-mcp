@@ -70,6 +70,8 @@ def _fit(name, **kw):
         capability_fit_breakdown=kw.get("breakdown", {"Cap A": 3, "Cap B": 1}),
         competitor_hits=kw.get("competitor_hits", 0),
         bad_fit_hits=kw.get("bad_fit_hits", 0),
+        competitor_similarity=kw.get("competitor_similarity", 0.0),
+        bad_fit_similarity=kw.get("bad_fit_similarity", 0.0),
     )
 
 
@@ -226,9 +228,10 @@ def test_score_exhibitors_evidence_floor_caps_full_pipeline():
 
 def test_bad_fit_and_competitor_penalty_drops_tier():
     row = _row("Bad", official_url="https://x", news_signals=[NewsSignal("t", "u", "s")])
-    # Strong capability_fit but heavy competitor + bad_fit hits.
-    fit_clean = _fit("Bad", capability_fit=0.95, competitor_hits=0, bad_fit_hits=0)
-    fit_dirty = _fit("Bad", capability_fit=0.95, competitor_hits=5, bad_fit_hits=5)
+    # Strong capability_fit but high competitor + bad_fit SIMILARITY (4b: penalty
+    # is similarity-driven, not count-driven).
+    fit_clean = _fit("Bad", capability_fit=0.95, competitor_similarity=0.0, bad_fit_similarity=0.0)
+    fit_dirty = _fit("Bad", capability_fit=0.95, competitor_similarity=0.9, bad_fit_similarity=0.9)
     clean = score_exhibitors(
         enriched=[row], fit_results=[fit_clean], cards=None, config=_config(), top_k=5,
     ).rows[0]
@@ -239,6 +242,26 @@ def test_bad_fit_and_competitor_penalty_drops_tier():
     # Clean lands in S, dirty drops at least one tier.
     tier_order = ["C", "B", "A", "S"]
     assert tier_order.index(dirty.tier) < tier_order.index(clean.tier)
+
+
+def test_competitor_penalty_does_not_saturate_when_similarity_low():
+    """4b regression: a row whose negative pool is FULL of competitor/bad_fit
+    chunks (high counts) but at LOW similarity must NOT be penalized — the count
+    no longer drives the penalty, the gated max-similarity does."""
+    from event_intel.scoring.dimensions import (
+        score_bad_fit_penalty,
+        score_competitor_penalty,
+    )
+
+    crowded_low_sim = _fit(
+        "X", competitor_hits=5, bad_fit_hits=5,
+        competitor_similarity=0.2, bad_fit_similarity=0.2,
+    )
+    assert score_competitor_penalty(crowded_low_sim, threshold=0.5) == 0.0
+    assert score_bad_fit_penalty(crowded_low_sim, threshold=0.5) == 0.0
+
+    true_competitor = _fit("Y", competitor_hits=1, competitor_similarity=0.85)
+    assert score_competitor_penalty(true_competitor, threshold=0.5) == pytest.approx(0.85)
 
 
 def test_score_exhibitors_runs_rationale_only_for_target_tiers():

@@ -29,6 +29,15 @@ scoring:
     competitor_penalty: -0.35
     bad_fit_penalty: -0.25
 
+  retrieval:
+    # Fit retrieval pools (Phase 18V 4b). capability_fit averages over the larger
+    # capability pool; competitor/bad_fit penalties use the max similarity from
+    # the negative pool, fired only at/above negative_sim_threshold (a count over
+    # a negative-only pool would saturate to top_k for everyone).
+    top_k: 5
+    capability_top_k: 20
+    negative_sim_threshold: 0.5
+
   buying_signal:
     # News-driven buying signal (Phase 18V 4a). Half-life of the recency bonus:
     # an article published `recency_half_life_days` ago contributes half the

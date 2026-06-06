@@ -187,18 +187,22 @@ def score_category_fit(
     return hits / (hits + 1.0)
 
 
-def score_competitor_penalty(fit: "FitResult", *, top_k: int) -> float:
-    """Fraction of top-k retrieval hits that landed on competitor chunks."""
-    if top_k <= 0:
-        return 0.0
-    return max(0.0, min(1.0, fit.competitor_hits / top_k))
+def score_competitor_penalty(fit: "FitResult", *, threshold: float = 0.0) -> float:
+    """Penalty driven by the MAX competitor-chunk similarity, gated by threshold.
+
+    Count-based penalties saturate: a competitor-only retrieval pool returns all
+    competitors, so a count would flag every company. Max similarity instead
+    fires only when a chunk is genuinely close to a competitor (review r2 #1).
+    Below `threshold` → 0.0 (coincidental neighbor, no penalty).
+    """
+    sim = max(0.0, min(1.0, float(getattr(fit, "competitor_similarity", 0.0) or 0.0)))
+    return sim if sim >= threshold else 0.0
 
 
-def score_bad_fit_penalty(fit: "FitResult", *, top_k: int) -> float:
-    """Fraction of top-k retrieval hits that landed on bad_fit chunks."""
-    if top_k <= 0:
-        return 0.0
-    return max(0.0, min(1.0, fit.bad_fit_hits / top_k))
+def score_bad_fit_penalty(fit: "FitResult", *, threshold: float = 0.0) -> float:
+    """Penalty driven by the MAX bad_fit-chunk similarity, gated by threshold."""
+    sim = max(0.0, min(1.0, float(getattr(fit, "bad_fit_similarity", 0.0) or 0.0)))
+    return sim if sim >= threshold else 0.0
 
 
 def compute_dimensions(
@@ -209,6 +213,7 @@ def compute_dimensions(
     top_k: int,
     reference_date: datetime | None = None,
     half_life_days: float = 180.0,
+    negative_sim_threshold: float = 0.0,
 ) -> DimensionScores:
     triggers = [t.signal for t in cards.buying_triggers] if cards else []
     return DimensionScores(
@@ -222,6 +227,6 @@ def compute_dimensions(
         ),
         website_verification=score_website_verification(row),
         category_fit=score_category_fit(row, cards=cards),
-        competitor_penalty=score_competitor_penalty(fit, top_k=top_k),
-        bad_fit_penalty=score_bad_fit_penalty(fit, top_k=top_k),
+        competitor_penalty=score_competitor_penalty(fit, threshold=negative_sim_threshold),
+        bad_fit_penalty=score_bad_fit_penalty(fit, threshold=negative_sim_threshold),
     )
