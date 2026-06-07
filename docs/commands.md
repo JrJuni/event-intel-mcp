@@ -21,6 +21,29 @@ cd /c/Users/JuniBecky/Downloads/event-intel-mcp
 ~/miniconda3/envs/event-intel/python.exe -m event_intel.cli check-runtime --workspace default
 ```
 
+### Optional: CJK morphological tokenizer (Phase 18W P2-4)
+
+`category_fit` defaults to a char-bigram tokenizer (cold-start safe, no extra deps)
+which over-matches CJK words sharing a 2-char window. For Japanese/Chinese exhibitor
+lists, install the optional `[cjk]` extra (janome + jieba) and switch the mode in
+`~/.event-intel/config.yaml`:
+
+```bash
+~/miniconda3/envs/event-intel/python.exe -m pip install -e ".[cjk]"
+```
+
+```yaml
+# ~/.event-intel/config.yaml — deep-merged over config/defaults.yaml
+scoring:
+  cjk_tokenizer:
+    mode: morphological   # bigram (default) | morphological
+    language: auto        # auto | ja | zh | ko — SOURCE text language, NOT output lang
+    han_default: zh       # auto's choice for ambiguous pure-Han runs (zh | ja)
+```
+
+Korean stays on bigram (no pure-Python analyzer). If the libraries are missing,
+morphological silently falls back to bigram with a one-time warning.
+
 ---
 
 ## Tests
