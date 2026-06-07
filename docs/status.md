@@ -249,6 +249,8 @@
 3. ✅ Phase 18T.1 — ChatGPT OAuth 설치 UX + 비동기 워밍업 + opt-in 시작 워밍업 (364/364 green)
    ✅ Phase 18T.2 — 무마찰 `.mcpb` 설치(repo_path 제거 + python_path 기본값 + .env 키 자동로드) + `.mcpb` 0.5.0 (371/371 green)
 4. ✅ Phase 18T 마감 — `.mcpb` Claude Desktop 8 tools 노출 확인 (Done When #13, 2026-06-04)
-5. **Phase 18U** (별도 plan 작성 필요) — Streamable HTTP + OAuth 2.1 PKCE + ChatGPT App 등록
+5. ✅ Phase 18U/18V/18V.1/18W/18X — 스코어링 변별력 + 범용화 + P2·P3 + CJK 3언어 (479 green, backlog #12/#13 종료)
+6. **다음 큰 방향 — 로드맵 Y1 → Y2** (`~/.claude/plans/snoopy-weaving-robin.md` v3, `backlog.md#다음-큰-방향---로드맵`):
+   **Y1 실데이터 정확도 검증**(gold-label 벤치마크 — 아직 미검증) → **Y2 원격 배포**(Streamable HTTP + 표준 MCP 인증; remote I/O 선결). 각 phase 착수 시 별도 상세 plan.
 
-세션 간 재개: `docs/status.md` + `~/.claude/plans/tender-mixing-badger.md` 먼저 읽기. 18T.1 plan: `~/.claude/plans/snoopy-weaving-robin.md`.
+세션 간 재개: `docs/status.md` + 로드맵 `~/.claude/plans/snoopy-weaving-robin.md` 먼저 읽기.

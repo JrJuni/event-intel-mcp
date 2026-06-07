@@ -6,6 +6,25 @@
 
 ---
 
+## 다음 큰 방향 — 로드맵 (2026-06-07)
+
+전체 로드맵: `~/.claude/plans/snoopy-weaving-robin.md` (v3, blind review 2라운드 후 확정). 범용화 백로그(#12/#13)가
+전부 종료된 시점에서, 큰 그림 남은 일은 두 갈래. **북스타: 실데이터 정확도 검증(Y1) → 원격 배포(Y2).** 각 phase는
+착수 시 별도 상세 plan + blind review로 실행한다(이 섹션은 방향 박제일 뿐, 실행 계약 아님).
+
+- **Y1 — 실데이터 검증 + 근거기반 정확도 (지금)**: gold-label로 정확도가 검증된 적 없음(합성 fixture + 단일 gold-set
+  튜닝뿐). `eval/harness.py`는 scorer만 실행(cards=None)하므로 실데이터 정확도 미검증. → **Y1A** 벤치마크 계약(제품 2~3개
+  × 대표 이벤트 5~8개, 라벨 종류별 메트릭 적격성, holdout 공개 전 통과기준 고정) → **Y1B** instrumentation 선행(verdict별
+  성공정의 + 최소 run-summary) → **Y1C** 3계층(live smoke / contract-replay CI(fake embedding) / offline quality
+  benchmark(실 bge-m3, 비필수 CI)) → **Y1D** 측정 후 조건부 fix. 9-cell은 scoring 회귀로 유지·분리.
+- **Y2 — 원격 배포 (계획까지)**: **Y2.0** 아키텍처 게이트(single-user-private 우선) → **Y2.1** Remote I/O + file-backed
+  job(현 도구는 서버 로컬 경로 I/O라 원격 선결; DB persist는 OOS지만 job manifest는 허용) → **Y2.2** Streamable HTTP +
+  표준 MCP 인증(resource-server / Protected Resource Metadata / audience 검증 / SDK·protocol 고정) → **Y2.3** 운영강화 + 비로컬 smoke.
+- **아래 #1~#10 매핑**: #1 양방향 retrieval·#6 rerank → Y1D · #3 backoff → Y2.3 · #10 multi-tenant → Y2.0(공유 시) ·
+  #2 provider swap·#4 brief export·#5 resume·#7 bd-agent bridge·#8 batch·#9 auto-monitoring → 파킹.
+
+---
+
 ## P1 — v0 진입 후 가장 먼저 검토
 
 ### ~~#11 analyze_event_page prompt 튜닝 — Vue/React 감지 시에도 endpoint 패턴 우선~~ ✅ 완료 (2026-05-29, commit pending)
