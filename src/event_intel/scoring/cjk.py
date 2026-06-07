@@ -5,10 +5,11 @@ words that share a 2-char window collide (measured false-overlap 100% on
 adversarial cases — tests/test_category_fit_cjk.py). An optional morphological
 backend segments on word boundaries instead, so `半導体` and `指導体制` no longer
 share a token:
-    - Japanese → janome   (pure-Python, lazy)
-    - Chinese  → jieba     (pure-Python, lazy)
-    - Korean   → bigram    (no pure-Python morphological analyzer; kiwipiepy is
-                            native — deferred to a separate phase)
+    - Japanese → janome    (pure-Python, lazy, `[cjk]` extra)
+    - Chinese  → jieba      (pure-Python, lazy, `[cjk]` extra)
+    - Korean   → kiwipiepy  (NATIVE wheel + ~109 MB model, lazy, separate `[kr]`
+                            extra; Phase 18X). Word-boundary segmentation removes
+                            bigram-window artifact overlaps.
 
 The segmenter is resolved ONCE per score_category_fit call and applied to BOTH
 the needle and the haystack, so matching stays symmetric regardless of script.
@@ -115,6 +116,34 @@ def _jieba_segment() -> Callable[[str], set[str]]:
     return seg
 
 
+# Korean content-morpheme tags: general/proper/bound nouns, foreign (Latin),
+# number, root. Dropping josa (J*), eomi (E*), suffixes, punctuation (S*) keeps
+# the comparable units and removes particle noise.
+_KO_CONTENT_TAGS = frozenset({"NNG", "NNP", "NNB", "SL", "SN", "XR"})
+
+
+@lru_cache(maxsize=1)
+def _kiwi_segment() -> Callable[[str], set[str]]:
+    # kiwipiepy is a NATIVE wheel (+ ~109 MB model) — optional `[kr]` extra,
+    # imported lazily so the module stays cold-start safe.
+    # Note on homonyms: score_category_fit segments each word in isolation, so a
+    # compound like 전지적 parses to {지적} (not 전지) and does NOT collide with
+    # 이차전지's 전지 morpheme — the documented 電池/全知 case is resolved by
+    # word-boundary tokenization. A residual false-overlap would require two
+    # distinct words that genuinely yield an identical content morpheme.
+    from kiwipiepy import Kiwi
+
+    kw = Kiwi()
+
+    def seg(run: str) -> set[str]:
+        return {
+            t.form for t in kw.tokenize(run)
+            if t.tag in _KO_CONTENT_TAGS and t.form.strip()
+        }
+
+    return seg
+
+
 _warned: set[str] = set()
 
 
@@ -140,12 +169,14 @@ def resolve_segmenter(spec: CjkSpec | None, *, sample: str) -> Callable[[str], s
             return _janome_segment()
         if lang == "zh":
             return _jieba_segment()
-        # 'ko' and anything else → bigram (no pure-Python analyzer).
-        return cjk_bigrams
+        if lang == "ko":
+            return _kiwi_segment()
+        return cjk_bigrams  # anything else
     except ImportError as exc:
+        extra = "kr" if lang == "ko" else "cjk"
         _warn_once(
             f"{spec.mode}:{lang}",
             f"CJK morphological backend for {lang!r} unavailable ({exc}); "
-            "falling back to bigram. Install with: pip install -e '.[cjk]'",
+            f"falling back to bigram. Install with: pip install -e '.[{extra}]'",
         )
         return cjk_bigrams

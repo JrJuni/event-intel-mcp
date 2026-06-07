@@ -38,9 +38,15 @@ dev = [
 ]
 # Optional CJK morphological tokenizer for category_fit (Phase 18W P2-4).
 # Without it, scoring.cjk_tokenizer.mode=morphological falls back to bigram.
+# JP/CN are pure-Python (janome/jieba). Korean (kiwipiepy) is a separate `[kr]`
+# extra because it is a NATIVE wheel + ~109 MB model (Phase 18X) — keep it off
+# the pure-Python path so JP/CN-only users don't pull a native dependency.
 cjk = [
     "janome>=0.5",
     "jieba>=0.42",
+]
+kr = [
+    "kiwipiepy>=0.21",
 ]
 
 [project.scripts]
