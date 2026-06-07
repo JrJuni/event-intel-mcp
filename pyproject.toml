@@ -36,6 +36,12 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
 ]
+# Optional CJK morphological tokenizer for category_fit (Phase 18W P2-4).
+# Without it, scoring.cjk_tokenizer.mode=morphological falls back to bigram.
+cjk = [
+    "janome>=0.5",
+    "jieba>=0.42",
+]
 
 [project.scripts]
 event-intel = "event_intel.cli:app"

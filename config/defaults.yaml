@@ -60,6 +60,14 @@ scoring:
     partner:    {competitor_penalty_factor: 0.0, bad_fit_penalty_factor: 1.0}
     ecosystem:  {competitor_penalty_factor: 0.0, bad_fit_penalty_factor: 1.0}
 
+  cjk_tokenizer:
+    # CJK category_fit tokenizer (Phase 18W P2-4). bigram (default) is cold-start
+    # safe but over-matches on 2-char windows. morphological uses janome (JP) /
+    # jieba (CN) — install the optional extra: pip install -e ".[cjk]".
+    mode: bigram               # bigram | morphological
+    language: auto             # auto | ja | zh | ko — SOURCE text language, independent of output lang
+    han_default: zh            # auto's choice for ambiguous pure-Han runs (zh | ja)
+
   buying_signal:
     # News-driven buying signal (Phase 18V 4a). Half-life of the recency bonus:
     # an article published `recency_half_life_days` ago contributes half the

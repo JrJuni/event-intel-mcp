@@ -17,11 +17,13 @@ runs only after the tier is decided.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from event_intel.events.evidence import mentions_name, name_tokens
+from event_intel.scoring.cjk import CjkSpec, cjk_bigrams, resolve_segmenter
 from event_intel.timeutil import recency_weight
 
 if TYPE_CHECKING:
@@ -122,13 +124,7 @@ _CATEGORY_TOKEN_SPLIT = re.compile(r"[\s,;/()\[\]\-–—.|:&]+")
 _CJK_CHAR = re.compile(r"[぀-ヿ㐀-鿿가-힯豈-﫿]")
 
 
-def _cjk_bigrams(run: str) -> set[str]:
-    if len(run) <= 1:
-        return {run} if run else set()
-    return {run[i : i + 2] for i in range(len(run) - 1)}
-
-
-def _expand_token(tok: str) -> set[str]:
+def _expand_token(tok: str, *, cjk_segment: Callable[[str], set[str]] = cjk_bigrams) -> set[str]:
     """Split a rough token into ASCII alnum runs (kept whole) + CJK runs (→ char
     bigrams). 'ai반도체' → {'ai', '반도', '도체'}."""
     out: set[str] = set()
@@ -142,13 +138,13 @@ def _expand_token(tok: str) -> set[str]:
             cjk.append(ch)
         else:
             if cjk:
-                out |= _cjk_bigrams("".join(cjk))
+                out |= cjk_segment("".join(cjk))
                 cjk = []
             other.append(ch)
     if other:
         out.add("".join(other))
     if cjk:
-        out |= _cjk_bigrams("".join(cjk))
+        out |= cjk_segment("".join(cjk))
     return {t for t in out if t}
 
 # Dropped regardless of length — function words that matched everything under
@@ -165,22 +161,26 @@ _SHORT_TOKEN_WHITELIST = {
 }
 
 
-def _tokens_lower(text: str) -> set[str]:
+def _tokens_lower(
+    text: str, *, cjk_segment: Callable[[str], set[str]] = cjk_bigrams
+) -> set[str]:
     if not text:
         return set()
     out: set[str] = set()
     for raw in _CATEGORY_TOKEN_SPLIT.split(text.lower()):
         if raw:
-            out |= _expand_token(raw)
+            out |= _expand_token(raw, cjk_segment=cjk_segment)
     return out
 
 
-def _category_needles(*groups: list[str]) -> set[str]:
+def _category_needles(
+    *groups: list[str], cjk_segment: Callable[[str], set[str]] = cjk_bigrams
+) -> set[str]:
     """Build the matchable needle set: drop stopwords; drop <3-char tokens unless
     whitelisted (acronyms/geo) — but always keep CJK bigrams (length 2)."""
     needles: set[str] = set()
     for group in groups:
-        for tok in _tokens_lower(", ".join(group)):
+        for tok in _tokens_lower(", ".join(group), cjk_segment=cjk_segment):
             if tok in _CATEGORY_STOPWORDS:
                 continue
             if _CJK_CHAR.search(tok):
@@ -191,7 +191,7 @@ def _category_needles(*groups: list[str]) -> set[str]:
 
 
 def score_category_fit(
-    row: EnrichedExhibitor, *, cards: CapabilityCards | None
+    row: EnrichedExhibitor, *, cards: CapabilityCards | None, cjk: CjkSpec | None = None
 ) -> float:
     """Industries/geo overlap between exhibitor evidence and ideal_customer.
 
@@ -203,17 +203,25 @@ def score_category_fit(
     if cards is None:
         return 0.0
     ic = cards.ideal_customer
-    needles = _category_needles(ic.industries, ic.company_signals, ic.geo or [])
-    if not needles:
-        return 0.0
+    needle_groups = [ic.industries, ic.company_signals, ic.geo or []]
     haystack_parts = [row.description or ""]
     for n in row.news_signals:
         haystack_parts.append(n.title or "")
         haystack_parts.append(n.snippet or "")
+    haystack = " ".join(haystack_parts)
+    # Resolve ONE segmenter for this call (over the combined needle+haystack
+    # sample, so `auto` language detection is consistent) and use it for BOTH
+    # sides — symmetry is what makes morphological matching eliminate the bigram
+    # false-overlaps (Phase 18W P2-4). Default (cjk=None) → char-bigrams.
+    sample = haystack + " " + " ".join(t for g in needle_groups for t in g)
+    seg = resolve_segmenter(cjk, sample=sample)
+    needles = _category_needles(*needle_groups, cjk_segment=seg)
+    if not needles:
+        return 0.0
     # Token-boundary match via set intersection — NOT substring. The old
     # `needle in haystack` matched "us" inside "business", "ai" inside "chair",
     # and every stopword, inflating category_fit for unrelated companies.
-    hay_tokens = _tokens_lower(" ".join(haystack_parts))
+    hay_tokens = _tokens_lower(haystack, cjk_segment=seg)
     hits = len(needles & hay_tokens)
     if hits == 0:
         return 0.0
@@ -247,6 +255,7 @@ def compute_dimensions(
     reference_date: datetime | None = None,
     half_life_days: float = 180.0,
     negative_sim_threshold: float = 0.0,
+    cjk: CjkSpec | None = None,
 ) -> DimensionScores:
     triggers = [t.signal for t in cards.buying_triggers] if cards else []
     return DimensionScores(
@@ -259,7 +268,7 @@ def compute_dimensions(
             half_life_days=half_life_days,
         ),
         website_verification=score_website_verification(row),
-        category_fit=score_category_fit(row, cards=cards),
+        category_fit=score_category_fit(row, cards=cards, cjk=cjk),
         competitor_penalty=score_competitor_penalty(fit, threshold=negative_sim_threshold),
         bad_fit_penalty=score_bad_fit_penalty(fit, threshold=negative_sim_threshold),
     )

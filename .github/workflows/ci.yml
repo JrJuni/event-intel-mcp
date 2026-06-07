@@ -42,3 +42,29 @@ jobs:
         # subprocess MCP server) via pyproject addopts, so no model download or
         # network is needed — the suite runs on fakes.
         run: pytest
+
+  cjk:
+    # CJK morphological backend (Phase 18W P2-4) is an OPTIONAL extra, so its
+    # acceptance tests importorskip in the main job. Run them here with the libs
+    # installed, and re-run cold-start to prove janome/jieba stay lazy even when
+    # present (no eager import at module load).
+    name: cjk (morphological)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package (with dev + cjk extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,cjk]"
+
+      - name: Test (CJK acceptance + cold-start with libs installed)
+        run: pytest tests/test_category_fit_cjk.py tests/test_mcp_cold_start.py
