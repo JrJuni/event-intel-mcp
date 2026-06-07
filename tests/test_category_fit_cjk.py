@@ -16,8 +16,13 @@ measurements show the bigram approach is materially insufficient.
 """
 from __future__ import annotations
 
+import pytest
+
 from event_intel.cards.schema import Capability, CapabilityCards, IdealCustomer
+from event_intel.errors import ErrorCode, MCPError
 from event_intel.events.enrichment import EnrichedExhibitor
+from event_intel.scoring import cjk as _cjk
+from event_intel.scoring.cjk import CjkSpec, make_cjk_spec, resolve_segmenter
 from event_intel.scoring.dimensions import score_category_fit
 
 
@@ -93,3 +98,87 @@ def test_cjk_bigram_false_overlap_report(capsys):
 
     # Report-only: assert the harness produced a measurement, NOT a quality bar.
     assert 0.0 <= fp_rate <= 1.0
+
+
+# ---------- P2-4 Step 1: morphological backend acceptance (needs [cjk]) ----------
+
+
+def _cat_fit_morph(industries: list[str], description: str, language: str) -> float:
+    row = EnrichedExhibitor(name="X", source_snippet="s", description=description)
+    spec = CjkSpec(mode="morphological", language=language, han_default="zh")
+    return score_category_fit(row, cards=_cards(industries), cjk=spec)
+
+
+@pytest.mark.parametrize("lang,needle,desc", [
+    ("ja", "半導体", "弊社の指導体制を刷新しました"),
+    ("zh", "半导体", "公司优化了领导体系和管理流程"),
+    ("zh", "新能源汽车", "我们提供能源管理咨询服务"),
+])
+def test_morphological_removes_jp_cn_false_overlap(lang, needle, desc):
+    """The morphological backend segments on word boundaries, so a needle no
+    longer collides with an unrelated word sharing a 2-char window."""
+    pytest.importorskip("janome" if lang == "ja" else "jieba")
+    assert _cat_fit([needle], desc) > 0.0            # bigram: false positive
+    assert _cat_fit_morph([needle], desc, lang) == 0.0  # morphological: gone
+
+
+@pytest.mark.parametrize("lang,needle,desc", [
+    ("ja", "半導体製造装置", "弊社は半導体製造装置の検査ソリューションを提供します"),
+    ("zh", "新能源汽车", "我们生产新能源汽车的电池管理系统"),
+])
+def test_morphological_preserves_positives(lang, needle, desc):
+    """No false-zero: a verbatim industry phrase still matches under morphological."""
+    pytest.importorskip("janome" if lang == "ja" else "jieba")
+    assert _cat_fit_morph([needle], desc, lang) > 0.0
+
+
+def test_tokenizer_language_independent_of_output_lang():
+    """v3 P1 regression: the tokenizer language comes from config, NOT the output
+    `lang`. make_cjk_spec honors config language; a JP spec segments JP text with
+    no output-lang param anywhere in the call."""
+    spec = make_cjk_spec({"mode": "morphological", "language": "ja"})
+    assert spec is not None and spec.language == "ja"
+    pytest.importorskip("janome")
+    row = EnrichedExhibitor(name="X", source_snippet="s",
+                            description="弊社は半導体製造装置を提供します")
+    assert score_category_fit(row, cards=_cards(["半導体製造装置"]), cjk=spec) > 0.0
+
+
+def test_segmenter_is_deterministic():
+    """Symmetry precondition: the resolved segmenter is a stable function of input."""
+    pytest.importorskip("janome")
+    seg = resolve_segmenter(CjkSpec(mode="morphological", language="ja"), sample="半導体")
+    assert seg("半導体製造装置") == seg("半導体製造装置")
+
+
+def test_fallback_to_bigram_warns_on_importerror(monkeypatch):
+    """morphological + missing library → bigram fallback + ONE warning (not error).
+    Force the ImportError via monkeypatch rather than assuming the lib is absent —
+    the [cjk] CI job HAS it installed."""
+    def _boom():
+        raise ImportError("simulated missing janome")
+
+    monkeypatch.setattr(_cjk, "_janome_segment", _boom)
+    monkeypatch.setattr(_cjk, "_warned", set())
+    spec = CjkSpec(mode="morphological", language="ja")
+    with pytest.warns(RuntimeWarning, match="falling back to bigram"):
+        seg = resolve_segmenter(spec, sample="半導体")
+    assert seg("半導体") == {"半導", "導体"}  # bigram behavior
+
+
+def test_invalid_cjk_config_raises_config_error():
+    for bad in (
+        {"mode": "nope"},
+        {"mode": "morphological", "language": "fr"},
+        {"mode": "morphological", "han_default": "ko"},
+    ):
+        with pytest.raises(MCPError) as ei:
+            make_cjk_spec(bad)
+        assert ei.value.error_code == ErrorCode.CONFIG_ERROR
+
+
+def test_bigram_mode_and_absent_config_resolve_to_none():
+    """mode=bigram or absent block → None (zero-overhead default path)."""
+    assert make_cjk_spec(None) is None
+    assert make_cjk_spec({}) is None
+    assert make_cjk_spec({"mode": "bigram"}) is None
