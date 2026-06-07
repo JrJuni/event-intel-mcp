@@ -61,10 +61,10 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      - name: Install package (with dev + cjk extras)
+      - name: Install package (with dev + cjk + kr extras)
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,cjk]"
+          pip install -e ".[dev,cjk,kr]"
 
-      - name: Test (CJK acceptance + cold-start with libs installed)
+      - name: Test (CJK/KR acceptance + cold-start with libs installed)
         run: pytest tests/test_category_fit_cjk.py tests/test_mcp_cold_start.py

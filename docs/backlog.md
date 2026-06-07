@@ -39,7 +39,7 @@
 - ~~**generic 단일토큰 회사명 floor 오탐 (P3, r3 #3)**~~ ✅ 완료 (2026-06-07, Phase 18W P3) — `name_tokens` 임계 len>=3→**len>=2**: 짧은 distinctive 토큰("Xy Data"의 "xy")이 살아남아 앵커 역할 + "Data AI"가 all-generic(["data","ai"])이 되어 phrase 요구. **잔여(수용): 단일 generic 단어 회사명("Data")은 둘째 토큰이 없어 여전히 느슨** — 거부하면 정당한 "Data" 회사 recall 손실이라 본질적 모호로 수용.
 - ~~**same_site allowlist 한계 (P3, r3 #5)**~~ ✅ 완료 (2026-06-07, Phase 18W P3) — `_TWO_LEVEL_SUFFIXES` 확장(myshopify/azurewebsites/substack 등 관리형 호스팅 + co.id/com.vn/ac.kr 등 ccTLD). **전체 PSL은 cold-start/패키징 비용으로 계속 defer**(목록 확장 = backlog가 명시한 보수적 경로).
 - ~~**lint 추가 룰 (P3)**~~ ✅ 완료 (2026-06-07, Phase 18W P3) — ruff select += ANN + 자동수정 D(D208/D209/D413), ignore += ANN401, tests/** 제외. D 34건 자동수정 + ANN 29건 수동. **전체 docstring 커버리지(D101/102/103)는 churn 과다로 미채택.**
-- **KR 형태소 분석 (kiwipiepy) (P3)** — KR은 순수 파이썬 형태소기 부재로 bigram 유지(오탐 1건 `이차전지↔전지적`). kiwipiepy는 네이티브 휠 의존 → cold-start/.mcpb 번들 영향 평가 동반 **별도 phase**. (Phase 18W P3에서 사용자 결정으로 deferred 유지.)
+- ~~**KR 형태소 분석 (kiwipiepy) (P3)**~~ ✅ 완료 (2026-06-07, Phase 18X, plan `phase-18x-kr-morphological.md`) — kiwipiepy를 ko 백엔드로 도입, **별도 `[kr]` extra**(네이티브 휠 + ~109MB 모델, opt-in — `[cjk]` 순수 파이썬 유지). lazy `@lru_cache` + content-morpheme 필터(NNG/NNP/NNB/SL/SN/XR) + cold-start 가드 + bigram fallback(warn `.[kr]`). **Step 0 spike가 가정 정정**: bigram-윈도우 인공물 오탐 제거 + 헤드라인 동음이의 케이스(이차전지↔전지적)도 word-isolation으로 해결(kiwi가 고립된 `전지적`→`{지적}` 파싱). 기존 `cjk` CI job이 `[dev,cjk,kr]`로 KR acceptance 실행. **479 passed.**
 
 **18V.1 round-2 정제 완료분(2026-06-06, 참고)**: HIGH 3건(#1 news 게이트+generic-token, #3 report invariant config화, #5 카드↔vector replace) + MEDIUM 2건(#7 멀티테넌트 same_site, #4 top-N/recency eval 실검증) 머지. 상세 `status.md`.
 

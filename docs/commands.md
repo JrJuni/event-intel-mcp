@@ -21,15 +21,19 @@ cd /c/Users/JuniBecky/Downloads/event-intel-mcp
 ~/miniconda3/envs/event-intel/python.exe -m event_intel.cli check-runtime --workspace default
 ```
 
-### Optional: CJK morphological tokenizer (Phase 18W P2-4)
+### Optional: CJK morphological tokenizer (Phase 18W P2-4 / 18X)
 
 `category_fit` defaults to a char-bigram tokenizer (cold-start safe, no extra deps)
-which over-matches CJK words sharing a 2-char window. For Japanese/Chinese exhibitor
-lists, install the optional `[cjk]` extra (janome + jieba) and switch the mode in
-`~/.event-intel/config.yaml`:
+which over-matches CJK words sharing a 2-char window. Install the optional extras
+and switch the mode in `~/.event-intel/config.yaml`:
 
 ```bash
+# Japanese + Chinese (pure-Python: janome + jieba)
 ~/miniconda3/envs/event-intel/python.exe -m pip install -e ".[cjk]"
+# Korean (kiwipiepy — NATIVE wheel + ~109 MB model; separate extra)
+~/miniconda3/envs/event-intel/python.exe -m pip install -e ".[kr]"
+# or both:
+~/miniconda3/envs/event-intel/python.exe -m pip install -e ".[cjk,kr]"
 ```
 
 ```yaml
@@ -41,8 +45,8 @@ scoring:
     han_default: zh       # auto's choice for ambiguous pure-Han runs (zh | ja)
 ```
 
-Korean stays on bigram (no pure-Python analyzer). If the libraries are missing,
-morphological silently falls back to bigram with a one-time warning.
+Backends: ja→janome, zh→jieba (`[cjk]`), ko→kiwipiepy (`[kr]`). If a backend's
+library is missing, morphological falls back to bigram with a one-time warning.
 
 ---
 

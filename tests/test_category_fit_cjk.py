@@ -182,3 +182,52 @@ def test_bigram_mode_and_absent_config_resolve_to_none():
     assert make_cjk_spec(None) is None
     assert make_cjk_spec({}) is None
     assert make_cjk_spec({"mode": "bigram"}) is None
+
+
+# ---------- Phase 18X: Korean morphological backend (needs [kr]) ----------
+
+
+@pytest.mark.parametrize("needle,desc", [
+    ("반도체장비", "반도체장비 검사 솔루션을 제공합니다"),
+    ("이차전지", "이차전지 소재와 셀을 개발합니다"),
+    ("자동차부품", "자동차부품 정밀 가공 전문 업체입니다"),
+])
+def test_kr_morphological_preserves_positives(needle, desc):
+    """No false-zero: a verbatim KR industry phrase still matches under kiwipiepy."""
+    pytest.importorskip("kiwipiepy")
+    assert _cat_fit_morph([needle], desc, "ko") > 0.0
+
+
+def test_kr_morphological_removes_bigram_artifact_overlap():
+    """kiwipiepy segments on word boundaries, so a cross-morpheme 2-char window
+    collision ("자동차부품" vs "수동차단기" sharing the bigram 동차) no longer
+    matches — the class of false-overlap KR morphology CAN fix."""
+    pytest.importorskip("kiwipiepy")
+    needle, desc = "자동차부품", "수동차단기 설치 서비스"
+    assert _cat_fit([needle], desc) > 0.0              # bigram: false positive (동차)
+    assert _cat_fit_morph([needle], desc, "ko") == 0.0  # kiwi: 자동차/부품 vs 수동/차단기
+
+
+def test_kr_homonym_case_resolved_by_word_isolation():
+    """The P2-4 homonym case (이차'전지' 電池 vs '전지'적 全知) is RESOLVED in the real
+    pipeline: score_category_fit segments each word in isolation, and kiwi parses
+    the compound 전지적 to {지적} (not 전지), so it no longer collides with
+    이차전지's 전지. (bigram credited it via the shared 전지 window.)"""
+    pytest.importorskip("kiwipiepy")
+    desc = "전지적 작가 시점의 소설을 출판합니다"
+    assert _cat_fit(["이차전지"], desc) > 0.0               # bigram: false positive (전지)
+    assert _cat_fit_morph(["이차전지"], desc, "ko") == 0.0   # kiwi: 전지적 → {지적}, no collision
+
+
+def test_kr_fallback_to_bigram_warns_on_importerror(monkeypatch):
+    """ko morphological + missing kiwipiepy → bigram fallback + one warning that
+    points at the [kr] extra (not [cjk])."""
+    def _boom():
+        raise ImportError("simulated missing kiwipiepy")
+
+    monkeypatch.setattr(_cjk, "_kiwi_segment", _boom)
+    monkeypatch.setattr(_cjk, "_warned", set())
+    spec = CjkSpec(mode="morphological", language="ko")
+    with pytest.warns(RuntimeWarning, match=r"\.\[kr\]"):
+        seg = resolve_segmenter(spec, sample="한글")
+    assert seg("이차전지") == {"이차", "차전", "전지"}  # bigram behavior
