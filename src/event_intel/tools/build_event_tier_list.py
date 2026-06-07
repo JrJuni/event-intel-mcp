@@ -72,11 +72,11 @@ _VALID_TARGET_MODES = ("customer", "partner", "ecosystem")
 
 def _load_cards_or_warn(workspace_id: str) -> tuple[CapabilityCards | None, str | None]:
     """Card-load contract (review round-2 #3):
-      - a candidate file EXISTS but fails validation → raise (explicit error).
-      - NO candidate file exists → (None, warning). This is a legitimate state:
-        the RAG collection can be ingested (preflight passed) while the local
-        card file is absent, so we must not hard-fail — scoring proceeds with
-        target_mode=customer + generic rationale.
+    - a candidate file EXISTS but fails validation → raise (explicit error).
+    - NO candidate file exists → (None, warning). This is a legitimate state:
+      the RAG collection can be ingested (preflight passed) while the local
+      card file is absent, so we must not hard-fail — scoring proceeds with
+      target_mode=customer + generic rationale.
     """
     base = _outputs_base()
     candidates = [

@@ -116,7 +116,8 @@ _DEFAULT_TIER_FLOOR_MIN = {"S": 2, "A": 1}
 def _floor_minimums(tier_rules: dict | None) -> dict[str, int]:
     """Per-tier evidence_floor_min from the EFFECTIVE tier_rules (review r2 #3) —
     so a user who legitimately lowers a tier's floor in config doesn't trip a
-    report-time crash that the scorer already accepted. Falls back to defaults."""
+    report-time crash that the scorer already accepted. Falls back to defaults.
+    """
     if not tier_rules:
         return dict(_DEFAULT_TIER_FLOOR_MIN)
     out: dict[str, int] = {}

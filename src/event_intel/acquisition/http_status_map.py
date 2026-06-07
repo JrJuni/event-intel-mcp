@@ -92,6 +92,7 @@ def map_http_response(
         (False, MCPError)     — caller should surface this error
         (True, MCPError)      — proceed, but attach the error as a warning
                                 (used for short_body_with_scripts case)
+
     """
     # Transport failure (status == 0 from raw_fetch).
     if resp.network_error is not None:

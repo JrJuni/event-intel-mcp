@@ -41,7 +41,7 @@ class BraveSearchProvider(SearchProvider):
 
     BASE_URL = "https://api.search.brave.com/res/v1"
 
-    def __init__(self, *, api_key: str | None = None, timeout: float = 15.0):
+    def __init__(self, *, api_key: str | None = None, timeout: float = 15.0) -> None:
         self._api_key = api_key or os.environ.get("BRAVE_API_KEY")
         self.timeout = timeout
 

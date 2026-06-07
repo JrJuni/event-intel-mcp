@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 REPORT_SCHEMA_VERSION = 3   # v2: typed `evidence` per exhibitor; v3: top-level `target_mode` (18V item 2)
 
 
-def _exhibitor_to_dict(scored) -> dict:
+def _exhibitor_to_dict(scored: object) -> dict:
     row = scored.row
     fit = scored.fit
     return {

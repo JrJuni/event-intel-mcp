@@ -15,7 +15,8 @@
   - ✅ **P2-4 cards-backed CJK category-fit 측정** (PR #21, report-only) — `score_category_fit`이 `cards=None`에선 항상 0이라 eval harness로 측정 불가했던 한계(review r2 #1) 해소: 실제 `CapabilityCards`(CJK industries)로 직접 호출. **측정 결과: bigram이 적대적 케이스 false-overlap 100%(4/4)** — JP 半導体↔指導体制, ZH 半导体↔领导体系, KO 이차전지↔전지적(전부 0.5 오탐). positives 7건 전부 category_fit>0. CI 게이트 아님(report-only). → Step 1 도입 정당화.
   - ✅ **P2-4 Step 1 CJK morphological 백엔드** (plan `phase-18w-cjk-lib.md`, blind review 2라운드 v1→v3) — pluggable `scoring.cjk_tokenizer.mode: bigram|morphological`. `scoring/cjk.py`가 **호출당 1회** segmenter 결정(가나→janome/한글→bigram/순수Han→`han_default`) → **needle·haystack 동일 segmenter로 대칭**(2-char-window 오탐 제거의 전제). language는 출력 `lang`과 독립(config). lazy import(`@lru_cache` factory, cold-start 가드에 janome/jieba 추가, `[cjk]` extra) + bigram fallback(warn 1회) + 잘못된 config→CONFIG_ERROR. **acceptance: JP/CN 적대적 오탐 3건 제거 + positives 무회귀**(`[dev,cjk]` 전용 CI job). KR은 bigram 유지(오탐 1건 known-limitation, kiwipiepy 별도 phase). Step 0 dependency spike로 janome/jieba 분할 사전검증. 커밋 4개 분리.
   - **테스트**: 470 passed(+10 morphological acceptance), ruff clean, CI `pytest`+`cjk` 양 job.
-  - **남은 18W(backlog #13)**: generic 단일토큰(r3 #3)·same_site allowlist(r3 #5)·KR 형태소(kiwipiepy) P3 known-limitation, lint 추가 룰(P3).
+  - ✅ **P3 known-limitation 3건** (2026-06-07, branch `phase-18w-p3`) — generic 단일토큰(r3 #3): `name_tokens` len>=2로 짧은 distinctive 토큰 보존(단일 generic-word는 수용). same_site(r3 #5): `_TWO_LEVEL_SUFFIXES` 확장(관리형 호스팅+ccTLD, PSL은 계속 defer). lint: ruff에 ANN + 자동수정 D(D208/209/413) 추가(ANN401·tests 제외, D 34 자동수정 + ANN 29 수동, 전체 docstring은 미채택). **473 passed**. KR 형태소(kiwipiepy)는 네이티브 의존으로 사용자 결정 deferred 유지.
+  - **남은 18W(backlog #13)**: KR 형태소(kiwipiepy, 별도 phase)만 남음.
 
 - **Phase 18V.1 — 머지 후 blind review 정제 + CI 게이트 (2026-06-06)**
   - **계기.** 18V(PR #1) 머지 후 정적 blind review 7건(P1×4, P2×3) — 전부 코드 대조로 valid 확인. 스택 PR로 순차 수정, 각 단계 **실연결된 eval matrix로 회귀 검증**. (메모리: 리뷰는 HEAD 대조 후 경험적으로 해소.)

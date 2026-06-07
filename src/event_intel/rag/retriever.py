@@ -54,7 +54,8 @@ def _product_collection_name(workspace_id: str) -> str:
 def _similarity_from_distance(distance: float | None) -> float:
     """Chroma returns squared L2 by default with normalized embeddings. For
     bge-m3 we normalize at ingest, so cosine similarity ≈ 1 - dist/2. Clamp
-    to [0, 1]."""
+    to [0, 1].
+    """
     if distance is None:
         return 0.0
     try:

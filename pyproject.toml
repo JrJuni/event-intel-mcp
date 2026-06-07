@@ -69,10 +69,18 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W", "B", "UP"]
-ignore = ["E501"]
+# ANN = type annotations on the public/production surface (Phase 18W P3).
+# Only the AUTO-FIXABLE docstring rules are enabled (D208/D209/D413) — full
+# docstring coverage (D101/D102/D103…) is intentionally NOT adopted (large churn,
+# deferred). ANN401 (explicit Any) is allowed: config/JSON payloads legitimately
+# use Any.
+select = ["E", "F", "I", "W", "B", "UP", "ANN", "D208", "D209", "D413"]
+ignore = ["E501", "ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
 # typer requires `typer.Option(...)` as a parameter default — B008 ("function
 # call in argument defaults") is a false positive for the idiomatic CLI surface.
 "src/event_intel/cli.py" = ["B008"]
+# Tests don't need type annotations or docstring formatting — keep the gate on
+# production code only (every test fn otherwise needs `-> None`).
+"tests/**" = ["ANN", "D208", "D209", "D413"]

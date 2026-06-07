@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 
 class VectorStoreProvider(ABC):
@@ -36,10 +38,11 @@ class VectorStoreProvider(ABC):
     def existing_ids(self, collection: str) -> set[str]:
         """Current chunk ids in a collection. Used for an ATOMIC re-ingest:
         upsert the new set, then delete only the orphans (existing − new) — never
-        empty the collection first (review round-3 #1). Default empty = no cleanup."""
+        empty the collection first (review round-3 #1). Default empty = no cleanup.
+        """
         return set()
 
-    def delete_ids(self, collection: str, ids) -> None:
+    def delete_ids(self, collection: str, ids: Iterable[str]) -> None:
         """Delete specific chunk ids. Default no-op; persistent providers override."""
         return None
 
@@ -50,7 +53,7 @@ class ChromaProvider(VectorStoreProvider):
     chromadb is imported lazily on first call.
     """
 
-    def __init__(self, *, persist_dir: str | Path | None = None):
+    def __init__(self, *, persist_dir: str | Path | None = None) -> None:
         self.persist_dir = Path(
             persist_dir
             or os.environ.get(
@@ -59,7 +62,7 @@ class ChromaProvider(VectorStoreProvider):
         )
         self._client = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             import chromadb
 
@@ -67,7 +70,7 @@ class ChromaProvider(VectorStoreProvider):
             self._client = chromadb.PersistentClient(path=str(self.persist_dir))
         return self._client
 
-    def _get_collection(self, name: str):
+    def _get_collection(self, name: str) -> Any:
         client = self._get_client()
         return client.get_or_create_collection(name=name)
 
@@ -119,7 +122,7 @@ class ChromaProvider(VectorStoreProvider):
         except Exception:
             return set()
 
-    def delete_ids(self, collection: str, ids) -> None:
+    def delete_ids(self, collection: str, ids: Iterable[str]) -> None:
         ids = list(ids)
         if not ids:
             return

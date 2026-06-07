@@ -10,11 +10,16 @@ Cold-start safe: imports only os / pathlib / python-dotenv at call time.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
 # Keys the .mcpb form maps; blank form fields must not shadow .env values.
 _FORM_KEYS = ("ANTHROPIC_API_KEY", "BRAVE_API_KEY")
 
 
-def load_project_env(*, keys: tuple[str, ...] = _FORM_KEYS, repo_root=None) -> None:
+def load_project_env(*, keys: tuple[str, ...] = _FORM_KEYS, repo_root: Path | None = None) -> None:
     """Load the project's `.env`, letting `.env` fill keys the form left blank.
 
     Semantics:

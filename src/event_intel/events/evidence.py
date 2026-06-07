@@ -78,14 +78,24 @@ def domain_of(url: str | None) -> str | None:
 # Heuristic (no PSL dependency, to stay cold-start safe); extend as needed.
 _TWO_LEVEL_SUFFIXES = {
     # ccTLD second levels
-    "co.uk", "org.uk", "ac.uk", "gov.uk", "co.kr", "or.kr", "co.jp", "or.jp",
-    "com.au", "net.au", "co.nz", "com.br", "co.in", "com.cn", "com.sg",
-    "co.za", "com.mx", "com.tr", "com.hk", "com.tw",
+    "co.uk", "org.uk", "ac.uk", "gov.uk", "co.kr", "or.kr", "ac.kr", "go.kr",
+    "ne.kr", "co.jp", "or.jp", "ne.jp", "ac.jp", "go.jp",
+    "com.au", "net.au", "org.au", "edu.au", "gov.au", "co.nz", "ac.nz", "govt.nz",
+    "com.br", "co.in", "com.cn", "com.sg", "co.za", "com.mx", "com.tr", "com.hk",
+    "com.tw", "co.il", "com.ar", "co.id", "com.my", "co.th", "com.ph", "com.vn",
+    "com.co", "com.pe", "com.ua", "co.ke", "com.ng",
     # multi-tenant hosting / site builders (each subdomain = distinct tenant)
     "github.io", "gitlab.io", "github.dev", "vercel.app", "netlify.app",
     "pages.dev", "workers.dev", "web.app", "firebaseapp.com", "herokuapp.com",
     "fly.dev", "onrender.com", "surge.sh", "glitch.me", "repl.co", "replit.app",
     "wixsite.com", "webflow.io", "blogspot.com", "wordpress.com",
+    # more managed hosting / site builders + PaaS app subdomains
+    "myshopify.com", "azurewebsites.net", "azurestaticapps.net", "amplifyapp.com",
+    "cloudfunctions.net", "streamlit.app", "pythonanywhere.com", "gitbook.io",
+    "readthedocs.io", "notion.site", "framer.website", "framer.app", "carrd.co",
+    "super.site", "bubbleapps.io", "substack.com", "ghost.io", "hashnode.dev",
+    "godaddysites.com", "square.site", "weebly.com", "strikingly.com", "tilda.ws",
+    "durable.co", "site123.me", "now.sh",
 }
 
 
@@ -93,7 +103,8 @@ def registrable_domain(host: str | None) -> str | None:
     """eTLD+1 heuristic so subdomains collapse to the same site
     (api.acme.com / www.acme.com / acme.com → acme.com), EXCEPT under known
     two-level suffixes where the third label is the registrable unit
-    (acme.co.uk; a.github.io stays distinct from b.github.io). Reviews #1 + #7."""
+    (acme.co.uk; a.github.io stays distinct from b.github.io). Reviews #1 + #7.
+    """
     if not host:
         return None
     host = host.lower()
@@ -128,9 +139,17 @@ _GENERIC_NAME_TOKENS = {
 
 
 def name_tokens(name: str | None) -> list[str]:
-    """Significant lowercased tokens of a company name for relevance checks
-    (len>=3, else the whole name)."""
-    toks = [t for t in _NAME_TOKEN_RE.split((name or "").lower()) if len(t) >= 3]
+    """Significant lowercased tokens of a company name for relevance checks.
+
+    Keeps len>=2 tokens (review round-3 #3): the previous len>=3 cut dropped short
+    DISTINCTIVE tokens ("Xy Data" → ["data"], losing "xy"), which then matched any
+    article mentioning the lone generic "data". Keeping len>=2 means a short
+    distinctive token survives to anchor the match, and a name like "Data AI"
+    becomes all-generic (["data","ai"]) so mentions_name requires the full phrase
+    instead of a single generic word. Falls back to the whole name if nothing
+    survives (e.g. all single-char tokens).
+    """
+    toks = [t for t in _NAME_TOKEN_RE.split((name or "").lower()) if len(t) >= 2]
     if toks:
         return toks
     whole = (name or "").lower().strip()
@@ -145,10 +164,12 @@ def mentions_name(text: str | None, tokens: list[str]) -> bool:
     entirely generic (e.g. "Data Cloud"), require ALL its tokens present
     (phrase-like) rather than any one (review round-2 #1).
 
-    KNOWN LIMITATION (review round-3 #3, backlog #13): a company whose ONLY token
-    is a single generic word ("Data", "Cloud") — or whose distinctive tokens are
-    all <3 chars and dropped by name_tokens (e.g. "Data AI" → ["data"]) — still
-    matches loosely. Single generic-word names are inherently ambiguous; deferred.
+    RESIDUAL LIMITATION (review round-3 #3): a company whose ONLY token is a single
+    generic word ("Data", "Cloud") still matches loosely — there is no second token
+    to require, and refusing to match would kill recall for a legitimately-named
+    "Data" company. Single generic-word names are inherently ambiguous; accepted.
+    (The earlier "Data AI" → ["data"] gap is closed: name_tokens now keeps len>=2,
+    so the full ["data","ai"] is all-generic and the whole phrase is required.)
     """
     if not tokens or not text:
         return False
@@ -161,7 +182,8 @@ def mentions_name(text: str | None, tokens: list[str]) -> bool:
 
 def canonical_url(url: str) -> str:
     """Scheme+host+path normalized; drop query/fragment and trailing slash so the
-    same page found by different queries dedupes to one key."""
+    same page found by different queries dedupes to one key.
+    """
     parts = urlsplit(url.strip())
     host = parts.netloc.lower()
     if host.startswith("www."):
@@ -173,7 +195,8 @@ def canonical_url(url: str) -> str:
 
 def classify_url_type(url: str, *, from_news: bool = False) -> str:
     """Type a URL by PATH (query-independent). News-endpoint results default to
-    NEWS unless their path is clearly a press/newsroom page."""
+    NEWS unless their path is clearly a press/newsroom page.
+    """
     path = urlsplit(url).path or "/"
     if _PRESS_RE.search(path):
         return PRESS_RELEASE
@@ -190,7 +213,8 @@ def classify_url_type(url: str, *, from_news: bool = False) -> str:
 
 def merge_evidence(raw: list[EvidenceItem]) -> list[EvidenceItem]:
     """Dedupe by canonical URL, keeping the highest-precedence type per URL.
-    Preserves published_at/source_domain from the kept (or any) item."""
+    Preserves published_at/source_domain from the kept (or any) item.
+    """
     best: dict[str, EvidenceItem] = {}
     for item in raw:
         if not item.url:
@@ -228,7 +252,7 @@ def _is_activity(item: EvidenceItem, *, official_domain: str | None) -> bool:
     return False
 
 
-def floor_components(row) -> tuple[bool, bool]:
+def floor_components(row: object) -> tuple[bool, bool]:
     """(has_identity, has_activity) for a row. Uses the typed evidence list when
     present; otherwise falls back to the legacy official_url (identity) +
     news_signals (activity) representation so pre-item-1 rows score identically.

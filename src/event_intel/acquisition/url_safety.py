@@ -166,6 +166,7 @@ def host_relation(
         host_relation("event.com", "www.event.com")        -> "same"
         host_relation("event.co.kr", "something.co.kr")   -> "cross"
         host_relation("event.co.kr", "api.event.co.kr")   -> "subdomain"
+
     """
     def _norm(h: str) -> str:
         h = h.lower()

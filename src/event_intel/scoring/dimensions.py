@@ -126,7 +126,8 @@ _CJK_CHAR = re.compile(r"[぀-ヿ㐀-鿿가-힯豈-﫿]")
 
 def _expand_token(tok: str, *, cjk_segment: Callable[[str], set[str]] = cjk_bigrams) -> set[str]:
     """Split a rough token into ASCII alnum runs (kept whole) + CJK runs (→ char
-    bigrams). 'ai반도체' → {'ai', '반도', '도체'}."""
+    bigrams). 'ai반도체' → {'ai', '반도', '도체'}.
+    """
     out: set[str] = set()
     cjk: list[str] = []
     other: list[str] = []
@@ -177,7 +178,8 @@ def _category_needles(
     *groups: list[str], cjk_segment: Callable[[str], set[str]] = cjk_bigrams
 ) -> set[str]:
     """Build the matchable needle set: drop stopwords; drop <3-char tokens unless
-    whitelisted (acronyms/geo) — but always keep CJK bigrams (length 2)."""
+    whitelisted (acronyms/geo) — but always keep CJK bigrams (length 2).
+    """
     needles: set[str] = set()
     for group in groups:
         for tok in _tokens_lower(", ".join(group), cjk_segment=cjk_segment):

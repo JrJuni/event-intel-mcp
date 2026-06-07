@@ -40,7 +40,8 @@ _VALID_HAN_DEFAULT = ("ja", "zh")
 
 def cjk_bigrams(run: str) -> set[str]:
     """Character bigrams of a pure-CJK run ('삼성전자' → 삼성/성전/전자). The
-    default backend and the fallback when a morphological library is absent."""
+    default backend and the fallback when a morphological library is absent.
+    """
     if len(run) <= 1:
         return {run} if run else set()
     return {run[i : i + 2] for i in range(len(run) - 1)}
@@ -56,7 +57,8 @@ class CjkSpec:
 def make_cjk_spec(cfg: dict | None) -> CjkSpec | None:
     """Validate `scoring.cjk_tokenizer` → CjkSpec. Returns None when the block is
     absent OR mode=bigram (None = 'use the zero-overhead default bigram path').
-    Invalid values raise CONFIG_ERROR (loud, not a silent wrong default)."""
+    Invalid values raise CONFIG_ERROR (loud, not a silent wrong default).
+    """
     if not cfg:
         return None
     mode = cfg.get("mode", "bigram")
@@ -125,7 +127,8 @@ def _warn_once(key: str, msg: str) -> None:
 def resolve_segmenter(spec: CjkSpec | None, *, sample: str) -> Callable[[str], set[str]]:
     """Resolve ONE segmenter for a single score_category_fit call. Applied to both
     needle and haystack → symmetric matching. Falls back to bigram (one warning)
-    if the morphological library is missing."""
+    if the morphological library is missing.
+    """
     if spec is None or spec.mode == "bigram":
         return cjk_bigrams
     lang = spec.language

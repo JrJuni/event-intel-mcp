@@ -29,7 +29,7 @@ class HttpxTrafilaturaFetchProvider(FetchProvider):
     trafilatura is imported lazily inside extract; httpx at call time.
     """
 
-    def __init__(self, *, timeout: float = 10.0, user_agent: str = "event-intel-mcp/0.1"):
+    def __init__(self, *, timeout: float = 10.0, user_agent: str = "event-intel-mcp/0.1") -> None:
         self.timeout = timeout
         self.user_agent = user_agent
 

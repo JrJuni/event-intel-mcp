@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from event_intel.events.enrichment import EnrichedExhibitor
     from event_intel.providers.llm import LLMProvider
     from event_intel.rag.retriever import FitResult
+    from event_intel.scoring.cjk import CjkSpec
 
 
 @dataclass
@@ -131,7 +132,7 @@ def _compute_one(
     reference_date: datetime | None = None,
     half_life_days: float = 180.0,
     negative_sim_threshold: float = 0.0,
-    cjk=None,
+    cjk: CjkSpec | None = None,
 ) -> ScoredExhibitor:
     dims = compute_dimensions(
         row, fit, cards=cards, top_k=top_k,

@@ -36,9 +36,10 @@
 - ~~**ecosystem 셀 leakage 재정의 (P2)**~~ ✅ 완료 (2026-06-07, Phase 18W P2-3) — 모드 정책표 확정(competitor: customer만 negative, partner neutral, ecosystem positive; bad_fit: 전 모드 negative). `bad_fit_leakage_rate` 분리 신설(competitor와 별도 denominator). `ecosystem.bad_fit_penalty_factor 0.0→1.0`(B안). 직접 mode 테스트(BASELINE_CELL 재채점, 신규 fixture 0).
 - ~~**캐시 TTL / resume 신선도 (P2, blind review r2 #2)**~~ ✅ 완료 (2026-06-07, Phase 18W P2-1) — `ENRICH_CACHE_VERSION 4`: 캐시 페이로드 `cached_at` 래핑 + TTL(`cache_ttl_days`/`resume_ttl_days` 7, 0=항상stale/None=무기한). resume row `input_fp`(name|url|snippet|confidence|config_fp) → 변경 시 재enrich. `config_fp`는 enrichment 필드만(scoring weight 격리). 진짜 `--refresh`(resume+cache 읽기 둘 다 우회).
 - ~~**evidence 예산 round-robin (P2, blind review r2 #6)**~~ ✅ 완료 (2026-06-07, Phase 18W P2-2) — `allocate_round_robin` 순수 함수: event cap 설정 시 각 회사가 2번째 슬롯 전에 1번째를 먼저 받음(starvation 제거). cap=0(기본) 기존 동등. 회사별 즉시 resume.append 유지(내구성).
-- **generic 단일토큰 회사명 floor 오탐 (P3, blind review r3 #3)** — `mentions_name`이 토큰경계+generic guard로 강화됐지만, 토큰이 단일 generic 단어뿐인 회사명("Data"/"Cloud")이나 distinctive 토큰이 전부 <3자라 `name_tokens`가 떨군 경우("Data AI"→["data"])는 여전히 느슨하게 매칭. 단일 generic-word 회사명은 본질적 모호 — 추후 phrase 요구/사전 보강 검토.
-- **same_site allowlist 한계 (P3, blind review r3 #5)** — `registrable_domain`이 알려진 멀티테넌트 suffix(github.io/vercel.app 등) 목록 기반. 목록 밖 호스팅 도메인은 동일 회사로 오판 가능. cold-start 제약상 PSL 라이브러리 미도입(현 절충 수용). 필요 시 목록 확장 또는 lazy PSL.
-- **lint 추가 룰 (P3)** — 현 ruff select(E/F/I/W/B/UP)에 D(docstring)·ANN(type annotation) 등 점진 도입 검토.
+- ~~**generic 단일토큰 회사명 floor 오탐 (P3, r3 #3)**~~ ✅ 완료 (2026-06-07, Phase 18W P3) — `name_tokens` 임계 len>=3→**len>=2**: 짧은 distinctive 토큰("Xy Data"의 "xy")이 살아남아 앵커 역할 + "Data AI"가 all-generic(["data","ai"])이 되어 phrase 요구. **잔여(수용): 단일 generic 단어 회사명("Data")은 둘째 토큰이 없어 여전히 느슨** — 거부하면 정당한 "Data" 회사 recall 손실이라 본질적 모호로 수용.
+- ~~**same_site allowlist 한계 (P3, r3 #5)**~~ ✅ 완료 (2026-06-07, Phase 18W P3) — `_TWO_LEVEL_SUFFIXES` 확장(myshopify/azurewebsites/substack 등 관리형 호스팅 + co.id/com.vn/ac.kr 등 ccTLD). **전체 PSL은 cold-start/패키징 비용으로 계속 defer**(목록 확장 = backlog가 명시한 보수적 경로).
+- ~~**lint 추가 룰 (P3)**~~ ✅ 완료 (2026-06-07, Phase 18W P3) — ruff select += ANN + 자동수정 D(D208/D209/D413), ignore += ANN401, tests/** 제외. D 34건 자동수정 + ANN 29건 수동. **전체 docstring 커버리지(D101/102/103)는 churn 과다로 미채택.**
+- **KR 형태소 분석 (kiwipiepy) (P3)** — KR은 순수 파이썬 형태소기 부재로 bigram 유지(오탐 1건 `이차전지↔전지적`). kiwipiepy는 네이티브 휠 의존 → cold-start/.mcpb 번들 영향 평가 동반 **별도 phase**. (Phase 18W P3에서 사용자 결정으로 deferred 유지.)
 
 **18V.1 round-2 정제 완료분(2026-06-06, 참고)**: HIGH 3건(#1 news 게이트+generic-token, #3 report invariant config화, #5 카드↔vector replace) + MEDIUM 2건(#7 멀티테넌트 same_site, #4 top-N/recency eval 실검증) 머지. 상세 `status.md`.
 
