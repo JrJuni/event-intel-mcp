@@ -131,11 +131,13 @@ def _compute_one(
     reference_date: datetime | None = None,
     half_life_days: float = 180.0,
     negative_sim_threshold: float = 0.0,
+    cjk=None,
 ) -> ScoredExhibitor:
     dims = compute_dimensions(
         row, fit, cards=cards, top_k=top_k,
         reference_date=reference_date, half_life_days=half_life_days,
         negative_sim_threshold=negative_sim_threshold,
+        cjk=cjk,
     )
 
     raw = (
@@ -229,6 +231,12 @@ def score_exhibitors(
             hint={"required": ["scoring.weights", "scoring.tier_rules"]},
         ) from exc
 
+    # CJK tokenizer spec (Phase 18W P2-4). None → default bigram (zero overhead).
+    # Invalid values raise CONFIG_ERROR inside make_cjk_spec.
+    from event_intel.scoring.cjk import make_cjk_spec
+
+    cjk_spec = make_cjk_spec(config.get("scoring", {}).get("cjk_tokenizer"))
+
     rows: list[ScoredExhibitor] = []
     for row, fit in zip(enriched, fit_results, strict=True):
         scored = _compute_one(
@@ -236,6 +244,7 @@ def score_exhibitors(
             weights=weights, tier_rules=tier_rules, top_k=top_k,
             reference_date=reference_date, half_life_days=half_life_days,
             negative_sim_threshold=negative_sim_threshold,
+            cjk=cjk_spec,
         )
         rows.append(scored)
 

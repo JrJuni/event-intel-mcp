@@ -17,6 +17,10 @@ FORBIDDEN_HEAVY = (
     "sentence_transformers",
     "chromadb",
     "bitsandbytes",
+    # CJK morphological backends (Phase 18W P2-4) must stay lazy — imported only
+    # inside scoring/cjk.py segmenter factories, never at module load.
+    "janome",
+    "jieba",
 )
 
 
