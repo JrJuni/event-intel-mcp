@@ -44,7 +44,7 @@ class MCPError(Exception):
         message: str,
         hint: str | dict | None = None,
         retryable: bool = False,
-    ):
+    ) -> None:
         self.error_code = error_code
         self.stage = stage
         self.message = message

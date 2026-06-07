@@ -103,7 +103,8 @@ def registrable_domain(host: str | None) -> str | None:
     """eTLD+1 heuristic so subdomains collapse to the same site
     (api.acme.com / www.acme.com / acme.com → acme.com), EXCEPT under known
     two-level suffixes where the third label is the registrable unit
-    (acme.co.uk; a.github.io stays distinct from b.github.io). Reviews #1 + #7."""
+    (acme.co.uk; a.github.io stays distinct from b.github.io). Reviews #1 + #7.
+    """
     if not host:
         return None
     host = host.lower()
@@ -146,7 +147,8 @@ def name_tokens(name: str | None) -> list[str]:
     distinctive token survives to anchor the match, and a name like "Data AI"
     becomes all-generic (["data","ai"]) so mentions_name requires the full phrase
     instead of a single generic word. Falls back to the whole name if nothing
-    survives (e.g. all single-char tokens)."""
+    survives (e.g. all single-char tokens).
+    """
     toks = [t for t in _NAME_TOKEN_RE.split((name or "").lower()) if len(t) >= 2]
     if toks:
         return toks
@@ -180,7 +182,8 @@ def mentions_name(text: str | None, tokens: list[str]) -> bool:
 
 def canonical_url(url: str) -> str:
     """Scheme+host+path normalized; drop query/fragment and trailing slash so the
-    same page found by different queries dedupes to one key."""
+    same page found by different queries dedupes to one key.
+    """
     parts = urlsplit(url.strip())
     host = parts.netloc.lower()
     if host.startswith("www."):
@@ -192,7 +195,8 @@ def canonical_url(url: str) -> str:
 
 def classify_url_type(url: str, *, from_news: bool = False) -> str:
     """Type a URL by PATH (query-independent). News-endpoint results default to
-    NEWS unless their path is clearly a press/newsroom page."""
+    NEWS unless their path is clearly a press/newsroom page.
+    """
     path = urlsplit(url).path or "/"
     if _PRESS_RE.search(path):
         return PRESS_RELEASE
@@ -209,7 +213,8 @@ def classify_url_type(url: str, *, from_news: bool = False) -> str:
 
 def merge_evidence(raw: list[EvidenceItem]) -> list[EvidenceItem]:
     """Dedupe by canonical URL, keeping the highest-precedence type per URL.
-    Preserves published_at/source_domain from the kept (or any) item."""
+    Preserves published_at/source_domain from the kept (or any) item.
+    """
     best: dict[str, EvidenceItem] = {}
     for item in raw:
         if not item.url:
@@ -247,7 +252,7 @@ def _is_activity(item: EvidenceItem, *, official_domain: str | None) -> bool:
     return False
 
 
-def floor_components(row) -> tuple[bool, bool]:
+def floor_components(row: object) -> tuple[bool, bool]:
     """(has_identity, has_activity) for a row. Uses the typed evidence list when
     present; otherwise falls back to the legacy official_url (identity) +
     news_signals (activity) representation so pre-item-1 rows score identically.

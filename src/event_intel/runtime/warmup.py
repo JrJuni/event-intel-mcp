@@ -107,6 +107,7 @@ def start(warm_fn: Callable[[], dict], *, block: bool = False) -> dict:
 
     Returns the current ``status()`` dict. A second call while ``warming`` or after
     ``ready`` is a no-op that just reports state.
+
     """
     global _thread
     with _lock:
@@ -130,7 +131,7 @@ def start(warm_fn: Callable[[], dict], *, block: bool = False) -> dict:
     return status()
 
 
-def maybe_warm_on_start(embedding_provider=None) -> dict:
+def maybe_warm_on_start(embedding_provider: object = None) -> dict:
     """Server-startup hook: warm in the background iff opted in AND the model is cached.
 
     Opt-in via ``EVENT_INTEL_WARM_ON_START`` (the .mcpb checkbox maps to it).

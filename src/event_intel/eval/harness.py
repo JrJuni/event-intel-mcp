@@ -78,10 +78,11 @@ def load_cell(path: str | Path) -> dict:
     return data
 
 
-def present_evidence_types(row) -> set[str]:
+def present_evidence_types(row: object) -> set[str]:
     """Evidence types the engine credits for a row. Forward-compatible: reads the
     typed `evidence` container (item 1, 18V-2) when present, else falls back to
-    the official_url + news_signals representation that ships today."""
+    the official_url + news_signals representation that ships today.
+    """
     typed = getattr(row, "evidence", None)
     if typed:
         return {getattr(e, "type", None) for e in typed if getattr(e, "type", None)}
@@ -93,7 +94,7 @@ def present_evidence_types(row) -> set[str]:
     return present
 
 
-def _build_scoring_inputs(cell: dict):
+def _build_scoring_inputs(cell: dict) -> tuple[list, list]:
     from event_intel.events.enrichment import EnrichedExhibitor, NewsSignal
     from event_intel.rag.retriever import FitResult
 

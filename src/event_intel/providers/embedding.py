@@ -4,6 +4,7 @@ import os
 import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 
 
 class EmbeddingProvider(ABC):
@@ -46,7 +47,7 @@ class BgeM3Provider(EmbeddingProvider):
     # build() don't both construct the model. See runtime/warmup.py.
     _CACHE_LOCK = threading.Lock()
 
-    def __init__(self, *, cache_dir: str | Path | None = None):
+    def __init__(self, *, cache_dir: str | Path | None = None) -> None:
         self.cache_dir = (
             Path(cache_dir)
             if cache_dir
@@ -54,7 +55,7 @@ class BgeM3Provider(EmbeddingProvider):
         )
         self._model = None
 
-    def _get_model(self):
+    def _get_model(self) -> Any:
         if self._model is None:
             key = str(self.cache_dir)
             cached = BgeM3Provider._MODEL_CACHE.get(key)

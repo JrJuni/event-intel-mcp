@@ -4,6 +4,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -44,12 +45,12 @@ class LLMProvider(ABC):
 class AnthropicProvider(LLMProvider):
     """Default LLMProvider using anthropic SDK. anthropic is imported lazily."""
 
-    def __init__(self, *, model: str = "claude-sonnet-4-6", api_key: str | None = None):
+    def __init__(self, *, model: str = "claude-sonnet-4-6", api_key: str | None = None) -> None:
         self.model = model
         self._api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         self._client = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             from anthropic import Anthropic
 
@@ -164,7 +165,7 @@ class ChatGPTOAuthProvider(LLMProvider):
     _TOKEN_PATH = Path.home() / ".event-intel" / "chatgpt_auth.json"
     _ALLOWED_REASONING_EFFORTS = frozenset({"low", "medium", "high"})
 
-    def __init__(self, *, model: str = "gpt-5.5", reasoning_effort: str = "low"):
+    def __init__(self, *, model: str = "gpt-5.5", reasoning_effort: str = "low") -> None:
         # plan v3 R7: validate at __init__ so typos surface as ValueError
         # immediately (preflight wraps as CONFIG_ERROR) rather than as opaque
         # backend errors at first chat_*() call.
@@ -242,7 +243,7 @@ class ChatGPTOAuthProvider(LLMProvider):
         auth_code: dict[str, str] = {}
 
         class _Handler(BaseHTTPRequestHandler):
-            def do_GET(self):
+            def do_GET(self) -> None:
                 params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 if "code" in params:
                     auth_code["value"] = params["code"][0]
@@ -252,7 +253,7 @@ class ChatGPTOAuthProvider(LLMProvider):
                     b"<html><body>Authenticated. You can close this tab.</body></html>"
                 )
 
-            def log_message(self, *args):
+            def log_message(self, *args: object) -> None:
                 pass
 
         server = HTTPServer(("localhost", 1455), _Handler)

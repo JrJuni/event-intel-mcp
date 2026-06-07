@@ -39,6 +39,7 @@ def draft_capability_cards(
     Returns:
         Success envelope with `draft_path` + `warnings` + `usage`.
         Failure envelope from `envelope_from_exception`.
+
     """
     try:
         _preflight._validate_workspace_id_minimal(workspace_id)

@@ -116,7 +116,8 @@ def _split_chunks(text: str, *, max_chars: int) -> list[str]:
     """Split on double-newlines first (keeps card/table boundaries intact),
     fall back to single-newlines, then to hard slicing if a single line is
     longer than `max_chars`. Returns a list with at least 1 entry when text
-    is non-empty."""
+    is non-empty.
+    """
     if not text:
         return []
     if len(text) <= max_chars:
@@ -191,7 +192,8 @@ def _normalize_name(name: str, *, lang: str) -> str:
 
 def _parse_llm_chunk(raw: str, *, chunk_index: int) -> list[ExhibitorCandidate]:
     """Parse one LLM response. Tolerant to fences / leading prose; if the
-    response is unparseable, returns []."""
+    response is unparseable, returns [].
+    """
     text = raw.strip()
     if text.startswith("```"):
         lines = text.splitlines()

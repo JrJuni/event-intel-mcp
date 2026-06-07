@@ -25,7 +25,8 @@ def normalize_utc(dt: datetime | None) -> datetime | None:
 
 def parse_iso_utc(raw: str | None) -> datetime | None:
     """Parse an ISO-8601 string to an aware UTC datetime. None on any failure
-    (published_at is advisory — never fail a pipeline over a bad timestamp)."""
+    (published_at is advisory — never fail a pipeline over a bad timestamp).
+    """
     if not raw or not isinstance(raw, str):
         return None
     try:

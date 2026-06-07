@@ -24,6 +24,7 @@ import difflib
 import hashlib
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -58,7 +59,8 @@ def _is_fresh(timestamp_raw: str | None, *, now: datetime, ttl_days: int | None)
       - ttl_days == 0        → always stale (never reuse).
       - ttl_days > 0         → fresh iff age <= ttl_days.
     Unparseable or future timestamps are treated as stale (conservative — re-fetch
-    rather than trust a bad clock)."""
+    rather than trust a bad clock).
+    """
     if ttl_days is None or ttl_days < 0:
         return True
     if ttl_days == 0:
@@ -77,7 +79,8 @@ def _is_fresh(timestamp_raw: str | None, *, now: datetime, ttl_days: int | None)
 def _config_fingerprint(enrichment_cfg: dict) -> str:
     """Hash ONLY the enrichment-affecting config fields (review r2 #3). A scoring
     weight change must NOT invalidate cached Brave enrichment — only fields that
-    change what we fetch/keep belong here."""
+    change what we fetch/keep belong here.
+    """
     relevant = {
         "max_companies": enrichment_cfg.get("max_companies"),
         "brave_count_web": enrichment_cfg.get("brave_count_web"),
@@ -95,7 +98,8 @@ def _config_fingerprint(enrichment_cfg: dict) -> str:
 def _input_fingerprint(name: str, url: str | None, snippet: str,
                        confidence: float, config_fp: str) -> str:
     """Per-row fingerprint: changed name/url/snippet/confidence/config → re-enrich
-    regardless of resume TTL (review r2 #3)."""
+    regardless of resume TTL (review r2 #3).
+    """
     raw = f"{name}|{url or ''}|{snippet}|{confidence}|{config_fp}"
     return hashlib.sha1(raw.encode()).hexdigest()[:16]
 
@@ -159,9 +163,10 @@ class _SearchCache:
 
     Each file is `{"cached_at": iso, "results": [...]}` (v4) so `ttl_days` can
     expire stale Brave answers — a cached "last 180 days" result reused months
-    later silently misses everything published since (review r2 #2)."""
+    later silently misses everything published since (review r2 #2).
+    """
 
-    def __init__(self, root: Path, *, ttl_days: int | None = None):
+    def __init__(self, root: Path, *, ttl_days: int | None = None) -> None:
         self.root = root
         self.ttl_days = ttl_days
         self.root.mkdir(parents=True, exist_ok=True)
@@ -219,7 +224,7 @@ class _ResumeStore:
     Reading is fault-tolerant: a half-written line at EOF is ignored.
     """
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path) -> None:
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -649,7 +654,8 @@ def enrich_exhibitors(
 
         def _evidence_relevant(
             url: str, title: str,
-            *, official_domain=official_domain, cand_name_tokens=cand_name_tokens,
+            *, official_domain: str | None = official_domain,
+            cand_name_tokens: list[str] = cand_name_tokens,
         ) -> bool:
             # Extra-query results come from arbitrary domains; accept only if the
             # page is plausibly ABOUT this company — same site as the official URL
@@ -748,7 +754,7 @@ def _search_with_cache(
     count: int,
     lang: str,
     days: int | None = None,
-    hits_counter,
+    hits_counter: Callable[..., object],
     now: datetime,
     refresh: bool = False,
 ) -> dict:
@@ -757,7 +763,8 @@ def _search_with_cache(
     `published_at` are dropped for portability.
 
     `refresh` skips the cache READ (forcing a live call) but still WRITES the
-    fresh result, so a subsequent non-refresh run benefits (review r2 #3)."""
+    fresh result, so a subsequent non-refresh run benefits (review r2 #3).
+    """
     if cache_enabled and not refresh:
         cached = cache.get(query, kind=kind, lang=lang, count=count, days=days, now=now)
         if cached is not None:
