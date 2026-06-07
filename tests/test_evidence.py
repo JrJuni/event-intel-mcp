@@ -139,3 +139,25 @@ def test_mentions_name_all_generic_requires_all_tokens():
     toks = name_tokens("Data Cloud")  # both generic
     assert mentions_name("data cloud platform launch", toks) is True   # both present
     assert mentions_name("cloud computing news", toks) is False        # "data" missing
+
+
+def test_name_tokens_keeps_short_distinctive_token():
+    """Review r3 #3 fix: a len-2 DISTINCTIVE token survives and anchors the match
+    instead of being dropped (which used to leave only a lone generic word)."""
+    from event_intel.events.evidence import mentions_name, name_tokens
+
+    toks = name_tokens("Xy Data")           # "xy" distinctive (len 2), "data" generic
+    assert "xy" in toks
+    assert mentions_name("Xy launches a new product", toks) is True   # distinctive xy
+    assert mentions_name("a generic data report", toks) is False      # no "xy"
+
+
+def test_name_tokens_short_generic_pair_requires_phrase():
+    """Review r3 #3 fix: "Data AI" is now all-generic (["data","ai"]) because the
+    len-2 "ai" is kept — so a lone "data" no longer matches; the phrase is required."""
+    from event_intel.events.evidence import mentions_name, name_tokens
+
+    toks = name_tokens("Data AI")
+    assert toks == ["data", "ai"]
+    assert mentions_name("our data pipeline scales well", toks) is False  # only "data"
+    assert mentions_name("a data and ai platform", toks) is True          # both present

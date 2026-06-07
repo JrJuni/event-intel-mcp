@@ -128,9 +128,16 @@ _GENERIC_NAME_TOKENS = {
 
 
 def name_tokens(name: str | None) -> list[str]:
-    """Significant lowercased tokens of a company name for relevance checks
-    (len>=3, else the whole name)."""
-    toks = [t for t in _NAME_TOKEN_RE.split((name or "").lower()) if len(t) >= 3]
+    """Significant lowercased tokens of a company name for relevance checks.
+
+    Keeps len>=2 tokens (review round-3 #3): the previous len>=3 cut dropped short
+    DISTINCTIVE tokens ("Xy Data" → ["data"], losing "xy"), which then matched any
+    article mentioning the lone generic "data". Keeping len>=2 means a short
+    distinctive token survives to anchor the match, and a name like "Data AI"
+    becomes all-generic (["data","ai"]) so mentions_name requires the full phrase
+    instead of a single generic word. Falls back to the whole name if nothing
+    survives (e.g. all single-char tokens)."""
+    toks = [t for t in _NAME_TOKEN_RE.split((name or "").lower()) if len(t) >= 2]
     if toks:
         return toks
     whole = (name or "").lower().strip()
@@ -145,10 +152,12 @@ def mentions_name(text: str | None, tokens: list[str]) -> bool:
     entirely generic (e.g. "Data Cloud"), require ALL its tokens present
     (phrase-like) rather than any one (review round-2 #1).
 
-    KNOWN LIMITATION (review round-3 #3, backlog #13): a company whose ONLY token
-    is a single generic word ("Data", "Cloud") — or whose distinctive tokens are
-    all <3 chars and dropped by name_tokens (e.g. "Data AI" → ["data"]) — still
-    matches loosely. Single generic-word names are inherently ambiguous; deferred.
+    RESIDUAL LIMITATION (review round-3 #3): a company whose ONLY token is a single
+    generic word ("Data", "Cloud") still matches loosely — there is no second token
+    to require, and refusing to match would kill recall for a legitimately-named
+    "Data" company. Single generic-word names are inherently ambiguous; accepted.
+    (The earlier "Data AI" → ["data"] gap is closed: name_tokens now keeps len>=2,
+    so the full ["data","ai"] is all-generic and the whole phrase is required.)
     """
     if not tokens or not text:
         return False
