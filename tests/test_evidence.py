@@ -101,6 +101,21 @@ def test_multitenant_hosts_are_distinct_companies():
     assert same_site("acme.github.io", "acme.github.io") is True
 
 
+def test_extended_multitenant_and_cctld_suffixes():
+    """Review r3 #5: extend the multi-tenant + ccTLD suffix list (no PSL dep).
+    Newly-added hosting suffixes keep distinct tenants separate; ccTLD second
+    levels keep the third label as the registrable unit."""
+    # managed hosting / site builders — distinct tenants stay distinct
+    assert same_site("acme.myshopify.com", "rival.myshopify.com") is False
+    assert same_site("a.azurewebsites.net", "b.azurewebsites.net") is False
+    assert same_site("acme.substack.com", "other.substack.com") is False
+    assert registrable_domain("shop.acme.myshopify.com") == "acme.myshopify.com"
+    # newly-added ccTLDs — third label is the registrable unit
+    assert registrable_domain("www.acme.co.id") == "acme.co.id"
+    assert registrable_domain("api.acme.com.vn") == "acme.com.vn"
+    assert same_site("api.acme.co.id", "www.acme.co.id") is True
+
+
 def test_third_party_identity_page_does_not_satisfy_floor():
     """A /products or /docs page on a THIRD-PARTY domain must not count as the
     company's identity (review #1 — path-only third-party match → floor 2)."""

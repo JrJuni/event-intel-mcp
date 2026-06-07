@@ -78,14 +78,24 @@ def domain_of(url: str | None) -> str | None:
 # Heuristic (no PSL dependency, to stay cold-start safe); extend as needed.
 _TWO_LEVEL_SUFFIXES = {
     # ccTLD second levels
-    "co.uk", "org.uk", "ac.uk", "gov.uk", "co.kr", "or.kr", "co.jp", "or.jp",
-    "com.au", "net.au", "co.nz", "com.br", "co.in", "com.cn", "com.sg",
-    "co.za", "com.mx", "com.tr", "com.hk", "com.tw",
+    "co.uk", "org.uk", "ac.uk", "gov.uk", "co.kr", "or.kr", "ac.kr", "go.kr",
+    "ne.kr", "co.jp", "or.jp", "ne.jp", "ac.jp", "go.jp",
+    "com.au", "net.au", "org.au", "edu.au", "gov.au", "co.nz", "ac.nz", "govt.nz",
+    "com.br", "co.in", "com.cn", "com.sg", "co.za", "com.mx", "com.tr", "com.hk",
+    "com.tw", "co.il", "com.ar", "co.id", "com.my", "co.th", "com.ph", "com.vn",
+    "com.co", "com.pe", "com.ua", "co.ke", "com.ng",
     # multi-tenant hosting / site builders (each subdomain = distinct tenant)
     "github.io", "gitlab.io", "github.dev", "vercel.app", "netlify.app",
     "pages.dev", "workers.dev", "web.app", "firebaseapp.com", "herokuapp.com",
     "fly.dev", "onrender.com", "surge.sh", "glitch.me", "repl.co", "replit.app",
     "wixsite.com", "webflow.io", "blogspot.com", "wordpress.com",
+    # more managed hosting / site builders + PaaS app subdomains
+    "myshopify.com", "azurewebsites.net", "azurestaticapps.net", "amplifyapp.com",
+    "cloudfunctions.net", "streamlit.app", "pythonanywhere.com", "gitbook.io",
+    "readthedocs.io", "notion.site", "framer.website", "framer.app", "carrd.co",
+    "super.site", "bubbleapps.io", "substack.com", "ghost.io", "hashnode.dev",
+    "godaddysites.com", "square.site", "weebly.com", "strikingly.com", "tilda.ws",
+    "durable.co", "site123.me", "now.sh",
 }
 
 
