@@ -508,7 +508,10 @@ def test_winner_preserves_scored_response_no_refetch():
         calls.append((url, kw.get("method"), kw.get("data"), kw.get("headers")))
         return _raw_ok(body, url="https://example.com/api/x")
 
-    with _patch_robots(), patch.object(_raw_fetch, "fetch_raw", side_effect=counting):
+    # String-path patch (not patch.object) so it survives cold-start module purges.
+    with _patch_robots(), patch(
+        "event_intel.acquisition.raw_fetch.fetch_raw", side_effect=counting
+    ):
         result = probe_endpoints(url="https://example.com", hints=hints)
 
     assert result.winner is not None
