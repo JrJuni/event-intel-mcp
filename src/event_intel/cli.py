@@ -598,15 +598,21 @@ def benchmark_seal_labels_cmd(
     from event_intel.eval import labeling as _labeling
 
     rows = json.loads(Path(sheet).read_text(encoding="utf-8"))
-    labels = _labeling.parse_filled_sheet(rows, require_all=not allow_partial)
+    labels, grades, provenance = _labeling.extract_sealed_inputs(
+        rows, require_all=not allow_partial
+    )
     pkt = _blind.packet_from_dict(json.loads(Path(packet).read_text(encoding="utf-8")))
-    sealed = _blind.seal_company_labels(pkt, labels)
+    sealed = _blind.seal_company_labels(pkt, labels, grades=grades, provenance=provenance)
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     Path(out).write_text(
         json.dumps(_blind.sealed_labels_to_dict(sealed), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    _print_json({"ok": True, "sealed_labels_path": out, "labeled": len(labels), "sha": sealed.sha})
+    gold_n = sum(1 for g in sealed.grades.values() if g == "gold")
+    _print_json({
+        "ok": True, "sealed_labels_path": out, "labeled": len(labels),
+        "gold": gold_n, "sha": sealed.sha,
+    })
 
 
 def main() -> None:

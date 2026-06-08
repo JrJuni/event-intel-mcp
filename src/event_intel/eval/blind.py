@@ -51,6 +51,11 @@ class SealedLabels:
     labels: dict[str, str]  # name -> target|competitor|bad_fit|neutral
     sha: str
     packet_sha: str         # ties labels to the packet they were made against
+    # Per-label provenance (L2 / review R2#1): grade ∈ silver|gold lets a holdout
+    # measure reject non-gold inputs. Parallel maps keep `labels` (name->str)
+    # back-compatible — old sealed files have no grades (read as ungraded).
+    grades: dict[str, str] = field(default_factory=dict)        # name -> silver|gold
+    provenance: dict[str, dict[str, Any]] = field(default_factory=dict)  # name -> {source, adjudicators}
 
 
 @dataclass
@@ -121,15 +126,28 @@ def build_company_packet(
 
 
 def seal_company_labels(
-    packet: CompanyPacket, labels: dict[str, str]
+    packet: CompanyPacket,
+    labels: dict[str, str],
+    *,
+    grades: dict[str, str] | None = None,
+    provenance: dict[str, dict[str, Any]] | None = None,
 ) -> SealedLabels:
-    """Freeze user labels into a SEPARATE artifact (R2-1), tied to the packet."""
+    """Freeze user labels into a SEPARATE artifact (R2-1), tied to the packet.
+
+    `grades`/`provenance` (L2) are per-label; absent → ungraded (treated as not
+    gold by a holdout measure). `sha` covers the labels only, so old shas stay
+    stable.
+    """
     clean = {name: labels[name] for name in packet.names() if name in labels}
+    g = {name: (grades or {}).get(name, "silver") for name in clean} if grades else {}
+    prov = {name: (provenance or {}).get(name, {}) for name in clean} if provenance else {}
     return SealedLabels(
         pair=packet.pair,
         labels=clean,
         sha=_sha(clean),
         packet_sha=_sha([e["name"] for e in packet.entries]),
+        grades=g,
+        provenance=prov,
     )
 
 
@@ -185,12 +203,18 @@ def packet_from_dict(d: dict[str, Any]) -> CompanyPacket:
 
 
 def sealed_labels_to_dict(s: SealedLabels) -> dict[str, Any]:
-    return {"pair": s.pair, "labels": dict(s.labels), "sha": s.sha, "packet_sha": s.packet_sha}
+    return {
+        "pair": s.pair, "labels": dict(s.labels), "sha": s.sha,
+        "packet_sha": s.packet_sha, "grades": dict(s.grades),
+        "provenance": dict(s.provenance),
+    }
 
 
 def sealed_labels_from_dict(d: dict[str, Any]) -> SealedLabels:
     return SealedLabels(
-        pair=d["pair"], labels=dict(d["labels"]), sha=d["sha"], packet_sha=d["packet_sha"]
+        pair=d["pair"], labels=dict(d["labels"]), sha=d["sha"], packet_sha=d["packet_sha"],
+        grades=dict(d.get("grades", {})),          # back-compat: old files have none
+        provenance=dict(d.get("provenance", {})),
     )
 
 

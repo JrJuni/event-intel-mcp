@@ -404,6 +404,7 @@ def measure(
     evidence_present: list[bool] | None = None,
     thresholds: tuple[tuple, ...] | None = None,
     waivers: dict[str, dict[str, Any]] | None = None,
+    holdout: bool = False,
 ) -> MeasureReport:
     """Reveal + join (step 9). Joins the run-result with sealed gold and the CS2
     match, then computes the CS6 metric table + gate outcomes.
@@ -411,12 +412,26 @@ def measure(
     `sealed_labels` MUST be a frozen `SealedLabels` — measuring against unsealed
     labels would break the blind state machine, so a raw dict is rejected.
     Partner mode zeroes the competitor metrics to N/A (competitor is neutral).
+    `holdout=True` additionally REJECTS any non-gold label — a holdout gate must
+    measure only independently-adjudicated gold (review R2#1).
     """
     if not isinstance(sealed_labels, _blind.SealedLabels):
         raise TypeError(
             "measure requires SEALED company labels (eval.blind.SealedLabels); "
             "unsealed gold breaks the blind state machine (design v4 §2 step 5)"
         )
+
+    if holdout:
+        not_gold = [
+            name for name in sealed_labels.labels
+            if sealed_labels.grades.get(name) != "gold"
+        ]
+        if not_gold:
+            raise ValueError(
+                f"holdout measure requires all-gold labels, but {len(not_gold)} are "
+                f"silver/ungraded (e.g. {not_gold[:3]}). Promote via cross-vendor "
+                "agreement / search-refine before the holdout gate (review R2#1)."
+            )
 
     positive = set(positive) if positive is not None else set(
         _POSITIVE_BY_MODE.get(target_mode, _POSITIVE_BY_MODE["customer"])
