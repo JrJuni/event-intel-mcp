@@ -42,6 +42,20 @@ class AcquireResult:
     manifest_path: Path | None = None
 
 
+def _artifact_naming(content_type: str, body: str) -> tuple[str, str]:
+    """Return (basename, source_kind) from content-type, confirmed by a body sniff.
+
+    A JSON winner is preserved as source.json / text_file (review #7), but only
+    when the body is actually JSON-shaped ('{' or '['), so a paginated wrapper or
+    an HTML SPA shell served with a json content-type still lands as html_file.
+    """
+    ct = (content_type or "").lower()
+    head = body.lstrip()[:1] if body else ""
+    if "json" in ct and head in ("{", "["):
+        return "source.json", "text_file"
+    return "source.html", "html_file"
+
+
 def acquire_source(
     *,
     url: str,
@@ -164,9 +178,8 @@ def acquire_source(
         if not should_proceed:
             raise err  # type: ignore[misc]
 
-        basename = "source.html"
+        basename, source_kind = _artifact_naming(resp.content_type, resp.body)
         artifact_path = _artifacts.write_artifact(art_dir, basename, resp.body)
-        source_kind = "html_file"
         content_type = resp.content_type
         status = resp.status
         http_pages = 1
@@ -212,9 +225,8 @@ def acquire_source(
                 + "\n\n".join(pages)
             )
 
-        basename = "source.html"
+        basename, source_kind = _artifact_naming(content_type, body)
         artifact_path = _artifacts.write_artifact(art_dir, basename, body)
-        source_kind = "html_file"
 
     elif verdict == "embedded_json":
         probe_result = _probe.probe_embedded_json(
@@ -240,9 +252,8 @@ def acquire_source(
         should_proceed, err = _status_map.map_http_response(resp, landing_url=url)
         if not should_proceed:
             raise err  # type: ignore[misc]
-        basename = "source.html"
+        basename, source_kind = _artifact_naming(resp.content_type, resp.body)
         artifact_path = _artifacts.write_artifact(art_dir, basename, resp.body)
-        source_kind = "html_file"
         content_type = resp.content_type
         status = resp.status
         http_pages = 1

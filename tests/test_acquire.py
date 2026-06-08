@@ -136,13 +136,14 @@ def test_acquire_static_html_writes_html_file_artifact(tmp_path, monkeypatch):
     assert result.analysis["verdict"] == "static_html"
 
 
-# ---------- 2. xhr_endpoint verdict → probe → html_file ----------
+# ---------- 2. xhr_endpoint verdict → probe → content-type aware artifact ----------
 
-def test_acquire_xhr_endpoint_writes_html_file(tmp_path, monkeypatch):
+def test_acquire_xhr_endpoint_json_writes_text_file(tmp_path, monkeypatch):
+    """A JSON XHR winner is persisted as source.json/text_file (review #7)."""
     monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
     from event_intel.acquisition.probe import ProbeAttempt, ProbeResult
     endpoints = [{"url": "https://example.com/api/exhibitors", "method": "GET", "sample_params": {}, "rationale": ""}]
-    body = "exhibitor company booth participant\n" * 100
+    body = json.dumps({"company_data": [{"company_title": f"Co {i}"} for i in range(10)]})
 
     fake_probe_result = ProbeResult(
         winner=ProbeAttempt(url="https://example.com/api/exhibitors", method="GET", status=200, score=0.8),
@@ -162,10 +163,39 @@ def test_acquire_xhr_endpoint_writes_html_file(tmp_path, monkeypatch):
             event_slug="evt2",
         )
 
-    assert result.source_kind == "html_file"
-    assert Path(result.source_ref).is_file()
+    assert result.source_kind == "text_file"
+    assert result.source_ref.endswith("source.json")
+    assert Path(result.source_ref).read_text(encoding="utf-8") == body
     assert result.analysis["verdict"] == "xhr_endpoint"
     assert result.probe is not None
+
+
+def test_acquire_xhr_html_shell_writes_html_file(tmp_path, monkeypatch):
+    """A non-JSON body served with a json content-type still lands as html_file
+    (the body sniff guards against mislabeling a paginated wrapper / SPA shell)."""
+    monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
+    from event_intel.acquisition.probe import ProbeAttempt, ProbeResult
+    endpoints = [{"url": "https://example.com/api/exhibitors", "method": "GET", "sample_params": {}, "rationale": ""}]
+    body = "exhibitor company booth participant\n" * 100
+
+    fake_probe_result = ProbeResult(
+        winner=ProbeAttempt(url="https://example.com/api/exhibitors", method="GET", status=200, score=0.8),
+        attempts=[],
+        body=body,
+        content_type="application/json",
+    )
+    with (
+        _patch_robots(),
+        _patch_config(),
+        _patch_analyze("xhr_endpoint", endpoints=endpoints),
+        patch("event_intel.acquisition.probe.probe_endpoints", return_value=fake_probe_result),
+    ):
+        result = acquire_source(
+            url="https://example.com", workspace_id="ws1", event_slug="evt2b",
+        )
+
+    assert result.source_kind == "html_file"
+    assert result.source_ref.endswith("source.html")
 
 
 # ---------- 3. embedded_json verdict → text_file (NOT "text") — R1-3 fix ----------
