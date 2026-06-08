@@ -127,6 +127,7 @@ event-intel-mcp/
     cards/               — schema + drafter + validator + ingest (S2)
     events/              — source_capture + extraction + enrichment (S3+S4)
     acquisition/         — analyzer + probe + acquire + url_safety + robots + raw_fetch (Phase 18T)
+    sources/             — source library indexer → product_sources_{ws} (WSL W1; raw source RAG, never scored)
     rag/                 — store + retriever + chunker
     scoring/             — dimensions + rules + compute (S4)
     report/              — tier_list_md + tier_list_yaml + brief_export (S5)
