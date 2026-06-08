@@ -1,6 +1,10 @@
 """Explicit bge-m3 model preparation. Heavy import is local to functions here.
 
-NEVER call these from MCP tool handler import path. CLI-only or test-only.
+The heavy ``sentence_transformers`` import stays INSIDE the functions, so this
+module is import-cold. Invoked by the terminal CLI (``models prepare``, inline)
+and by the ``prepare_models`` MCP tool (#14, in a background thread) — never call
+``prepare_bge_m3`` synchronously inside a tool handler's request path (it blocks
+on a ~1.3 GB download); use the async job from ``tools/prepare_models.py``.
 """
 from __future__ import annotations
 
