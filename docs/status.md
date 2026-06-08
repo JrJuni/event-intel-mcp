@@ -6,6 +6,13 @@
 
 ## 진행 중
 
+- **인앱 셋업 패리티 (#14) — 비개발자 첫 실행 셋업을 앱 안에서 ✅ 전체 완료 (2026-06-09, plan `snoopy-weaving-robin.md` 상단 v1, P1.0–P1.3 머지 #46/#47/+1)**
+  - **계기.** 비개발자 타깃인데 첫 실행 2단계(bge-m3 ~1.3GB 다운로드 · ChatGPT 로그인)가 CLI 전용 → "Claude Desktop 단일 surface" north star 모순([[inapp-setup-parity]]). 둘 다 무겁고(다운로드·OAuth 브라우저 왕복) 동기 tool은 앱 타임아웃 → **비동기 start→poll** 패턴 필요.
+  - ✅ **P1.0+P1.1** (#46) — `runtime/async_job.py` 범용 비동기 매니저(`BackgroundJob.start(fn, block=)`/`status()`/`reset()`, 멱등·실패캡처, warmup.py 패턴 일반화하되 stdio-critical warmup.py는 보존). `prepare_models` MCP 도구(11th) — is_ready→ready 단락, 아니면 background 다운로드 start→`downloading` 즉시 리턴, force 재download. CLI `models prepare` blocking 유지.
+  - ✅ **P1.2** (#47) — `login_chatgpt` MCP 도구(12th) — 기존 blocking `login()`을 async job으로 감싸 비동기화(`_pkce_login` 내부 무수정 = OAuth 경로 무위험). `auth_status()`(side-effect-free 공개 API) 추가로 이미 로그인 시 브라우저 skip. `pending` 즉시 리턴→승인→poll. CLI `login-chatgpt` blocking 유지.
+  - ✅ **P1.3** — `check_runtime`가 성공·실패 envelope 모두에 `setup` 블록(`model_prep`: model_cached + download job 상태 / `chatgpt_login`: logged_in + login job 상태) 부착(W5 `paths`와 동일 철학, best-effort). surface **12 tools** 갱신(CLAUDE.md/architecture/mcpb/README) + cold-start 가드 3모듈.
+  - **결과**: 비개발자가 터미널 없이 앱에서 모델 다운로드·ChatGPT 로그인 → check_runtime로 진행 폴링. ChatGPT OAuth = 무료 체험 온보딩 메인 경로 완성. **770 passed, ruff clean.** Non-goals: warmup.py DRY 통합(후속)·원격 인증(Y2).
+
 - **Workspace & Source Library RAG (WSL) — 신규 제품 역량 ✅ 전체 완료 (2026-06-08~09, plan `snoopy-weaving-robin.md` 상단 v0.2, W0–W5 전 슬라이스 머지 #39~#44)**
   - **계기.** 사용자 작업폴더의 PDF/MD/TXT/CSV를 증분 인덱싱 → (a) 카드 초안을 raw source에서, (b) S/A rationale에 파일·페이지 출처. raw source는 **점수에 절대 미반영**(evidence-floor) — drafting·rationale 보조용. card collection(`product_{ws}`) ↔ raw source collection(`product_sources_{ws}`) 분리. Y1D(rerank)·holdout과 직교한 의식적 detour(= 카드/rationale 품질 개선이지 capability_fit 평탄 fix 아님).
   - **설계.** Codex blind review(roadmap 5건 전부 HEAD 대조 후 수용): WSL을 로드맵 순서에 명시(bench 정리 후·holdout 전 DEV 품질개선) / holdout 전 `threshold-freeze --gates-file` 완전 재freeze=차단 hard-gate / Y2.0 target client matrix 선결 / run_summary에 source-manifest fingerprint / stale 로드맵 숫자 제거→status.md 단일출처.

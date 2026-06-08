@@ -208,13 +208,20 @@ Add to `claude_desktop_config.json`:
 
 Include `ANTHROPIC_API_KEY` only for the Anthropic path. Set `EVENT_INTEL_USE_CHATGPT_OAUTH=true` to opt into ChatGPT OAuth (then run `event-intel login-chatgpt` once); omit it otherwise.
 
-### The 10 tools
+### The 12 tools
+
+**In-app setup** — one-time first run (no terminal needed):
+
+| Tool | Purpose |
+|---|---|
+| `prepare_models` | Download the bge-m3 model (~1.3 GB) in-app. *Non-blocking* — returns `downloading` at once; poll `check_runtime` until `ready`. |
+| `login_chatgpt` | Authenticate the ChatGPT subscription (OAuth) LLM path in-app. *Non-blocking* — opens a browser, returns `pending`; approve, then poll `check_runtime` until `logged_in`. |
 
 **Product Context lifecycle** — one-time per product:
 
 | Tool | Purpose |
 |---|---|
-| `check_runtime` | Verify bge-m3 cache / Chroma / API keys / product context. `warm_up: true` starts a *non-blocking* background model load (returns at once); `checks.warm_up.status` reports `not_started`/`warming`/`ready` — poll by calling again. The response always carries a `paths` block (where cards / sources / Chroma live + writability). |
+| `check_runtime` | Verify bge-m3 cache / Chroma / API keys / product context. `warm_up: true` starts a *non-blocking* background model load (returns at once); `checks.warm_up.status` reports `not_started`/`warming`/`ready` — poll by calling again. The response always carries a `paths` block (where cards / sources / Chroma live + writability) and a `setup` block (bge-m3 download + ChatGPT login state). |
 | `sync_product_sources` | Index a workspace's raw source library (PDF/MD/TXT/CSV) into `product_sources_{workspace_id}` for richer drafts + rationale provenance (never scored) |
 | `draft_capability_cards` | Draft a `capability_cards.yaml` from a source doc (md/txt/pdf), inline text, or the synced source library (`source_kind="workspace"`) |
 | `validate_capability_cards` | Validate a hand-edited `capability_cards.yaml` against the pydantic schema (v1) |
