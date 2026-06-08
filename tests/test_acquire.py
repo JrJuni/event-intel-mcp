@@ -57,6 +57,12 @@ def _html_body(n: int = 500) -> str:
     return "<html><body>" + "<p>Exhibitor Company Booth A-1</p>" * n + "</body></html>"
 
 
+def _bare_body() -> str:
+    """A non-roster page: no exhibitor keywords, no scripts/endpoints — scores
+    below the roster floor so the static rung rejects it."""
+    return "<html><body><h1>Welcome</h1><p>Nothing to see here.</p></body></html>"
+
+
 def _ok_resp(body: str, url: str = "https://example.com/exhibitors") -> RawResponse:
     return RawResponse(
         status=200, headers={"content-type": "text/html"},
@@ -90,7 +96,9 @@ def _patch_llm(verdict: str, *, endpoints=None, selectors=None):
 
 
 def _patch_analyze(verdict: str, *, endpoints=None, selectors=None):
-    """Patch analyze_page at the module level to skip HTTP entirely."""
+    """Patch analyze_response (the landing classifier the ladder calls) so the
+    test controls the verdict/hints without the LLM. The landing fetch still
+    happens via fetch_raw — patch that too in each test."""
     hints = {
         "candidate_endpoints": endpoints or [],
         "embedded_json_selectors": selectors or [],
@@ -108,7 +116,7 @@ def _patch_analyze(verdict: str, *, endpoints=None, selectors=None):
         "lang": "en",
         "usage": {},
     }
-    return patch("event_intel.acquisition.analyzer.analyze_page", return_value=analysis_result)
+    return patch("event_intel.acquisition.analyzer.analyze_response", return_value=analysis_result)
 
 
 # ---------- 1. static_html verdict → html_file artifact ----------
@@ -155,6 +163,7 @@ def test_acquire_xhr_endpoint_json_writes_text_file(tmp_path, monkeypatch):
         _patch_robots(),
         _patch_config(),
         _patch_analyze("xhr_endpoint", endpoints=endpoints),
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", return_value=_ok_resp(_html_body())),
         patch("event_intel.acquisition.probe.probe_endpoints", return_value=fake_probe_result),
     ):
         result = acquire_source(
@@ -168,6 +177,7 @@ def test_acquire_xhr_endpoint_json_writes_text_file(tmp_path, monkeypatch):
     assert Path(result.source_ref).read_text(encoding="utf-8") == body
     assert result.analysis["verdict"] == "xhr_endpoint"
     assert result.probe is not None
+    assert result.selected_rung == "xhr"
 
 
 def test_acquire_xhr_html_shell_writes_html_file(tmp_path, monkeypatch):
@@ -188,6 +198,7 @@ def test_acquire_xhr_html_shell_writes_html_file(tmp_path, monkeypatch):
         _patch_robots(),
         _patch_config(),
         _patch_analyze("xhr_endpoint", endpoints=endpoints),
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", return_value=_ok_resp(_html_body())),
         patch("event_intel.acquisition.probe.probe_endpoints", return_value=fake_probe_result),
     ):
         result = acquire_source(
@@ -216,6 +227,7 @@ def test_acquire_embedded_json_returns_text_file_not_text(tmp_path, monkeypatch)
         _patch_robots(),
         _patch_config(),
         _patch_analyze("embedded_json", selectors=selectors),
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", return_value=_ok_resp(_html_body())),
         patch("event_intel.acquisition.probe.probe_embedded_json", return_value=fake_probe_result),
     ):
         result = acquire_source(
@@ -227,16 +239,21 @@ def test_acquire_embedded_json_returns_text_file_not_text(tmp_path, monkeypatch)
     assert result.source_kind == "text_file", "embedded_json must return text_file, not 'text'"
     assert result.source_ref.endswith("source.json")
     assert Path(result.source_ref).is_file()
+    assert result.selected_rung == "embedded"
 
 
-# ---------- 4. operator_capture_required → OPERATOR_CAPTURE_REQUIRED ----------
+# ---------- 4. operator prior + no recoverable evidence → OPERATOR_CAPTURE_REQUIRED ----------
 
 def test_acquire_operator_capture_required_raises(tmp_path, monkeypatch):
+    """operator_capture_required is now a prior, not an immediate raise: every
+    rung is still tried; with no roster / endpoints / bundles the ladder
+    exhausts and surfaces OPERATOR_CAPTURE_REQUIRED."""
     monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
     with (
         _patch_robots(),
         _patch_config(),
         _patch_analyze("operator_capture_required"),
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", return_value=_ok_resp(_bare_body())),
     ):
         with pytest.raises(MCPError) as ei:
             acquire_source(
@@ -247,20 +264,44 @@ def test_acquire_operator_capture_required_raises(tmp_path, monkeypatch):
     assert ei.value.error_code == ErrorCode.OPERATOR_CAPTURE_REQUIRED
 
 
-# ---------- 5. login_required → LOGIN_REQUIRED ----------
+# ---------- 5. login prior + nothing recoverable → LOGIN_REQUIRED ----------
 
 def test_acquire_login_required_raises(tmp_path, monkeypatch):
+    """login_required prior + no public roster recoverable → LOGIN_REQUIRED
+    (the actionable terminal for the login prior)."""
     monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
     with (
         _patch_robots(),
         _patch_config(),
         _patch_analyze("login_required"),
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", return_value=_ok_resp(_bare_body())),
     ):
         with pytest.raises(MCPError) as ei:
             acquire_source(
                 url="https://example.com",
                 workspace_id="ws1",
                 event_slug="evt5",
+            )
+    assert ei.value.error_code == ErrorCode.LOGIN_REQUIRED
+
+
+def test_acquire_login_landing_401_raises_login_required(tmp_path, monkeypatch):
+    """A genuine HTTP 401 at the landing fetch raises LOGIN_REQUIRED before the
+    LLM (analyze_response maps the status). Uses the real analyzer + fake LLM."""
+    monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
+    resp_401 = RawResponse(
+        status=401, headers={}, body="Unauthorized",
+        content_type="text/html", final_url="https://example.com",
+    )
+    with (
+        _patch_robots(),
+        _patch_config(),
+        _patch_llm("static_html"),
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", return_value=resp_401),
+    ):
+        with pytest.raises(MCPError) as ei:
+            acquire_source(
+                url="https://example.com", workspace_id="ws1", event_slug="evt5b",
             )
     assert ei.value.error_code == ErrorCode.LOGIN_REQUIRED
 
@@ -394,7 +435,7 @@ def test_acquire_refetch_true_ignores_cache(tmp_path, monkeypatch):
     with (
         _patch_robots(),
         _patch_config(),
-        patch("event_intel.acquisition.analyzer.analyze_page", side_effect=_counting_analyze),
+        patch("event_intel.acquisition.analyzer.analyze_response", side_effect=_counting_analyze),
         patch("event_intel.acquisition.raw_fetch.fetch_raw", return_value=_ok_resp(html)),
     ):
         acquire_source(
@@ -404,7 +445,7 @@ def test_acquire_refetch_true_ignores_cache(tmp_path, monkeypatch):
             refetch=True,
         )
 
-    assert analyze_call_count[0] == 1, "refetch=True must call analyze_page (ignore cache)"
+    assert analyze_call_count[0] == 1, "refetch=True must call analyze_response (ignore cache)"
 
 
 # ---------- 9. Korean event_slug → INVALID_INPUT with suggested_slug ----------
@@ -492,3 +533,211 @@ def test_acquire_tool_wrapper_empty_url():
     assert result["ok"] is False
     assert result["error_code"] == "INVALID_INPUT"
     assert result["stage"] == "acquisition"
+
+
+# ====================================================================
+# C7 — agentic acquisition ladder
+# ====================================================================
+
+_HCR_LANDING = (
+    "<html><head>"
+    '<base href="https://expo.example.com/">'
+    '<script src="assets/app.bundle.js"></script>'
+    "</head><body><div id=\"app\"></div></body></html>"
+)
+_HCR_BUNDLE = "axios.get('_ajax/exhibitor/get_exhibitor_data/').then(r => r.data);"
+# Real HCR roster JSON is ~577 KB; keep the fixture > 1 KB so it doesn't trip the
+# short-body operator heuristic in http_status_map (which targets inert shells).
+_HCR_JP_JSON = json.dumps(
+    {"company_data": [
+        {"company_name": f"出展会社_{i:03d}", "booth": f"A-{i:03d}",
+         "category": "ヘルスケア・ロボティクス"}
+        for i in range(40)
+    ]},
+    ensure_ascii=False,
+)
+
+
+def _hcr_router(landing_url="https://expo.example.com/exhibitor/"):
+    """fetch_raw router for the HCR bundle chain. Returns (router, counters)."""
+    counters = {"landing": 0, "bundle": 0, "endpoint": 0}
+
+    def router(u, **kw):
+        if "get_exhibitor_data" in u:
+            counters["endpoint"] += 1
+            return RawResponse(
+                status=200, headers={}, body=_HCR_JP_JSON,
+                content_type="application/json", final_url=u,
+            )
+        if "app.bundle.js" in u:
+            counters["bundle"] += 1
+            return RawResponse(
+                status=200, headers={}, body=_HCR_BUNDLE,
+                content_type="application/javascript", final_url=u,
+            )
+        if u == landing_url:
+            counters["landing"] += 1
+            return RawResponse(
+                status=200, headers={"content-type": "text/html"}, body=_HCR_LANDING,
+                content_type="text/html", final_url=u,
+            )
+        return RawResponse(
+            status=404, headers={}, body="not found",
+            content_type="text/plain", final_url=u,
+        )
+
+    return router, counters
+
+
+def test_ladder_hcr_e2e_operator_prior_bundle_to_json(tmp_path, monkeypatch):
+    """DoD: an operator-prior verdict still recovers — the bundle rung discovers
+    the endpoint inside an external <script src>, the JP JSON roster is accepted
+    by the structural validator, and it is saved as source.json/text_file with
+    zero operator intervention."""
+    monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
+    landing_url = "https://expo.example.com/exhibitor/"
+    router, counters = _hcr_router(landing_url)
+
+    with (
+        _patch_robots(),
+        _patch_config(),
+        _patch_analyze("operator_capture_required"),  # wrong prior — ladder recovers
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", side_effect=router),
+    ):
+        result = acquire_source(
+            url=landing_url, workspace_id="ws1", event_slug="hcr",
+        )
+
+    assert result.selected_rung == "bundle"
+    assert result.source_kind == "text_file"
+    assert result.source_ref.endswith("source.json")
+    saved = json.loads(Path(result.source_ref).read_text(encoding="utf-8"))
+    assert len(saved["company_data"]) == 40
+    # Landing fetched exactly once; bundle + endpoint each fetched.
+    assert counters["landing"] == 1
+    assert counters["bundle"] == 1
+    assert counters["endpoint"] >= 1
+    # Manifest records ladder provenance: selected rung, winning request, fps.
+    manifest = json.loads(Path(result.manifest_path).read_text(encoding="utf-8"))
+    assert manifest["selected_rung"] == "bundle"
+    assert manifest["winning_request"]["url"].endswith("/get_exhibitor_data/")
+    assert manifest["analysis_fp"] and manifest["config_fp"]
+
+
+def test_ladder_spa_shell_not_accepted_as_static(tmp_path, monkeypatch):
+    """An SPA shell (keywords/scripts but no real roster, no external bundle) is
+    rejected by the static rung and, with nothing else to try, surfaces operator
+    capture — it must NOT be saved as a static html_file."""
+    monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
+    shell = (
+        "<html><body><div id=\"exhibitor-app\"></div>"
+        "<script>window.__BOOT__ = true;</script></body></html>"
+    )
+    with (
+        _patch_robots(),
+        _patch_config(),
+        _patch_analyze("static_html"),  # LLM wrongly said static
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", return_value=_ok_resp(shell)),
+    ):
+        with pytest.raises(MCPError) as ei:
+            acquire_source(url="https://example.com", workspace_id="ws1", event_slug="shell")
+    assert ei.value.error_code == ErrorCode.OPERATOR_CAPTURE_REQUIRED
+    assert not (tmp_path / "ws1" / "shell" / "source.html").exists()
+
+
+def test_ladder_budget_deadline_blocks_bundle_to_operator(tmp_path, monkeypatch):
+    """Budget enforcement: with the overall deadline already spent, the bundle
+    rung that would otherwise succeed (see e2e) is blocked → OPERATOR_CAPTURE."""
+    monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
+    landing_url = "https://expo.example.com/exhibitor/"
+    router, counters = _hcr_router(landing_url)
+    cfg = {**_minimal_config(), "acquisition": {"overall_deadline_seconds": 0}}
+
+    with (
+        _patch_robots(),
+        _patch_config(cfg),
+        _patch_analyze("operator_capture_required"),
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", side_effect=router),
+    ):
+        with pytest.raises(MCPError) as ei:
+            acquire_source(url=landing_url, workspace_id="ws1", event_slug="budget")
+    assert ei.value.error_code == ErrorCode.OPERATOR_CAPTURE_REQUIRED
+    # Landing was fetched, but the budget stopped the bundle rung before fetching it.
+    assert counters["landing"] == 1
+    assert counters["bundle"] == 0
+
+
+def test_ladder_operator_prior_does_not_block_static_success(tmp_path, monkeypatch):
+    """A wrong operator prior must not short-circuit a perfectly static roster:
+    rung order tries static and wins (selected_rung=static, no operator raise)."""
+    monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
+    html = _html_body()
+    with (
+        _patch_robots(),
+        _patch_config(),
+        _patch_analyze("operator_capture_required"),
+        patch("event_intel.acquisition.raw_fetch.fetch_raw", return_value=_ok_resp(html)),
+    ):
+        result = acquire_source(url="https://example.com", workspace_id="ws1", event_slug="orderp")
+    assert result.selected_rung == "static"
+    assert result.source_kind == "html_file"
+    assert Path(result.source_ref).read_text(encoding="utf-8") == html
+
+
+def test_manifest_backward_compat_missing_ladder_fields(tmp_path, monkeypatch):
+    """A pre-ladder manifest (no selected_rung/winning_request/fp fields) still
+    loads via .get() defaults (M9) and serves a cache hit."""
+    monkeypatch.setenv("EVENT_INTEL_ARTIFACTS_DIR", str(tmp_path))
+    from event_intel.storage.artifacts import (
+        ManifestModel,
+        artifact_dir,
+        read_manifest,
+        write_artifact,
+        write_manifest,
+    )
+
+    # Direct from_dict: old shape parses, new fields default.
+    old = {
+        "verdict": "static_html", "source_kind": "html_file", "source_ref": "/x/source.html",
+        "fetched_at": "2026-01-01T00:00:00+00:00", "sha256": "0" * 64,
+        "url": "https://example.com", "content_type": "text/html",
+        "status": 200, "http_pages": 1,
+    }
+    m = ManifestModel.from_dict(old)
+    assert m.selected_rung is None and m.winning_request is None
+    assert m.analysis_fp == "" and m.config_fp == ""
+
+    # And a cache hit off an old manifest works (0 fetch / 0 LLM).
+    art_dir = artifact_dir(workspace_id="ws1", event_slug="oldcache")
+    body = _html_body()
+    path = write_artifact(art_dir, "source.html", body)
+    old_manifest = make_manifest_old(path, body)
+    write_manifest(art_dir, old_manifest)
+    assert read_manifest(art_dir) is not None
+
+    fetch_calls = []
+    with (
+        _patch_robots(),
+        _patch_config(),
+        patch("event_intel.acquisition.raw_fetch.fetch_raw",
+              side_effect=lambda *a, **kw: fetch_calls.append(1) or _ok_resp("")),
+        patch("event_intel.providers.llm.AnthropicProvider") as mock_llm,
+    ):
+        result = acquire_source(
+            url="https://example.com", workspace_id="ws1", event_slug="oldcache", refetch=False,
+        )
+    assert len(fetch_calls) == 0
+    assert mock_llm.call_count == 0
+    assert result.analysis.get("cached") is True
+
+
+def make_manifest_old(path, body):
+    """A manifest dict in the pre-C7 shape (no ladder provenance fields)."""
+    import hashlib
+    return {
+        "verdict": "static_html", "source_kind": "html_file", "source_ref": str(path),
+        "fetched_at": "2026-01-01T00:00:00+00:00",
+        "sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+        "url": "https://example.com", "content_type": "text/html",
+        "status": 200, "http_pages": 1,
+    }

@@ -457,6 +457,7 @@ def probe_embedded_json(
     *,
     url: str,
     hints: dict | None,
+    prefetched_body: str | None = None,
 ) -> ProbeResult:
     """Extract embedded JSON from a page using stdlib regex selectors.
 
@@ -464,6 +465,11 @@ def probe_embedded_json(
     - script_id: matches <script id="X">...</script>
     - script_var_name: matches var X = {...};
     - key_path: dotted-key walk (e.g. 'props.pageProps.exhibitors')
+
+    ``prefetched_body``: when the caller already has the landing HTML (the acquire
+    ladder fetches the landing page exactly once and shares it), pass it here to
+    skip the re-fetch. Safety gates still run on ``url``; only the network read is
+    elided.
     """
     from pydantic import ValidationError
 
@@ -496,13 +502,17 @@ def probe_embedded_json(
             retryable=False,
         )
 
-    # 3. Fetch the page.
-    resp = _raw_fetch.fetch_raw(url, method="GET")
-    should_proceed, err_or_warn = _status_map.map_http_response(resp, landing_url=url)
-    if not should_proceed:
-        raise err_or_warn  # type: ignore[misc]
-
-    html = resp.body
+    # 3. Use the shared landing body if provided, else fetch the page once.
+    if prefetched_body is not None:
+        html = prefetched_body
+        resp_status = 200
+    else:
+        resp = _raw_fetch.fetch_raw(url, method="GET")
+        should_proceed, err_or_warn = _status_map.map_http_response(resp, landing_url=url)
+        if not should_proceed:
+            raise err_or_warn  # type: ignore[misc]
+        html = resp.body
+        resp_status = resp.status
     selectors = validated_hints.embedded_json_selectors
     if not selectors:
         raise MCPError(
@@ -556,7 +566,7 @@ def probe_embedded_json(
         # 7. Serialize the extracted data back to JSON text for the caller.
         extracted_text = json.dumps(data, ensure_ascii=False)
         attempt = ProbeAttempt(
-            url=url, method="GET", status=resp.status,
+            url=url, method="GET", status=resp_status,
             score=_response_looks_like_roster(extracted_text, "application/json", "en"),
         )
         return ProbeResult(
