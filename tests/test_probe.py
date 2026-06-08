@@ -485,3 +485,48 @@ def test_roster_validator_html_falls_back_to_keyword():
     """Non-JSON bodies still use the EN/KO keyword scorer."""
     html = "Exhibitor company booth participant stand\n" * 10
     assert _probe._response_looks_like_roster(html, "text/html") > 0.0
+
+
+# ===== C5: winner request provenance + redaction (review #3 / v2.1 §E·§F) =====
+
+
+def test_winner_preserves_scored_response_no_refetch():
+    """The winning candidate returns the body captured while scoring (POST +
+    params + Referer), and is NOT re-fetched with url+method only."""
+    hints = {
+        "candidate_endpoints": [
+            {"url": "https://example.com/api/x", "method": "POST",
+             "sample_params": {"page": "1"}, "rationale": ""}
+        ],
+        "embedded_json_selectors": [],
+        "operator_action": None,
+    }
+    body = _exhibitor_body()
+    calls = []
+
+    def counting(url, **kw):
+        calls.append((url, kw.get("method"), kw.get("data"), kw.get("headers")))
+        return _raw_ok(body, url="https://example.com/api/x")
+
+    with _patch_robots(), patch.object(_raw_fetch, "fetch_raw", side_effect=counting):
+        result = probe_endpoints(url="https://example.com", hints=hints)
+
+    assert result.winner is not None
+    assert result.body == body          # scored response preserved verbatim
+    assert len(calls) == 1              # NO winner re-fetch
+    spec = result.winner.request_spec
+    assert spec["method"] == "POST"
+    assert spec["data"] == {"page": "1"}
+    assert spec["referer"] == "https://example.com"
+
+
+def test_request_spec_redacts_sensitive_values():
+    """Token-like query/body keys are redacted in the provenance spec."""
+    spec = _probe._redacted_request_spec(
+        url="https://x/api", method="GET",
+        params={"page": "1", "api_token": "SECRET", "authKey": "xyz"},
+        data=None, referer="https://x",
+    )
+    assert spec["params"]["page"] == "1"
+    assert spec["params"]["api_token"] == "***REDACTED***"
+    assert spec["params"]["authKey"] == "***REDACTED***"

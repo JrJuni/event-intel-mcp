@@ -41,6 +41,35 @@ ALLOWED_METHODS = frozenset({"GET", "POST"})
 MIN_SCORE_DEFAULT = 0.5
 MAX_CANDIDATES = 5
 
+# Redaction (v2.1 §F): never persist token-like values in provenance / logs.
+_SENSITIVE_KEY_RE = re.compile(
+    r"token|key|secret|password|sig|signature|auth", re.IGNORECASE
+)
+_REDACTED = "***REDACTED***"
+
+
+def _redact_params(d: dict[str, str] | None) -> dict[str, str]:
+    if not d:
+        return {}
+    return {k: (_REDACTED if _SENSITIVE_KEY_RE.search(k) else v) for k, v in d.items()}
+
+
+def _redacted_request_spec(
+    *, url: str, method: str, params: dict | None, data: dict | None, referer: str
+) -> dict:
+    """Reproducible request shape with sensitive query/body values redacted.
+
+    Authorization / Cookie headers are never put here (only Referer is sent, and
+    it is the public landing URL, not a credential).
+    """
+    return {
+        "url": url,
+        "method": method,
+        "params": _redact_params(params),
+        "data": _redact_params(data),
+        "referer": referer,
+    }
+
 # Regex for embedded JSON extraction.
 _SCRIPT_ID_RE = re.compile(
     r'<script[^>]*\bid=["\']([^"\']+)["\'][^>]*>([\s\S]*?)</script>',
@@ -62,6 +91,9 @@ class ProbeAttempt:
     error_code: ErrorCode | None = None
     error_message: str | None = None
     warning: str | None = None
+    body: str | None = None               # scored response body (winner returned w/o re-fetch)
+    content_type: str | None = None
+    request_spec: dict | None = None      # redacted url/method/params/data/referer (provenance)
 
 
 @dataclass
@@ -375,23 +407,26 @@ def probe_endpoints(
         attempts.append(ProbeAttempt(
             url=cand.url, method=method, status=resp.status, score=score,
             warning=warning_msg,
+            body=resp.body,
+            content_type=resp.content_type,
+            request_spec=_redacted_request_spec(
+                url=cand.url, method=method,
+                params=params, data=post_data, referer=url,
+            ),
         ))
 
-    # 4. Pick winner.
+    # 4. Pick winner. Return the response captured while scoring — no re-fetch,
+    # so params/body/Referer of the winning request are not silently dropped
+    # (review #3). RequestSpec on the attempt preserves the request for
+    # pagination/provenance.
     scored = [a for a in attempts if a.score >= min_score]
     if scored:
         winner = max(scored, key=lambda a: a.score)
-        # Get the body for the winner.
-        winning_resp = _raw_fetch.fetch_raw(
-            winner.url,
-            method=winner.method,
-            allow_cross_origin=allow_cross_origin,
-        )
         return ProbeResult(
             winner=winner,
             attempts=attempts,
-            body=winning_resp.body,
-            content_type=winning_resp.content_type,
+            body=winner.body,
+            content_type=winner.content_type,
         )
 
     raise MCPError(
