@@ -318,6 +318,15 @@ def test_build_e2e_runs_full_pipeline_and_writes_artifacts(all_fakes, repo_root,
     assert "## Needs Review" in md
     # At least one exhibitor name surfaced.
     assert "Mobius" in md or "NeuroDrive" in md or "EdgeVision" in md
+    # CS1: run-summary emitted next to the reports, with run_id + fingerprint.
+    import json as _json
+    rs_path = Path(out["run_summary_path"])
+    assert rs_path.is_file() and rs_path.name == "run_summary.json"
+    rs_doc = _json.loads(rs_path.read_text(encoding="utf-8"))
+    assert rs_doc["run_id"] and rs_doc["run_fingerprint"]
+    assert rs_doc["target_mode"] == "customer"
+    assert rs_doc["scored"] == sum(v for k, v in counts.items() if k != "needs_review")
+    assert rs_doc["companies"] and "capability_fit" in rs_doc["companies"][0]["dimensions"]
 
 
 def test_build_skips_enrichment_when_disabled(all_fakes, repo_root):

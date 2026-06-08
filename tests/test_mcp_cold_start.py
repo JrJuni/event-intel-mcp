@@ -203,6 +203,7 @@ def test_events_modules_keep_module_top_cold(fresh_sys_modules):
     importlib.import_module("event_intel.events.source_capture")
     importlib.import_module("event_intel.events.extraction")
     importlib.import_module("event_intel.events.evidence")
+    importlib.import_module("event_intel.events.run_summary")
 
     leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
     assert not leaked, (
