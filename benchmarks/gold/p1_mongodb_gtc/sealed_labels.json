@@ -1,0 +1,273 @@
+{
+  "pair": "p1_mongodb_gtc",
+  "labels": {
+    "ClickHouse": "competitor",
+    "DigitalOcean": "bad_fit",
+    "Kentik": "bad_fit",
+    "CoreWeave": "bad_fit",
+    "Arize AI": "neutral",
+    "Browserbase": "neutral",
+    "PlanetScale": "competitor",
+    "MaxLinear": "bad_fit",
+    "Simplismart": "neutral",
+    "ElevenLabs": "target",
+    "CrewAI": "target",
+    "SambaNova Systems": "bad_fit",
+    "Lightning AI": "target",
+    "Nexla": "target",
+    "Anyscale": "target",
+    "Activeloop": "competitor",
+    "Protopia AI": "neutral",
+    "Workato": "neutral",
+    "Modal": "target",
+    "Together AI": "target"
+  },
+  "sha": "7f641c45ff1e8b4972268d4ec71ae1017ae5a9b610ccedd22888316a459b63bb",
+  "packet_sha": "680a1faec0d892bd2dc351d505fd2cf777018f0b46f6056bee02690530dbdb69",
+  "grades": {
+    "ClickHouse": "gold",
+    "DigitalOcean": "gold",
+    "Kentik": "gold",
+    "CoreWeave": "gold",
+    "Arize AI": "gold",
+    "Browserbase": "gold",
+    "PlanetScale": "gold",
+    "MaxLinear": "gold",
+    "Simplismart": "gold",
+    "ElevenLabs": "gold",
+    "CrewAI": "gold",
+    "SambaNova Systems": "gold",
+    "Lightning AI": "gold",
+    "Nexla": "gold",
+    "Anyscale": "gold",
+    "Activeloop": "gold",
+    "Protopia AI": "gold",
+    "Workato": "gold",
+    "Modal": "gold",
+    "Together AI": "gold"
+  },
+  "provenance": {
+    "ClickHouse": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "DigitalOcean": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "Kentik": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "CoreWeave": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "Arize AI": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://arize.com/partners/mongodb/"
+      ],
+      "refine_note": "MongoDB AI partner but complementary observability role, not a DB buyer"
+    },
+    "Browserbase": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "refine_note": "headless browser infra for AI agents; adjacent, no MongoDB buyer signal (rubric)"
+    },
+    "PlanetScale": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "MaxLinear": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "Simplismart": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "refine_note": "MLOps inference serving; adjacent infra (rubric)"
+    },
+    "ElevenLabs": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "CrewAI": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "SambaNova Systems": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "Lightning AI": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "Nexla": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "Anyscale": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.mongodb.com/developer/products/atlas/mongodb-atlas-with-anyscale/",
+        "https://www.anyscale.com/blog/reinventing-multi-modal-search-with-anyscale-and-mongodb"
+      ],
+      "refine_note": "MongoDB RAG/multimodal co-built; AI/ML compute platform (ideal customer)"
+    },
+    "Activeloop": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "Protopia AI": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "a02cdb479d0e8380c0670b4cd26e530ba28bf56146500ecd5aa252e907f1b605",
+        "prompt_sha": "",
+        "model_id": "claude-opus-4-8"
+      }
+    },
+    "Workato": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.workato.com/integrations/mongo"
+      ],
+      "refine_note": "iPaaS with MongoDB connector among 1200; generic automation, not a target DB-buyer segment"
+    },
+    "Modal": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://cloud.mongodb.com/ecosystem/modal"
+      ],
+      "refine_note": "MongoDB Partner Ecosystem; serverless apps for MongoDB data"
+    },
+    "Together AI": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.together.ai/blog/rag-tutorial-mongodb",
+        "https://www.mongodb.com/blog/post/together-ai-advancing-frontier-open-source-embeddings-inference-atlas"
+      ],
+      "refine_note": "MongoDB Atlas RAG integration partner; genAI/LLM infra (ideal customer)"
+    }
+  }
+}

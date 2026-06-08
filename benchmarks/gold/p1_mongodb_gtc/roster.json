@@ -1,0 +1,206 @@
+[
+  {
+    "roster_id": "gtc-001",
+    "canonical_name": "LlamaIndex",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-002",
+    "canonical_name": "CrewAI",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-003",
+    "canonical_name": "Together AI",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-004",
+    "canonical_name": "Baseten",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-005",
+    "canonical_name": "Anyscale",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-006",
+    "canonical_name": "Weights & Biases",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-007",
+    "canonical_name": "Arize AI",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-008",
+    "canonical_name": "Braintrust",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-009",
+    "canonical_name": "ElevenLabs",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-010",
+    "canonical_name": "Nexla",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-011",
+    "canonical_name": "Workato",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-012",
+    "canonical_name": "Lightning AI",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-013",
+    "canonical_name": "Modular",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-014",
+    "canonical_name": "Protopia AI",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-015",
+    "canonical_name": "OpenPipe",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-016",
+    "canonical_name": "Simplismart",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-017",
+    "canonical_name": "SambaNova Systems",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-018",
+    "canonical_name": "Modal",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-019",
+    "canonical_name": "Browserbase",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-020",
+    "canonical_name": "Docker",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-021",
+    "canonical_name": "Snowflake",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-022",
+    "canonical_name": "ClickHouse",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-023",
+    "canonical_name": "PlanetScale",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-024",
+    "canonical_name": "Vespa.ai",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-025",
+    "canonical_name": "Activeloop",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-026",
+    "canonical_name": "CoreWeave",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-027",
+    "canonical_name": "Crusoe",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-028",
+    "canonical_name": "DigitalOcean",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-029",
+    "canonical_name": "Cloudflare",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-030",
+    "canonical_name": "NetApp",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-031",
+    "canonical_name": "Supermicro",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-032",
+    "canonical_name": "MaxLinear",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-033",
+    "canonical_name": "Tailscale",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "gtc-034",
+    "canonical_name": "Kentik",
+    "aliases": [],
+    "label": null
+  }
+]

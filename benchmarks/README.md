@@ -4,14 +4,52 @@ Plan: `~/.claude/plans/y1a-benchmark-v2.md`. This directory holds the Y1A
 benchmark contract artifacts. It is **separate from the synthetic 9-cell eval**
 (`tests/fixtures/eval/`, which is scoring-only regression).
 
-## Layout
+## Layout (as implemented — CS1–L6)
+
+Per-pair **directories** of JSON (the YAML row schema below is the conceptual
+contract; the on-disk artifacts are `roster.json` + `sealed_labels.json`).
 
 ```
 benchmarks/
-  gold/<pair>.yaml      — gold labels (roster_id + canonical_name + aliases + label). COMMITTED.
-  sources/              — raw captured exhibitor HTML/CSV. GITIGNORED (may contain PII).
-  runs/<pair>/          — run_summary.* (reproducibility metadata). committed (sources excluded).
+  gold/<pair>/                — COMMITTED canonical artifacts only:
+    roster.json               — roster_id / canonical_name / aliases / label (names only, no PII)
+    sealed_labels.json        — frozen labels + per-label grade + provenance (silver|gold)
+    measure_no_enrich.json    — measure report vs the no-enrich run
+    measure_enriched.json     — measure report vs the Brave-enriched run
+  runs/<pair>/<run_id>/run_result.json   — immutable run record (names/scores/dims; no raw text). COMMITTED.
+  sources/                    — raw captured exhibitor HTML/CSV/JSON. GITIGNORED (may contain PII).
+  _raw/                       — raw LLM/Brave responses + intermediates. GITIGNORED.
+  _local/<pair>/              — GITIGNORED working artifacts: company_packet, labeling sheets/worksheets,
+                                drafts (drafted/crossed/refined/view/claude_labels), legacy/reference labels.
+  replay/<pair>/              — committed structure-preserving synthetic CI fixtures (CS5).
 ```
+
+**Commit rule**: only `roster` / `sealed_labels` / `measure_*` (per pair) + `run_result.json` are committed.
+Everything carrying raw exhibitor descriptions (sheets, worksheets, packets) or that is a regenerable
+intermediate (company_packet) stays under `_local/` (gitignored, incl. inside `gold/`).
+
+## Canonical gold & label grades
+
+`sealed_labels.json` carries a per-label **grade**: `silver` (single-vendor draft, DEV-only) or
+`gold` (independently adjudicated — cross-vendor agreement / search-refine / human). A **holdout** gate
+measures gold only; DEV measures allow silver.
+
+**GTC (`p1_mongodb_gtc`) canonical = the multi-vendor gold** (cross-vendor agreement + search-refine,
+20/20 gold, provenance per label). The independent human labels are kept at
+`_local/p1_mongodb_gtc/sealed_labels_human_reference.json`. The two disagreed on 3 of 20, all resolved
+by **search evidence** (so the multi-vendor set is the better-grounded canonical):
+
+| company | human | canonical | evidence |
+|---|---|---|---|
+| Anyscale | neutral | target | MongoDB Atlas RAG/multimodal partner (anyscale.com/blog, mongodb.com/developer) |
+| Modal | neutral | target | MongoDB Partner Ecosystem (cloud.mongodb.com/ecosystem/modal) |
+| DigitalOcean | neutral | bad_fit | pure IaaS / GPU droplets, no application data layer |
+
+> **Caveat (DEV-only):** GTC is DEV **calibration**, not a holdout gate. Measuring the engine against the
+> labeling system's own gold is mildly circular — acceptable here because (a) it's calibration and (b) the
+> 3 corrections are backed by independent web evidence. The competitor **holdout** (MongoDB × AI Expo Tokyo)
+> stays blind. `prompt_sha` is empty in cross-vendor provenance (not passed in this DEV run) — a recorded
+> DEV provenance limitation, not back-filled by guessing.
 
 ## PII policy
 
@@ -81,8 +119,9 @@ pathlib.Path("benchmarks/sources/hcr_2025.json").write_bytes(urllib.request.urlo
 PY
 ```
 Public exhibitor web is open until **2026-06-30** — keep the captured JSON.
-Shared by **P4 (Hyodol customer)** + **P7 (Hyodol partner)**, both HOLDOUT — do
-not inspect engine output before blind labeling.
+Used by **P4 (Hyodol customer)** — **now DEV** (labels were inspected this session,
+so it can't be a holdout; review R2-3). The competitor holdout is **MongoDB × AI
+Expo Tokyo**, kept blind until its one-shot holdout run.
 
 > **Product lesson:** the analyzer/probe must resolve `<base href>` and statically
 > scan a SPA's referenced JS bundles for endpoint literals (`axios.get`/`fetch`/

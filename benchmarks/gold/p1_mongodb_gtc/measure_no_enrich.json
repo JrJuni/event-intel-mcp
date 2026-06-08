@@ -1,0 +1,137 @@
+{
+  "pair": "p1_mongodb_gtc",
+  "run_id": "gtc2026-20260608054914-8515ecbf",
+  "run_fingerprint": "007eeb5471a3d53015a48ab0e7f01fa50337595f5341277042fe63b94babf315",
+  "target_mode": "customer",
+  "metrics": {
+    "extraction_coverage": {
+      "value": 1.0,
+      "status": "ok",
+      "n": 34
+    },
+    "mention_coverage": {
+      "value": 1.0,
+      "status": "ok",
+      "n": 34
+    },
+    "precision_at_10": {
+      "value": 0.4,
+      "status": "ok",
+      "n": 10
+    },
+    "end_to_end_competitor_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 3
+    },
+    "conditional_competitor_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 3
+    },
+    "competitor_extraction_coverage": {
+      "value": 1.0,
+      "status": "ok",
+      "n": 3
+    },
+    "end_to_end_bad_fit_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 5
+    },
+    "conditional_bad_fit_leakage_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 5
+    },
+    "bad_fit_extraction_coverage": {
+      "value": 1.0,
+      "status": "ok",
+      "n": 5
+    },
+    "evidence_precision": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "evidence_yield": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "auc": {
+      "value": 0.6857142857142857,
+      "status": "ok",
+      "n": 0
+    }
+  },
+  "gates": [
+    {
+      "name": "extraction_coverage",
+      "threshold": 0.8,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": true,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 1.0,
+      "status": "ok",
+      "n": 34
+    },
+    {
+      "name": "precision_at_10",
+      "threshold": 0.6,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.4,
+      "status": "ok",
+      "n": 10
+    },
+    {
+      "name": "conditional_competitor_leakage_rate",
+      "threshold": 0.1,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 3
+    },
+    {
+      "name": "conditional_bad_fit_leakage_rate",
+      "threshold": 0.05,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": true,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.0,
+      "status": "ok",
+      "n": 5
+    },
+    {
+      "name": "evidence_precision",
+      "threshold": 0.85,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  ],
+  "eligibility": "fail",
+  "passed": false
+}
