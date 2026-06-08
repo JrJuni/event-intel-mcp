@@ -169,3 +169,66 @@ def seal_evidence_verdicts(
     if bad:
         raise ValueError(f"invalid evidence verdicts {bad}; allowed {_EVIDENCE_VERDICTS}")
     return SealedVerdicts(pair=packet.pair, verdicts=list(verdicts), sha=_sha(verdicts))
+
+
+# ---------- JSON (de)serialization for the CLI artifacts (CS8) ----------
+
+
+def packet_to_dict(p: CompanyPacket) -> dict[str, Any]:
+    return {"pair": p.pair, "cohort": p.cohort, "seed": p.seed, "entries": list(p.entries)}
+
+
+def packet_from_dict(d: dict[str, Any]) -> CompanyPacket:
+    return CompanyPacket(
+        pair=d["pair"], cohort=d["cohort"], seed=int(d["seed"]), entries=list(d["entries"])
+    )
+
+
+def sealed_labels_to_dict(s: SealedLabels) -> dict[str, Any]:
+    return {"pair": s.pair, "labels": dict(s.labels), "sha": s.sha, "packet_sha": s.packet_sha}
+
+
+def sealed_labels_from_dict(d: dict[str, Any]) -> SealedLabels:
+    return SealedLabels(
+        pair=d["pair"], labels=dict(d["labels"]), sha=d["sha"], packet_sha=d["packet_sha"]
+    )
+
+
+def evidence_packet_to_dict(p: EvidencePacket) -> dict[str, Any]:
+    return {
+        "pair": p.pair,
+        "items": [
+            {
+                "company": it.company,
+                "credited_type": it.credited_type,
+                "snippet": it.snippet,
+                "url": it.url,
+                "published_at": it.published_at,
+            }
+            for it in p.items
+        ],
+    }
+
+
+def evidence_packet_from_dict(d: dict[str, Any]) -> EvidencePacket:
+    return EvidencePacket(
+        pair=d["pair"],
+        items=[
+            EvidenceItem(
+                company=it["company"],
+                credited_type=it["credited_type"],
+                snippet=it.get("snippet", ""),
+                url=it.get("url"),
+                published_at=it.get("published_at"),
+            )
+            for it in d.get("items", [])
+        ],
+    )
+
+
+def sealed_verdicts_to_dict(s: SealedVerdicts) -> dict[str, Any]:
+    return {"pair": s.pair, "verdicts": list(s.verdicts), "sha": s.sha}
+
+
+def sealed_verdicts_from_dict(d: dict[str, Any]) -> SealedVerdicts:
+    return SealedVerdicts(pair=d["pair"], verdicts=list(d["verdicts"]), sha=d["sha"])

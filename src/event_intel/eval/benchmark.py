@@ -18,6 +18,7 @@ regression-guarded by tests/test_mcp_cold_start.py.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -154,7 +155,49 @@ def run(
 def load_run_result(run_dir: str | Path) -> RunResult:
     """Reload a persisted run-result (the only run→measure handoff)."""
     record = json.loads((Path(run_dir) / "run_result.json").read_text(encoding="utf-8"))
-    return _run_result_from_payload(record["pair"], record["run_summary"])
+    rr = _run_result_from_payload(record["pair"], record["run_summary"])
+    rr.top10_evidence = list(record.get("top10_evidence", []))
+    return rr
+
+
+# ============================================================================
+# threshold manifest — frozen BEFORE any labels are seen (step 1)
+# ============================================================================
+
+
+def freeze_thresholds(
+    *,
+    gates: tuple[tuple[str, str, float], ...] = DEFAULT_GATES,
+    universe: dict[str, Any] | None = None,
+    now_iso: str,
+    path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Freeze the D6 gate thresholds + per-pair universe into an immutable manifest
+    (state machine step 1). The `sha` covers only the frozen content (gates +
+    universe), NOT `frozen_at`, so the freeze is provable and re-derivable. Writing
+    refuses to overwrite — a freeze happens once, before any label is seen.
+    """
+    content = {"gates": [list(g) for g in gates], "universe": universe or {}}
+    sha = hashlib.sha256(
+        json.dumps(content, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    manifest = {**content, "sha": sha, "frozen_at": now_iso}
+    if path is not None:
+        _atomic_write(
+            Path(path),
+            json.dumps(manifest, ensure_ascii=False, indent=2),
+            allow_overwrite=False,
+        )
+    return manifest
+
+
+def load_threshold_manifest(
+    path: str | Path,
+) -> tuple[tuple[tuple[str, str, float], ...], dict[str, Any]]:
+    """Load a frozen manifest → (gates tuple, full manifest dict)."""
+    m = json.loads(Path(path).read_text(encoding="utf-8"))
+    gates = tuple((g[0], g[1], float(g[2])) for g in m["gates"])
+    return gates, m
 
 
 # ============================================================================

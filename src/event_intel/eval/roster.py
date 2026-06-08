@@ -18,10 +18,12 @@ Pure stdlib (difflib / unicodedata / re) — import-cold.
 """
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
+from pathlib import Path
 from typing import Any
 
 from event_intel.eval import metrics as _metrics
@@ -103,6 +105,33 @@ def build_roster_from_records(
             label=(str(rec[label_key]) if label_key and rec.get(label_key) else None),
         ))
     return out
+
+
+def dump_roster(roster: list[RosterEntry]) -> list[dict[str, Any]]:
+    """Roster → JSON-able records (the CS8 CLI on-disk roster format)."""
+    return [
+        {
+            "roster_id": e.roster_id,
+            "canonical_name": e.canonical_name,
+            "aliases": list(e.aliases),
+            "label": e.label,
+        }
+        for e in roster
+    ]
+
+
+def load_roster(path: str | Path) -> list[RosterEntry]:
+    """Load a roster-shaped JSON file (list of dump_roster records)."""
+    records = json.loads(Path(path).read_text(encoding="utf-8"))
+    return [
+        RosterEntry(
+            roster_id=str(r["roster_id"]),
+            canonical_name=str(r["canonical_name"]),
+            aliases=list(r.get("aliases", [])),
+            label=r.get("label"),
+        )
+        for r in records
+    ]
 
 
 def _ratio(a: str, b: str) -> float:

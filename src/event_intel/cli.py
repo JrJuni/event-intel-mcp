@@ -325,6 +325,199 @@ def eval_matrix_cmd(
     _print_json({"ok": True, "cells": [c.as_dict() for c in cells]})
 
 
+benchmark_app = typer.Typer(
+    no_args_is_help=True,
+    help="Y1 real-data benchmark: gold-blind run → blind labels → measure (dev surface).",
+)
+app.add_typer(benchmark_app, name="benchmark")
+
+
+@benchmark_app.command("threshold-freeze")
+def benchmark_threshold_freeze_cmd(
+    out: str = typer.Option(..., "--out", "-o", help="Manifest path (refuses overwrite)."),
+    universe_file: str | None = typer.Option(
+        None, "--universe-file", help="JSON of per-pair universe (caps/subset). Optional."
+    ),
+) -> None:
+    """Freeze D6 gate thresholds + universe into an immutable manifest (step 1)."""
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    from event_intel.eval import benchmark as _bm
+
+    universe = json.loads(Path(universe_file).read_text(encoding="utf-8")) if universe_file else None
+    manifest = _bm.freeze_thresholds(
+        universe=universe, now_iso=datetime.now(UTC).isoformat(), path=out
+    )
+    _print_json({"ok": True, "manifest_path": out, "sha": manifest["sha"]})
+
+
+@benchmark_app.command("run")
+def benchmark_run_cmd(
+    pair: str = typer.Option(..., "--pair", help="Pair id (e.g. p4_hyodol_hcr)."),
+    runs_root: str = typer.Option("benchmarks/runs", "--runs-root", help="Root for run dirs."),
+    workspace: str = typer.Option("default", "--workspace", "-w"),
+    event_name: str = typer.Option(..., "--event-name"),
+    event_slug: str = typer.Option(..., "--event-slug"),
+    html_file: str | None = typer.Option(None, "--html-file"),
+    csv_file: str | None = typer.Option(None, "--csv-file"),
+    text_file: str | None = typer.Option(None, "--text-file"),
+    lang: str = typer.Option("en", "--lang"),
+    max_companies: int | None = typer.Option(None, "--max-companies"),
+    no_enrich: bool = typer.Option(False, "--no-enrich"),
+    no_rationale: bool = typer.Option(False, "--no-rationale"),
+    target_mode: str | None = typer.Option(None, "--target-mode"),
+) -> None:
+    """Hidden run (step 3): build the tier list, persist an immutable gold-blind
+    run-result. NO gold is read here — measure joins gold separately.
+    """
+    import json as _json
+    from pathlib import Path
+
+    from event_intel.eval import benchmark as _bm
+    from event_intel.tools.build_event_tier_list import build_event_tier_list
+
+    provided = [(k, v) for k, v in [("--html-file", html_file), ("--csv-file", csv_file), ("--text-file", text_file)] if v]
+    if len(provided) != 1:
+        typer.echo("Pick exactly one of --html-file / --csv-file / --text-file.", err=True)
+        raise typer.Exit(code=2)
+    flag, path = provided[0]
+    source_kind = {"--html-file": "html_file", "--csv-file": "csv_file", "--text-file": "text_file"}[flag]
+
+    result = build_event_tier_list(
+        workspace_id=workspace, event_name=event_name, event_slug=event_slug,
+        source_kind=source_kind, source_ref=path, lang=lang,
+        max_companies=max_companies, enrichment_enabled=not no_enrich,
+        run_rationale=not no_rationale, target_mode=target_mode,
+    )
+    if not result.get("ok") or not result.get("run_summary_path"):
+        _print_json(result)
+        raise typer.Exit(code=1)
+
+    payload = _json.loads(Path(result["run_summary_path"]).read_text(encoding="utf-8"))
+    run_dir = _bm.run(pair=pair, build_fn=lambda: payload, runs_root=runs_root)
+    _print_json({"ok": True, "run_dir": str(run_dir), "run_id": payload["run_id"]})
+
+
+@benchmark_app.command("company-packet")
+def benchmark_company_packet_cmd(
+    pair: str = typer.Option(..., "--pair"),
+    roster_file: str = typer.Option(..., "--roster", help="Roster JSON (eval.roster.dump_roster shape)."),
+    cohort: str = typer.Option("full", "--cohort", help="full | top10_decoy."),
+    out: str = typer.Option(..., "--out", "-o", help="Company packet JSON path."),
+    run_dir: str | None = typer.Option(None, "--run-dir", help="Run dir (required for top10_decoy)."),
+    decoy_count: int = typer.Option(10, "--decoy-count"),
+    seed: int = typer.Option(0, "--seed"),
+) -> None:
+    """Build the blind company packet (step 4) — names only, engine output hidden."""
+    from pathlib import Path
+
+    from event_intel.eval import benchmark as _bm
+    from event_intel.eval import blind as _blind
+    from event_intel.eval import roster as _roster
+
+    roster = _roster.load_roster(roster_file)
+    run_top10 = None
+    if cohort == _blind.TOP10_DECOY:
+        if not run_dir:
+            typer.echo("--run-dir is required for cohort top10_decoy.", err=True)
+            raise typer.Exit(code=2)
+        rr = _bm.load_run_result(run_dir)
+        ranked = sorted(rr.scored, key=lambda x: -x[1])[:10]
+        run_top10 = [n for n, _ in ranked]
+
+    packet = _blind.build_company_packet(
+        pair=pair, cohort=cohort, roster=roster,
+        run_top10_names=run_top10, decoy_count=decoy_count, seed=seed,
+    )
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(
+        json.dumps(_blind.packet_to_dict(packet), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    _print_json({"ok": True, "packet_path": out, "cohort": cohort, "entries": len(packet.entries)})
+
+
+@benchmark_app.command("evidence-packet")
+def benchmark_evidence_packet_cmd(
+    pair: str = typer.Option(..., "--pair"),
+    run_dir: str = typer.Option(..., "--run-dir", help="Run dir (provides top-10 evidence)."),
+    sealed_labels: str = typer.Option(..., "--sealed-labels", help="Sealed company labels JSON."),
+    out: str = typer.Option(..., "--out", "-o", help="Evidence packet JSON path."),
+) -> None:
+    """Build the evidence packet (step 7) — ONLY after company labels are sealed.
+
+    Refuses if --sealed-labels is missing/empty (R2-2: top-10 membership would
+    otherwise bias the company labels).
+    """
+    from pathlib import Path
+
+    from event_intel.eval import benchmark as _bm
+    from event_intel.eval import blind as _blind
+
+    sl_path = Path(sealed_labels)
+    sealed = (
+        _blind.sealed_labels_from_dict(json.loads(sl_path.read_text(encoding="utf-8")))
+        if sl_path.is_file()
+        else None
+    )
+    rr = _bm.load_run_result(run_dir)
+    # build_evidence_packet raises ValueError if sealed is None (order enforcement).
+    ev = _blind.build_evidence_packet(
+        pair=pair, top10_evidence=rr.top10_evidence, sealed_company_labels=sealed
+    )
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(
+        json.dumps(_blind.evidence_packet_to_dict(ev), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    _print_json({"ok": True, "evidence_packet_path": out, "items": len(ev.items)})
+
+
+@benchmark_app.command("measure")
+def benchmark_measure_cmd(
+    run_dir: str = typer.Option(..., "--run-dir"),
+    roster_file: str = typer.Option(..., "--roster"),
+    sealed_labels: str = typer.Option(..., "--sealed-labels"),
+    sealed_verdicts: str | None = typer.Option(None, "--sealed-verdicts"),
+    threshold_manifest: str | None = typer.Option(None, "--thresholds", help="Frozen manifest."),
+    target_mode: str = typer.Option("customer", "--target-mode"),
+    out: str | None = typer.Option(None, "--out", "-o", help="Write the report JSON here too."),
+) -> None:
+    """Reveal + join (step 9): run-result + sealed gold + match → metrics + gates."""
+    from pathlib import Path
+
+    from event_intel.eval import benchmark as _bm
+    from event_intel.eval import blind as _blind
+    from event_intel.eval import roster as _roster
+
+    rr = _bm.load_run_result(run_dir)
+    roster = _roster.load_roster(roster_file)
+    match = _roster.match_roster([n for n, _ in rr.scored], roster)
+    sl = _blind.sealed_labels_from_dict(
+        json.loads(Path(sealed_labels).read_text(encoding="utf-8"))
+    )
+    sv = None
+    if sealed_verdicts:
+        sv = _blind.sealed_verdicts_from_dict(
+            json.loads(Path(sealed_verdicts).read_text(encoding="utf-8"))
+        )
+    gates = None
+    if threshold_manifest:
+        gates, _ = _bm.load_threshold_manifest(threshold_manifest)
+
+    report = _bm.measure(
+        run_result=rr, roster=roster, match=match, sealed_labels=sl,
+        sealed_verdicts=sv, target_mode=target_mode, thresholds=gates,
+    )
+    payload = report.to_dict()
+    if out:
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
+        Path(out).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    _print_json({"ok": True, **payload})
+    raise typer.Exit(code=0 if report.passed() else 1)
+
+
 def main() -> None:
     """Module entrypoint for `python -m event_intel.cli`."""
     app()
