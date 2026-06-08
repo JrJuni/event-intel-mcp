@@ -338,6 +338,11 @@ def benchmark_threshold_freeze_cmd(
     universe_file: str | None = typer.Option(
         None, "--universe-file", help="JSON of per-pair universe (caps/subset). Optional."
     ),
+    gates_file: str | None = typer.Option(
+        None, "--gates-file",
+        help="JSON list of [name, dir, threshold, applicability] gates (incl. class-coverage). "
+             "Default = DEFAULT_GATES. Lets the holdout freeze a COMPLETE contract (review R1#3).",
+    ),
 ) -> None:
     """Freeze D6 gate thresholds + universe into an immutable manifest (step 1)."""
     from datetime import UTC, datetime
@@ -346,10 +351,16 @@ def benchmark_threshold_freeze_cmd(
     from event_intel.eval import benchmark as _bm
 
     universe = json.loads(Path(universe_file).read_text(encoding="utf-8")) if universe_file else None
+    gates = _bm.DEFAULT_GATES
+    if gates_file:
+        gates = tuple(tuple(g) for g in json.loads(Path(gates_file).read_text(encoding="utf-8")))
     manifest = _bm.freeze_thresholds(
-        universe=universe, now_iso=datetime.now(UTC).isoformat(), path=out
+        gates=gates, universe=universe, now_iso=datetime.now(UTC).isoformat(), path=out
     )
-    _print_json({"ok": True, "manifest_path": out, "sha": manifest["sha"]})
+    _print_json({
+        "ok": True, "manifest_path": out, "sha": manifest["sha"],
+        "gates": len(manifest["gates"]),
+    })
 
 
 @benchmark_app.command("run")
@@ -679,6 +690,44 @@ def benchmark_apply_refinements_cmd(
     Path(out).write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
     refined = sum(1 for r in merged if r.get("source") == "search_refine")
     _print_json({"ok": True, "sheet_path": out, "refined": refined})
+
+
+@benchmark_app.command("draft-labels")
+def benchmark_draft_labels_cmd(
+    sheet: str = typer.Option(..., "--sheet", help="Labeling sheet JSON (from labeling-sheet)."),
+    card: str = typer.Option(..., "--card", help="Capability card yaml (rubric/product header)."),
+    out: str = typer.Option(..., "--out", "-o", help="Drafted+flagged sheet JSON."),
+    lang: str = typer.Option("ko", "--lang"),
+    batch_size: int = typer.Option(30, "--batch-size"),
+    min_confidence: float = typer.Option(0.7, "--min-confidence", help="Below → flagged for refine."),
+) -> None:
+    """Stage A+B: GPT-OAuth single-vendor draft (silver) + flag gate-class/low-conf
+    rows for the gold refine. Uses the configured LLM provider (chatgpt_oauth).
+    """
+    from pathlib import Path
+
+    import yaml as _yaml
+
+    from event_intel.eval import label_draft as _draft
+    from event_intel.eval import labeling as _labeling
+    from event_intel.providers import llm as _llm
+    from event_intel.runtime.preflight import load_config
+
+    rows = json.loads(Path(sheet).read_text(encoding="utf-8"))
+    card_dict = _yaml.safe_load(Path(card).read_text(encoding="utf-8"))
+    header = _labeling.product_header_from_card(card_dict, lang=lang)
+    provider = _llm.make_llm_provider(load_config())
+    drafted = _draft.draft_labels(
+        sheet_rows=rows, product_header=header, llm_provider=provider,
+        batch_size=batch_size, lang=lang,
+    )
+    flagged = _labeling.flag_for_review(drafted, min_confidence=min_confidence)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(json.dumps(flagged, ensure_ascii=False, indent=2), encoding="utf-8")
+    silver = sum(1 for r in flagged if r.get("grade") == "silver")
+    needs = sum(1 for r in flagged if r.get("needs_review"))
+    _print_json({"ok": True, "sheet_path": out, "n": len(flagged),
+                 "silver_auto": silver, "needs_review": needs})
 
 
 @benchmark_app.command("label-stats")
