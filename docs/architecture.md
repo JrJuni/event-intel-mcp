@@ -5,18 +5,19 @@
 ```
    ┌──────────────────────────────────────────────────────────┐
    │  Claude Desktop  (primary surface)                       │
-   │     └─ 9 MCP tools:                                      │
+   │     └─ 10 MCP tools:                                     │
    │         check_runtime / draft_capability_cards /         │
    │         validate_capability_cards /                      │
    │         ingest_product_context / build_event_tier_list / │
    │         analyze_event_page / probe_exhibitor_endpoint /  │
-   │         acquire_exhibitor_source / draft_labels          │
+   │         acquire_exhibitor_source / draft_labels /        │
+   │         sync_product_sources                             │
    └──────────────────────────┬───────────────────────────────┘
                               │  stdio JSON-RPC
                               ▼
    ┌──────────────────────────────────────────────────────────┐
    │  event_intel.mcp_server (FastMCP)                        │
-   │     └─ 9 tool handlers ───→ envelope-wrapped responses   │
+   │     └─ 10 tool handlers ──→ envelope-wrapped responses   │
    └──────────────────────────┬───────────────────────────────┘
                               │
         ┌─────────────────────┼──────────────────────────┐

@@ -135,6 +135,7 @@ def test_sources_indexer_module_is_cold(fresh_sys_modules):
 
     importlib.import_module("event_intel.sources")
     importlib.import_module("event_intel.sources.indexer")
+    importlib.import_module("event_intel.tools.sync_product_sources")  # W2 tool
 
     leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
     assert not leaked, f"sources.indexer leaked heavy ML imports: {leaked}"

@@ -94,6 +94,27 @@ cd /c/Users/JuniBecky/Downloads/event-intel-mcp
 ~/miniconda3/envs/event-intel/python.exe -m event_intel.cli export-schema --format json
 ```
 
+### Source library (WSL — raw-source RAG for richer drafts + rationale)
+
+Drop product source docs (PDF / MD / TXT / CSV) under the workspace's
+`sources/` dir (`<workspace_root>/<ws>/sources/{product,company}/`), then sync
+them into the `product_sources_{ws}` collection. This collection is SEPARATE
+from the capability-card collection and is read only by drafting + S/A rationale
+— it never feeds a score.
+
+```bash
+# Incremental sync (re-runs only re-embed changed files; safe + idempotent)
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli sources sync --workspace default
+
+# Index only one subtree, or an arbitrary directory
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli sources sync -w default --kind product
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli sources sync -w default --source-dir /path/to/docs
+```
+
+The manifest lives at `~/.event-intel/source-index/{ws}/manifest.json` (per-file
+sha + chunk ids + a deterministic content fingerprint). A parse failure is
+reported as `partial` and leaves prior chunks intact.
+
 ---
 
 ## Event tier list pipeline
