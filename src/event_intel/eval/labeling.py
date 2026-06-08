@@ -269,10 +269,15 @@ def extract_sealed_inputs(
             continue
         labels[name] = val
         grades[name] = (row.get("grade") or GRADE_SILVER).strip()
-        provenance[name] = {
+        prov: dict[str, Any] = {
             "source": row.get("source"),
             "adjudicators": list(row.get("adjudicators", [])),
         }
+        # L3 audit trail, carried only when present.
+        for k in ("search_evidence", "independence", "refine_note"):
+            if row.get(k):
+                prov[k] = row[k]
+        provenance[name] = prov
     if bad:
         raise ValueError(f"invalid labels {bad}; allowed {LABEL_VALUES}")
     if require_all and blank:

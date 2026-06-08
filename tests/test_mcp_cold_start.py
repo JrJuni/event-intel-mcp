@@ -172,6 +172,7 @@ def test_eval_modules_keep_module_top_cold(fresh_sys_modules):
     importlib.import_module("event_intel.eval.replay")
     importlib.import_module("event_intel.eval.labeling")
     importlib.import_module("event_intel.eval.label_draft")
+    importlib.import_module("event_intel.eval.label_refine")
 
     leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
     assert not leaked, (
