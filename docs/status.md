@@ -6,7 +6,7 @@
 
 ## 진행 중
 
-- **Y1 라벨링 시스템 — 멀티벤더 gold 생산 (2026-06-08, plan `snoopy-weaving-robin.md` 상단 v3, branch `feat/y1-labeling-system`)**
+- **Y1 라벨링 시스템 — 멀티벤더 gold 생산 (2026-06-08, plan `snoopy-weaving-robin.md` 상단 v3, **L0–L6 전체 완료**, PR #29~#34)**
   - **계기.** Y1 측정 인프라(CS1–CS9)는 완성됐지만 진짜 병목은 **gold 라벨 생산**. 수작업 전수는 비현실적(HCR 296사), 사람 전수검수는 "순서만 바뀜". AI는 이 분류를 충분히 함 — GTC 20사에서 다른벤더 AI(Claude) vs 사람 **95% 일치, competitor 100% 일치** 실증. 목표=개별정확도가 아니라 **싸고 반복가능하고 감사가능한 멀티벤더 gold 생산 시스템**(엔진=GPT-OAuth ↔ 라벨러=Claude → blind-spot 독립성 + 비용차익 + 불일치=불확실 신호).
   - **설계.** plan v1→v3 (Codex blind review 2라운드, 11건 전부 HEAD 대조 후 수용). 핵심 교정: silver(단일벤더 자동채택)/gold(교차합의·검색·사람) 분리·holdout=gold만 / 미측정 required 게이트=ineligible(≠pass) / pair별 게이트 applicability / waived≠pass / 교차합의 독립성 증빙(SHA) / 데이터 위생. **R2-3: 이미 라벨 본 P4는 재freeze로 holdout 복구 불가 → P4=DEV 강등, 새 blind pair 사전지정.**
   - **아키텍처**: company-packet → **Draft(GPT-OAuth, silver)** → **Flag(competitor/bad_fit·저확신)** → **Refine(Claude+웹서치, gold)** → Seal(grade 보존) → measure(holdout=gold만). 검색은 MCP 서버 아닌 호스트(Claude app/agent)가.
@@ -15,9 +15,10 @@
   - ✅ **L2** (PR #30) — grade를 sheet→`SealedLabels`(행단위 grades/provenance)→measure까지 전달. flag_for_review(게이트클래스·저확신 플래그, 비플래그=silver 자동채택) + extract_sealed_inputs + **measure(holdout=True) silver 거부**.
   - ✅ **L3** (PR #31) — gold 승격: 교차벤더 합의(GPT∧Claude 일치=gold, **independent_input_sha로 GPT-blind 증명**, 불일치→플래그) + 검색 refine(apply_refinements, 플래그행만) + CLI(independent-view/cross-vendor/apply-refinements).
   - ✅ **L4** (PR #31) — `benchmark label-stats`: gold_rate/cross_agree_rate/flag_rate/flip_rate(gold 신뢰도 정량).
-  - ✅ **L5** (PR #32) — `benchmark draft-labels`(L1+L2 통합 CLI) + `threshold-freeze --gates-file`(완전 freeze) + **데이터 위생**(sheet/worksheet/ai_labels gitignore + `benchmarks/_local/`로 migration + git check-ignore 테스트). gold/엔 sealed_labels·roster·measure만 커밋.
-  - **남은 슬라이스**: L6(후속 `draft_labels` MCP 도구 — Claude Desktop이 초안+플래그 받아 자기 웹서치로 refine, inapp-parity #14). dev 파이프라인(L0–L5)은 완료.
-  - **사용자 결정 확정(2026-06-08)**: competitor holdout = **MongoDB × AI Expo Tokyo**(E5). 정식 holdout 절차 전까지 **blind 유지**(메모리 [[y1-competitor-holdout]]).
+  - ✅ **L5** (PR #32, docs #33) — `benchmark draft-labels`(L1+L2 통합 CLI) + `threshold-freeze --gates-file`(완전 freeze) + **데이터 위생**(sheet/worksheet/ai_labels gitignore + `benchmarks/_local/`로 migration + git check-ignore 테스트). gold/엔 sealed_labels·roster·measure만 커밋. commands.md에 benchmark CLI 카탈로그.
+  - ✅ **L6** (PR #34) — **`draft_labels` MCP 도구(9번째)**: Claude Desktop이 초안+플래그 받아 자기 웹서치로 refine(inapp-parity #14). 서버=silver 초안+플래그, 검색=호스트. surface 9 tools 갱신(CLAUDE.md/mcpb/architecture).
+  - **코드 페이즈 종료**: L0–L6 전부 머지. **MCP 도구 9개**(5 core + 3 acquisition + 1 labeling). **658 passed.** 남은 건 **데이터-ops뿐**(실 pair gold 생산 → measure; `docs/commands.md` "Y1 benchmark" 절).
+  - **사용자 결정 확정(2026-06-08)**: competitor holdout = **MongoDB × AI Expo Tokyo**(E5). 정식 holdout 절차 전까지 **blind 유지**(메모리 [[y1-competitor-holdout]]). 현 thresholds.json은 불완전 freeze라 정식 게이트 전 `threshold-freeze --gates-file` 재freeze 필요.
   - **기 생산물(로컬, `benchmarks/_local/`)**: GTC(P1) 사람 gold 20 + measure(P@10 0.3, no-enrich), HCR(P4→DEV) AI 라벨 296. 카드 3종 ingest + CS7 receipt(drift=match) 검증 완료.
 
 - **Y1 실데이터 벤치마크 — 코드 페이즈 완료 (2026-06-08, plan `y1-execution-v4.md` / 상위 `snoopy-weaving-robin.md`, branch `feat/y1-benchmark`)**
