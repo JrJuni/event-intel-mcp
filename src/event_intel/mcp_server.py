@@ -26,20 +26,7 @@ load_project_env()
 
 from mcp.server.fastmcp import FastMCP  # noqa: E402
 
-from event_intel.errors import ErrorCode, MCPError, Stage  # noqa: E402
-
 app = FastMCP("event-intel")
-
-
-def _not_implemented(tool_name: str) -> dict:
-    """S0 placeholder. Each tool replaces this stub in its dedicated stream."""
-    return MCPError(
-        error_code=ErrorCode.INTERNAL,
-        stage=Stage.PREFLIGHT,
-        message=f"{tool_name} is not implemented yet (S0 scaffold)",
-        hint="Implementation lands in a later stream — see plan v0.5",
-        retryable=False,
-    ).to_envelope()
 
 
 @app.tool()
