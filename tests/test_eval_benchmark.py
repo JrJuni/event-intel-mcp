@@ -1,0 +1,188 @@
+"""Y1 CS4 — benchmark run/measure split. Asserts the blind boundary is
+structural: `run` carries no gold and refuses gold-tainted payloads; `measure`
+is the only side that touches sealed gold, and the join is correct."""
+from __future__ import annotations
+
+import inspect
+import json
+
+import pytest
+
+from event_intel.eval import benchmark as B
+from event_intel.eval import blind as BL
+from event_intel.eval import roster as R
+
+# ---------- a small run-result payload (the engine's run_summary shape) ----------
+
+
+def _payload(run_id="p1-run-aaa", **over):
+    base = dict(
+        run_id=run_id,
+        run_fingerprint="fp-deadbeef",
+        companies=[
+            {"name": "ACME Robotics", "tier": "S", "final_score": 9.1},
+            {"name": "Globex", "tier": "A", "final_score": 7.4},
+            {"name": "Initech", "tier": "B", "final_score": 4.0},
+            {"name": "RivalCorp", "tier": "S", "final_score": 8.8},
+        ],
+    )
+    base.update(over)
+    return base
+
+
+_ROSTER = [
+    R.RosterEntry("r1", "ACME Robotics", label="target"),
+    R.RosterEntry("r2", "Globex", label="target"),
+    R.RosterEntry("r3", "Initech", label="bad_fit"),
+    R.RosterEntry("r4", "RivalCorp", label="competitor"),
+    R.RosterEntry("r5", "GhostCo", label="competitor"),  # un-extracted competitor
+]
+
+
+def _match():
+    return R.match_roster(["ACME Robotics", "Globex", "Initech", "RivalCorp"], _ROSTER)
+
+
+def _sealed(labels=None):
+    p = BL.build_company_packet(pair="p1", cohort=BL.FULL, roster=_ROSTER, seed=1)
+    return BL.seal_company_labels(p, labels or {})
+
+
+# ---------- run: structural gold-blindness ----------
+
+def test_run_signature_has_no_gold_parameter():
+    params = set(inspect.signature(B.run).parameters)
+    assert not (params & B._GOLD_KEYS)
+    assert "gold" not in params and "labels" not in params
+
+
+def test_run_refuses_gold_tainted_payload():
+    """If gold leaks into the run-result payload, run raises (boundary, R1#1)."""
+    def build_fn():
+        p = _payload()
+        p["labels"] = {"ACME Robotics": "target"}  # contamination
+        return p
+
+    with pytest.raises(ValueError, match="gold"):
+        B.run(pair="p1", build_fn=build_fn, runs_root="unused")
+
+
+def test_run_persists_immutable_blind_run_result(tmp_path):
+    run_dir = B.run(pair="p1", build_fn=_payload, runs_root=tmp_path)
+    rr_file = run_dir / "run_result.json"
+    assert rr_file.is_file()
+    record = json.loads(rr_file.read_text(encoding="utf-8"))
+    # no gold fields ever persisted
+    assert not (set(record) & B._GOLD_KEYS)
+    assert record["run_id"] == "p1-run-aaa"
+    # immutable: a second run into the same run_id dir refuses to overwrite
+    with pytest.raises(FileExistsError):
+        B.run(pair="p1", build_fn=_payload, runs_root=tmp_path)
+
+
+def test_run_then_load_round_trips(tmp_path):
+    run_dir = B.run(pair="p1", build_fn=_payload, runs_root=tmp_path)
+    rr = B.load_run_result(run_dir)
+    assert rr.run_id == "p1-run-aaa" and rr.run_fingerprint == "fp-deadbeef"
+    assert dict(rr.scored)["ACME Robotics"] == 9.1
+    assert rr.tiers["RivalCorp"] == "S"
+
+
+# ---------- measure: requires sealed gold ----------
+
+def test_measure_rejects_unsealed_labels():
+    rr = B._run_result_from_payload("p1", _payload())
+    with pytest.raises(TypeError, match="SEALED"):
+        B.measure(
+            run_result=rr, roster=_ROSTER, match=_match(),
+            sealed_labels={"ACME Robotics": "target"},  # raw dict, not sealed
+        )
+
+
+# ---------- measure: join correctness ----------
+
+def test_measure_join_projects_onto_roster_and_computes_metrics():
+    rr = B._run_result_from_payload("p1", _payload())
+    sealed = _sealed({
+        "ACME Robotics": "target", "Globex": "target",
+        "Initech": "bad_fit", "RivalCorp": "competitor", "GhostCo": "competitor",
+    })
+    rep = B.measure(
+        run_result=rr, roster=_ROSTER, match=_match(), sealed_labels=sealed,
+        target_mode="customer",
+    )
+    m = rep.metrics
+    # coverage: 4 of 5 roster materialized
+    assert m["extraction_coverage"].value == 4 / 5
+    # P@10: 2 targets in top-10 / 10 (fixed denom)
+    assert m["precision_at_10"].value == 2 / 10
+    # RivalCorp (competitor) leaked into S → end_to_end 1/2, conditional 1/1...
+    # but conditional needs min_n=5 scored competitors → insufficient_n here
+    assert m["end_to_end_competitor_selection_rate"].value == 1 / 2  # 1 leaked / 2 labeled
+    assert m["conditional_competitor_leakage_rate"].status == "insufficient_n"
+    # competitor extraction coverage: 1 scored / 2 labeled
+    assert m["competitor_extraction_coverage"].value == 1 / 2
+
+
+def test_measure_partner_mode_competitor_is_na():
+    rr = B._run_result_from_payload("p1", _payload())
+    sealed = _sealed({"RivalCorp": "competitor", "ACME Robotics": "target"})
+    rep = B.measure(
+        run_result=rr, roster=_ROSTER, match=_match(), sealed_labels=sealed,
+        target_mode="partner",
+    )
+    assert rep.metrics["conditional_competitor_leakage_rate"].status == "n/a"
+    assert rep.metrics["end_to_end_competitor_selection_rate"].status == "n/a"
+
+
+def test_measure_evidence_from_sealed_verdicts():
+    rr = B._run_result_from_payload("p1", _payload())
+    verdicts = BL.seal_evidence_verdicts(
+        BL.EvidencePacket(pair="p1", items=[]),
+        ["correct", "correct", "wrong-company"],
+    )
+    rep = B.measure(
+        run_result=rr, roster=_ROSTER, match=_match(), sealed_labels=_sealed(),
+        sealed_verdicts=verdicts,
+    )
+    # 3 items ≥ min_items → gated; 2/3 correct
+    assert rep.metrics["evidence_precision"].value == 2 / 3
+    assert rep.metrics["evidence_precision"].status == "ok"
+
+
+# ---------- gates ----------
+
+def test_gate_failure_when_coverage_below_threshold():
+    rr = B._run_result_from_payload("p1", _payload())
+    # only 1 of 5 extracted → coverage 0.2 < 0.80
+    match = R.match_roster(["ACME Robotics"], _ROSTER)
+    rep = B.measure(
+        run_result=rr, roster=_ROSTER, match=match,
+        sealed_labels=_sealed({"ACME Robotics": "target"}),
+    )
+    fails = {g.name for g in rep.gate_failures()}
+    assert "extraction_coverage" in fails
+    assert rep.passed() is False
+
+
+def test_gate_na_metric_is_not_a_failure():
+    """insufficient_n / N/A gate metrics report passed=None, never fail (Q1)."""
+    rr = B._run_result_from_payload("p1", _payload())
+    rep = B.measure(
+        run_result=rr, roster=_ROSTER, match=_match(),
+        sealed_labels=_sealed({"RivalCorp": "competitor"}),
+    )
+    g = {x.name: x for x in rep.gates}
+    # competitor conditional is insufficient_n here → not a failure
+    assert g["conditional_competitor_leakage_rate"].passed is None
+    assert g["conditional_competitor_leakage_rate"] not in rep.gate_failures()
+
+
+def test_measure_report_to_dict_serializes():
+    rr = B._run_result_from_payload("p1", _payload())
+    rep = B.measure(
+        run_result=rr, roster=_ROSTER, match=_match(), sealed_labels=_sealed(),
+    )
+    d = json.loads(json.dumps(rep.to_dict(), ensure_ascii=False))
+    assert d["pair"] == "p1" and "metrics" in d and "gates" in d
+    assert d["metrics"]["extraction_coverage"]["status"] == "ok"
