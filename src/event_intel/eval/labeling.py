@@ -25,6 +25,14 @@ _WS_RE = re.compile(r"\s+")
 LABEL_VALUES = ("target", "competitor", "bad_fit", "neutral")
 _OVERVIEW_MAX = 600
 
+# Label grade (L2 / review R2#1). silver = single-vendor auto-accepted draft (DEV
+# only); gold = independently adjudicated (cross-vendor agreement / search / human)
+# — the only grade a holdout gate accepts.
+GRADE_SILVER = "silver"
+GRADE_GOLD = "gold"
+# Classes that always get a second look even on a confident draft (gate-critical).
+DEFAULT_GATE_CLASSES = ("competitor", "bad_fit")
+
 
 def _clean(text: Any, *, limit: int = _OVERVIEW_MAX) -> str:
     """Collapse whitespace + trim. None/empty → '' (caller substitutes a notice)."""
@@ -197,3 +205,79 @@ def parse_filled_sheet(
             "fill every `label` or pass require_all=False"
         )
     return labels
+
+
+# ---------- L2: flag for refine + grade ----------
+
+
+def flag_for_review(
+    rows: list[dict[str, Any]],
+    *,
+    gate_classes: tuple[str, ...] = DEFAULT_GATE_CLASSES,
+    min_confidence: float = 0.7,
+) -> list[dict[str, Any]]:
+    """Decide which drafted rows need the gold refine step, and auto-accept the
+    rest as SILVER (review R1#1). A row is flagged if the draft already failed
+    (needs_review from L1), or its suggested label is gate-critical, or confidence
+    is below `min_confidence`. Flagged → final_label blank + grade blank (awaits
+    gold refine); not flagged → final_label = suggested_label, grade = silver.
+    Returns NEW row dicts.
+    """
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        row = dict(r)
+        sug = row.get("suggested_label", "")
+        conf = float(row.get("confidence", 0.0) or 0.0)
+        flagged = (
+            bool(row.get("needs_review", False))
+            or sug == ""
+            or sug in gate_classes
+            or conf < min_confidence
+        )
+        row["needs_review"] = flagged
+        if flagged:
+            row["final_label"] = ""   # awaits gold refine (L3)
+            row["grade"] = ""
+        else:
+            row["final_label"] = sug  # auto-accept the draft as silver
+            row["grade"] = GRADE_SILVER
+            row.setdefault("source", "gpt_draft")
+        out.append(row)
+    return out
+
+
+def extract_sealed_inputs(
+    sheet: list[dict[str, Any]], *, require_all: bool = True
+) -> tuple[dict[str, str], dict[str, str], dict[str, dict[str, Any]]]:
+    """Read a sheet (final_label > label > suggested_label) into the three maps
+    seal_company_labels consumes: labels, grades, provenance({source,adjudicators}).
+    Validates the vocab; refuses blanks unless require_all=False.
+    """
+    labels: dict[str, str] = {}
+    grades: dict[str, str] = {}
+    provenance: dict[str, dict[str, Any]] = {}
+    blank: list[str] = []
+    bad: list[tuple[str, str]] = []
+    for row in sheet:
+        name = row.get("name", "")
+        val = (row.get("final_label") or row.get("label") or row.get("suggested_label") or "").strip()
+        if not val:
+            blank.append(name)
+            continue
+        if val not in LABEL_VALUES:
+            bad.append((name, val))
+            continue
+        labels[name] = val
+        grades[name] = (row.get("grade") or GRADE_SILVER).strip()
+        provenance[name] = {
+            "source": row.get("source"),
+            "adjudicators": list(row.get("adjudicators", [])),
+        }
+    if bad:
+        raise ValueError(f"invalid labels {bad}; allowed {LABEL_VALUES}")
+    if require_all and blank:
+        raise ValueError(
+            f"{len(blank)} companies still unlabeled (e.g. {blank[:3]}); "
+            "fill every label or pass require_all=False"
+        )
+    return labels, grades, provenance
