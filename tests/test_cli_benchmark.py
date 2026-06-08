@@ -276,3 +276,60 @@ def test_cli_label_stats(tmp_path):
     res = runner.invoke(app, ["benchmark", "label-stats", "--sheet", sheet])
     assert res.exit_code == 0, res.stdout
     assert json.loads(res.stdout)["gold_rate"] == 0.5
+
+
+# ---------- L5 draft-labels CLI + gates-file + data hygiene ----------
+
+_CARD_MIN = (
+    "schema_version: 2\nproduct_name: TestDB\none_liner: a database\n"
+    "capabilities:\n  - name: vectors\n    keywords: [v]\n    buyer_pains: [p]\n    evidence_queries: [q]\n"
+    "ideal_customer:\n  industries: [saas]\n  company_signals: [s]\n"
+    "competitors:\n  - name: ClickHouse\nbad_fit:\n  - reason: gpu clouds\n"
+)
+
+
+def test_cli_draft_labels(tmp_path, monkeypatch):
+    sheet = _write(tmp_path / "sheet.json", [
+        {"index": 0, "name": "ClickHouse", "overview": "olap db", "url": None, "label": ""},
+        {"index": 1, "name": "Globex", "overview": "ai app", "url": None, "label": ""},
+    ])
+    card = tmp_path / "card.yaml"
+    card.write_text(_CARD_MIN, encoding="utf-8")
+
+    # monkeypatch the provider factory → FakeLLM returning canned drafts
+    from types import SimpleNamespace
+
+    import event_intel.providers.llm as _llm
+
+    class _Fake:
+        def chat_once(self, *, system, user, max_tokens, temperature):
+            txt = json.dumps([
+                {"name": "ClickHouse", "label": "competitor", "confidence": 0.95, "rationale": "db"},
+                {"name": "Globex", "label": "target", "confidence": 0.9, "rationale": "buyer"},
+            ])
+            return SimpleNamespace(text=txt, usage={}, model="fake", stop_reason="end_turn")
+
+    monkeypatch.setattr(_llm, "make_llm_provider", lambda *a, **k: _Fake())
+
+    out = tmp_path / "drafted.json"
+    res = runner.invoke(app, ["benchmark", "draft-labels", "--sheet", str(sheet),
+                              "--card", str(card), "--out", str(out), "--lang", "en"])
+    assert res.exit_code == 0, res.stdout
+    by = {r["name"]: r for r in json.loads(out.read_text(encoding="utf-8"))}
+    # ClickHouse is competitor (gate class) → flagged; Globex confident target → silver auto
+    assert by["ClickHouse"]["needs_review"] is True and by["ClickHouse"]["grade"] == ""
+    assert by["Globex"]["grade"] == "silver" and by["Globex"]["final_label"] == "target"
+
+
+def test_cli_threshold_freeze_with_gates_file(tmp_path):
+    gates = _write(tmp_path / "gates.json", [
+        ["extraction_coverage", ">=", 0.8, "required"],
+        ["competitor_extraction_coverage", ">=", 0.8, "optional"],
+    ])
+    out = tmp_path / "thr.json"
+    res = runner.invoke(app, ["benchmark", "threshold-freeze", "--out", str(out), "--gates-file", gates])
+    assert res.exit_code == 0, res.stdout
+    assert json.loads(res.stdout)["gates"] == 2
+    from event_intel.eval import benchmark as _bm
+    loaded, _ = _bm.load_threshold_manifest(out)
+    assert loaded[1] == ("competitor_extraction_coverage", ">=", 0.8, "optional")

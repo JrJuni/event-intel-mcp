@@ -4,8 +4,20 @@ sources/
 # raw LLM/Brave responses + intermediate run artifacts (copyright/PII) — CS5.
 # committed CI fixtures are structure-preserving synthetic, kept elsewhere.
 _raw/
+# working labeling artifacts (sheets/worksheets/drafts) carry raw exhibitor
+# descriptions (copyright) — local only, never committed (L5 / review R1#4·R2#6).
+_local/
 # keep gold labels (company names + labels only, no PII) and run summaries.
 !gold/
 !runs/
 !README.md
 !.gitignore
+# …but within gold/, the sheet/worksheet/draft artifacts still carry raw
+# descriptions — re-ignore them; only sealed_labels / roster / measure_report /
+# threshold manifests are committable.
+gold/**/labeling_sheet.json
+gold/**/worksheet.md
+gold/**/ai_labels.json
+gold/**/labels_TEMPLATE.json
+gold/**/drafted*.json
+gold/**/refined*.json
