@@ -43,6 +43,12 @@ sources_app = typer.Typer(
 )
 app.add_typer(sources_app, name="sources")
 
+storage_app = typer.Typer(
+    no_args_is_help=True,
+    help="Storage maintenance (migrate the legacy workspace tree to ~/EventIntel).",
+)
+app.add_typer(storage_app, name="storage")
+
 
 def _print_json(payload: dict) -> None:
     typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
@@ -184,6 +190,51 @@ def draft_cards_cmd(
         lang=lang,
         out_path=out,
     )
+    _print_json(result)
+    raise typer.Exit(code=0 if result.get("ok") else 1)
+
+
+@storage_app.command("migrate")
+def storage_migrate_cmd(
+    apply: bool = typer.Option(
+        False, "--apply", help="Execute the copy. Default (omit) = dry-run plan only."
+    ),
+    src: str | None = typer.Option(
+        None, "--src", help="Override source root (default: <repo>/outputs)."
+    ),
+    dst: str | None = typer.Option(
+        None, "--dst", help="Override destination root (default: ~/EventIntel)."
+    ),
+) -> None:
+    """Copy the legacy workspace tree to the new ~/EventIntel layout (WSL W5).
+
+    Non-destructive: copies are checksum-verified, the source is never deleted,
+    identical files are skipped, and conflicting files (same path, different
+    content) are reported and left untouched. Chroma / artifacts under
+    ~/.event-intel are NOT moved (data root unchanged) — no server shutdown.
+    """
+    from pathlib import Path
+
+    from event_intel.storage import migrate as _migrate
+
+    s, d = _migrate.default_migration_roots()
+    if src:
+        s = Path(src).expanduser()
+    if dst:
+        d = Path(dst).expanduser()
+
+    plan = _migrate.plan_migration(src_root=s, dst_root=d)
+    note = (
+        "Chroma & artifacts under ~/.event-intel are not moved (data root "
+        "unchanged); no server shutdown needed."
+    )
+    if not apply:
+        _print_json({"dry_run": True, "note": note, **plan.summary()})
+        raise typer.Exit(code=0)
+
+    result = _migrate.apply_migration(plan)
+    result["dry_run"] = False
+    result["note"] = note
     _print_json(result)
     raise typer.Exit(code=0 if result.get("ok") else 1)
 

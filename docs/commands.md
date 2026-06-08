@@ -128,6 +128,22 @@ reported as `partial` and leaves prior chunks intact.
     --workspace default --from-workspace --lang en
 ```
 
+### Storage migration (legacy <repo>/outputs → ~/EventIntel)
+
+W0 made `~/EventIntel` the new working-folder default; an existing checkout keeps
+using `<repo>/outputs` via a back-compat fallback until you migrate. Migration is
+non-destructive (checksum-verified copy, source never deleted, conflicts reported
+not overwritten). Chroma/artifacts under `~/.event-intel` are NOT moved.
+
+```bash
+# Dry-run (default): shows what would copy / skip / conflict
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli storage migrate
+# Execute
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli storage migrate --apply
+# check-runtime prints the resolved paths (where cards/sources/Chroma live + writability)
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli check-runtime --workspace default
+```
+
 ---
 
 ## Event tier list pipeline

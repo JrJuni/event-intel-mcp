@@ -37,6 +37,18 @@
       "default": "${HOME}/miniconda3/envs/event-intel/python.exe",
       "required": true
     },
+    "workspace_dir": {
+      "type": "string",
+      "title": "Working folder (cards, sources, reports)",
+      "description": "Absolute path to your working folder. Capability cards, the raw source library (sources/), and event tier-list reports live here. Leave blank to use ~/EventIntel. (A plain text path — manifest 0.2 has no folder picker; paste an absolute path.)",
+      "required": false
+    },
+    "data_dir": {
+      "type": "string",
+      "title": "Local data & RAG folder",
+      "description": "Absolute path to the machine-local data folder (Chroma vector store, artifacts, cache, source index). Leave blank to use ~/.event-intel. (Plain text path — paste an absolute path.)",
+      "required": false
+    },
     "brave_api_key": {
       "type": "string",
       "title": "Brave Search API key",
@@ -77,6 +89,8 @@
         "BRAVE_API_KEY": "${user_config.brave_api_key}",
         "EVENT_INTEL_USE_CHATGPT_OAUTH": "${user_config.use_chatgpt_oauth}",
         "EVENT_INTEL_WARM_ON_START": "${user_config.warm_on_start}",
+        "EVENT_INTEL_WORKSPACE_DIR": "${user_config.workspace_dir}",
+        "EVENT_INTEL_DATA_DIR": "${user_config.data_dir}",
         "PYTHONIOENCODING": "utf-8"
       }
     }
