@@ -62,6 +62,16 @@ Two flows. The **Product Context lifecycle** (step 1) runs once per product to t
    event-intel ingest --cards outputs/default/capability_cards.yaml --workspace default
    ```
 
+   *Optional — richer drafts from a source library:* drop product docs
+   (PDF / MD / TXT / CSV) under `<workspace>/sources/`, index them, then draft
+   from that grounded context. The raw source improves drafts + adds S/A
+   rationale provenance — it never affects a score.
+   ```powershell
+   event-intel sources sync --workspace default            # index sources/ → product_sources_{ws}
+   event-intel draft-cards --workspace default --from-workspace
+   event-intel ingest --cards ... --workspace default --sync-sources   # opt-in re-index on ingest
+   ```
+
 2. **Acquire Source (URL → artifact)**
    ```powershell
    event-intel acquire-source `
@@ -79,8 +89,26 @@ Two flows. The **Product Context lifecycle** (step 1) runs once per product to t
    ```
 
 4. **Inspect results**
-   - `outputs/default/sample_expo/tier_list.md` — human-readable
-   - `outputs/default/sample_expo/tier_list.yaml` — machine-readable
+   - `<workspace>/default/sample_expo/tier_list.md` — human-readable
+   - `<workspace>/default/sample_expo/tier_list.yaml` — machine-readable
+
+## Where things live (folders & migration)
+
+Two roots:
+
+- **Working folder** (cards, `sources/`, event reports). A fresh install uses **`~/EventIntel`**; an existing checkout keeps using **`<repo>/outputs`** (a transparent back-compat fallback) until you migrate.
+- **Local data folder** `~/.event-intel` (Chroma vector store, artifacts, cache, source index). Default unchanged.
+
+Resolution precedence per location: fine-grained env (`EVENT_INTEL_OUTPUT_DIR` / `_CHROMA_DIR` / `_ARTIFACTS_DIR`) → coarse env (`EVENT_INTEL_WORKSPACE_DIR` / `EVENT_INTEL_DATA_DIR`) → `config.paths.*` → built-in default. In the `.mcpb` install form, the **Working folder** / **Local data & RAG folder** fields set the coarse env vars (leave blank for the defaults). `event-intel check-runtime` prints the resolved `paths` so you can confirm where everything lands.
+
+To move an existing `<repo>/outputs` tree to `~/EventIntel` (non-destructive — copies are checksum-verified, the source is never deleted, conflicts are reported not overwritten):
+
+```powershell
+event-intel storage migrate            # dry-run: shows what would copy
+event-intel storage migrate --apply    # execute
+```
+
+Chroma & artifacts under `~/.event-intel` are not moved (data root unchanged), so no server shutdown is needed.
 
 ## Source Acquisition (Phase 18T)
 
@@ -180,16 +208,17 @@ Add to `claude_desktop_config.json`:
 
 Include `ANTHROPIC_API_KEY` only for the Anthropic path. Set `EVENT_INTEL_USE_CHATGPT_OAUTH=true` to opt into ChatGPT OAuth (then run `event-intel login-chatgpt` once); omit it otherwise.
 
-### The 8 tools
+### The 10 tools
 
 **Product Context lifecycle** — one-time per product:
 
 | Tool | Purpose |
 |---|---|
-| `check_runtime` | Verify bge-m3 cache / Chroma / API keys / product context. `warm_up: true` starts a *non-blocking* background model load (returns at once); `checks.warm_up.status` reports `not_started`/`warming`/`ready` — poll by calling again. |
-| `draft_capability_cards` | Draft a `capability_cards.yaml` from a source doc (md/txt/pdf) or inline text |
+| `check_runtime` | Verify bge-m3 cache / Chroma / API keys / product context. `warm_up: true` starts a *non-blocking* background model load (returns at once); `checks.warm_up.status` reports `not_started`/`warming`/`ready` — poll by calling again. The response always carries a `paths` block (where cards / sources / Chroma live + writability). |
+| `sync_product_sources` | Index a workspace's raw source library (PDF/MD/TXT/CSV) into `product_sources_{workspace_id}` for richer drafts + rationale provenance (never scored) |
+| `draft_capability_cards` | Draft a `capability_cards.yaml` from a source doc (md/txt/pdf), inline text, or the synced source library (`source_kind="workspace"`) |
 | `validate_capability_cards` | Validate a hand-edited `capability_cards.yaml` against the pydantic schema (v1) |
-| `ingest_product_context` | Embed validated cards via bge-m3 → Chroma `product_{workspace_id}` collection |
+| `ingest_product_context` | Embed validated cards via bge-m3 → Chroma `product_{workspace_id}` collection (opt-in `sync_sources` re-indexes the source library first) |
 
 **Event pipeline** — per exhibitor list:
 
@@ -199,6 +228,8 @@ Include `ANTHROPIC_API_KEY` only for the Anthropic path. Set `EVENT_INTEL_USE_CH
 | `probe_exhibitor_endpoint` | Deterministic HTTP probe of the analyzer's candidate endpoints (0 LLM) |
 | `acquire_exhibitor_source` | Orchestrate analyze → probe → fetch → artifact + manifest (URL → `source_ref`) |
 | `build_event_tier_list` | Run capture → extraction → enrichment → scoring → `tier_list.md` + `tier_list.yaml` |
+
+**Benchmark labeling** — `draft_labels` (multi-vendor gold-label production for accuracy measurement).
 
 In Claude Desktop you don't invoke these by hand — ask in natural language (e.g. *"analyze this exhibitor page: &lt;url&gt;"*, *"build a tier list from this CSV against my default workspace"*) and Claude calls the tools for you. The CLI commands below are the same code paths for terminal use.
 

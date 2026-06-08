@@ -120,6 +120,7 @@ def test_runtime_paths_module_is_cold(fresh_sys_modules):
         _purge(heavy)
 
     importlib.import_module("event_intel.runtime.paths")
+    importlib.import_module("event_intel.storage.migrate")  # W5 migration (stdlib)
 
     leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
     assert not leaked, f"runtime.paths leaked heavy ML imports: {leaked}"
