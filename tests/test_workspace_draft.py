@@ -215,12 +215,18 @@ def test_text_source_kind_unaffected(wired_draft, monkeypatch):
 # CLI flag plumbing
 # --------------------------------------------------------------------------- #
 def test_cli_draft_help_lists_from_workspace():
+    import re
+
     from typer.testing import CliRunner
 
     app = importlib.import_module("event_intel.cli").app
-    res = CliRunner().invoke(app, ["draft-cards", "--help"])
+    # Widen + de-color: rich wraps option names at the terminal width (80 on CI)
+    # and injects ANSI, which breaks a naive substring match. COLUMNS=200 keeps
+    # the flag on one line; strip ANSI before asserting.
+    res = CliRunner().invoke(app, ["draft-cards", "--help"], env={"COLUMNS": "200"})
     assert res.exit_code == 0
-    assert "--from-workspace" in res.output
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", res.output)
+    assert "from-workspace" in plain
 
 
 def test_cli_draft_from_workspace_conflicts_with_other_modes():
