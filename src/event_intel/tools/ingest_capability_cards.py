@@ -37,11 +37,17 @@ def ingest_product_context(
         if not cards_path:
             raise ValueError("cards_path is required")
 
+        # Load config once so the Chroma persist dir honors config.paths.chroma_dir
+        # (must match the dir build/preflight resolve, else the collection we write
+        # here lands somewhere build won't read from).
+        config = _preflight.load_config()
+
         # Lightweight preflight: bge-m3 cached + chroma writable + key + config.
         # NOT product_context (we're about to create it).
         _preflight.run_preflight(
             workspace_id,
             require_product_context=False,
+            config=config,
         )
 
         cards = _validator.load_and_validate(cards_path)
@@ -50,7 +56,7 @@ def ingest_product_context(
             cards=cards,
             workspace_id=workspace_id,
             embedding_provider=_embedding.BgeM3Provider(),
-            vectorstore_provider=_vectorstore.ChromaProvider(),
+            vectorstore_provider=_vectorstore.ChromaProvider(config=config),
         )
 
         # CS7: write the ingest receipt next to the cards it describes, so a later

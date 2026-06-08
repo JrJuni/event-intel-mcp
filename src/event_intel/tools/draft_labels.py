@@ -20,18 +20,14 @@ from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_excepti
 from event_intel.eval import label_draft as _label_draft
 from event_intel.eval import labeling as _labeling
 from event_intel.providers import llm as _llm
+from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
 from event_intel.storage.identifiers import sanitize_slug
 
 
 def _outputs_base() -> Path:
-    import os
-
-    base_env = os.environ.get("EVENT_INTEL_OUTPUT_DIR")
-    if base_env:
-        return Path(base_env).expanduser()
-    # src/event_intel/tools/draft_labels.py → parents[3] == <repo>
-    return Path(__file__).resolve().parents[3] / "outputs"
+    """Workspace root — delegated to the central resolver (see runtime.paths)."""
+    return _paths.resolve_paths().workspace_root
 
 
 def draft_labels(

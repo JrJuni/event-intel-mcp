@@ -6,6 +6,11 @@
 
 ## 진행 중
 
+- **Workspace & Source Library RAG (WSL) — 신규 제품 역량 (2026-06-08, plan `snoopy-weaving-robin.md` 상단 v0.2, W0–W5 순차)**
+  - **계기.** 사용자 작업폴더의 PDF/MD/TXT/CSV를 증분 인덱싱 → (a) 카드 초안을 raw source에서, (b) S/A rationale에 파일·페이지 출처. raw source는 **점수에 절대 미반영**(evidence-floor) — drafting·rationale 보조용. card collection(`product_{ws}`) ↔ raw source collection(`product_sources_{ws}`) 분리. Y1D(rerank)·holdout과 직교한 의식적 detour(= 카드/rationale 품질 개선이지 capability_fit 평탄 fix 아님).
+  - **설계.** Codex blind review(roadmap 5건 전부 HEAD 대조 후 수용): WSL을 로드맵 순서에 명시(bench 정리 후·holdout 전 DEV 품질개선) / holdout 전 `threshold-freeze --gates-file` 완전 재freeze=차단 hard-gate / Y2.0 target client matrix 선결 / run_summary에 source-manifest fingerprint / stale 로드맵 숫자 제거→status.md 단일출처.
+  - ✅ **W0 — `runtime/paths.py` ResolvedPaths + 경로 버그 2개 fix** (branch `feat/wsl-w0-resolved-paths`): 중앙 경로 resolver(stdlib·side-effect-free·cold-import). workspace_root(~/EventIntel, 기존 checkout은 `<repo>/outputs` back-compat fallback) ↔ data_root(`~/.event-intel`: chroma/artifacts/cache/resume/source-index). per-leaf 우선순위(세부 env→coarse env→config→default). 3개 ad-hoc resolver(_outputs_base/artifacts._base_dir/ChromaProvider) + draft_labels 전부 위임. **버그 fix (a)** draft_capability_cards cwd-상대 `outputs/`→workspace_dir, **(b)** ChromaProvider가 `config.paths.chroma_dir` 무시→honor(preflight이 요구하던 키). 신규 테스트 17건(우선순위 매트릭스·fallback·Windows 경로 공백/한글/OneDrive·cold guard·버그 회귀). **681 passed, ruff clean.**
+
 - **Y1 라벨링 시스템 — 멀티벤더 gold 생산 (2026-06-08, plan `snoopy-weaving-robin.md` 상단 v3, **L0–L6 전체 완료**, PR #29~#34)**
   - **계기.** Y1 측정 인프라(CS1–CS9)는 완성됐지만 진짜 병목은 **gold 라벨 생산**. 수작업 전수는 비현실적(HCR 296사), 사람 전수검수는 "순서만 바뀜". AI는 이 분류를 충분히 함 — GTC 20사에서 다른벤더 AI(Claude) vs 사람 **95% 일치, competitor 100% 일치** 실증. 목표=개별정확도가 아니라 **싸고 반복가능하고 감사가능한 멀티벤더 gold 생산 시스템**(엔진=GPT-OAuth ↔ 라벨러=Claude → blind-spot 독립성 + 비용차익 + 불일치=불확실 신호).
   - **설계.** plan v1→v3 (Codex blind review 2라운드, 11건 전부 HEAD 대조 후 수용). 핵심 교정: silver(단일벤더 자동채택)/gold(교차합의·검색·사람) 분리·holdout=gold만 / 미측정 required 게이트=ineligible(≠pass) / pair별 게이트 applicability / waived≠pass / 교차합의 독립성 증빙(SHA) / 데이터 위생. **R2-3: 이미 라벨 본 P4는 재freeze로 holdout 복구 불가 → P4=DEV 강등, 새 blind pair 사전지정.**

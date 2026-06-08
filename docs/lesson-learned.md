@@ -196,6 +196,21 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 ## Blind Review 판정 누적
 
+### WSL plan v0.2 + 로드맵 라운드 1 (Codex) — 2026-06-08
+
+리뷰 대상: Workspace & Source Library RAG plan v0.2 + 큰그림 로드맵. 5건 전부 HEAD 대조 후 처리.
+
+| # | 카테고리 | 판정 | 사유 |
+|---|---|---|---|
+| 1 | architecture | **refined** | WSL을 로드맵 순서에 명시(bench 정리 후·holdout 전 DEV 품질개선). **단 리뷰의 "capability_fit 평탄(Y1D) fix" 연결은 과장** → "카드초안/rationale 품질개선이지 capability_fit 직접 fix 아님"으로 정정 수용 |
+| 2 | corner-case | accepted | holdout 진입 전 `threshold-freeze --gates-file` 완전 재freeze를 **차단 hard-gate**로 격상(권장 순서 + Y1 Gate 양쪽). 불완전 thresholds로 holdout 측정 금지 |
+| 3 | documentation | accepted | 로드맵 Context의 stale 수치(도구 수·테스트 수·P@10) 제거 → "현황은 status.md 단일 출처"(R1#5 재적용) |
+| 4 | architecture | **deferred** | Y2.0에 target client matrix 선결 추가("Anthropic API 전제"는 잠정 가정). 비긴급 → Y2 착수 시 사용자 확정(Y2.0 결정으로 기록, 지금 미착수) |
+| 5 | corner-case | accepted | WSL W4 run_summary에 `source_index_fingerprint` 기록(이미 cards_fingerprint 있음) → "어떤 product+source 상태로 측정했나"가 재현성에 포함 |
+
+**메타**: roadmap 위생 + holdout hard-gate 중심. corner-case 2·architecture 2·doc 1, nit/style 0. #1의 Y1D 연결 과장만 정정, 나머지 정확. echo chamber 아님(신규 영역=배치순서·forward-requirement).
+**판정**: 라운드 1로 종료(skeptic 생략 — plan이 코드 아닌 로드맵 위생 수준, 신규 P1 없음). v0.2 재합성 후 사용자 승인 → W0 착수.
+
 ### Y1 실행 plan 라운드 1+2 (v1→v2) — 2026-06-08
 
 외부 AI: Codex. 측정 인프라 plan이라 "성능이 안 좋아져도 게이트가 통과하는" silent-validity 결함에 집중 요청.

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+
+from event_intel.runtime import paths as _paths
 
 
 class VectorStoreProvider(ABC):
@@ -63,13 +64,17 @@ class ChromaProvider(VectorStoreProvider):
     chromadb is imported lazily on first call.
     """
 
-    def __init__(self, *, persist_dir: str | Path | None = None) -> None:
-        self.persist_dir = Path(
-            persist_dir
-            or os.environ.get(
-                "EVENT_INTEL_CHROMA_DIR", Path.home() / ".event-intel" / "chroma"
-            )
-        )
+    def __init__(
+        self, *, persist_dir: str | Path | None = None, config: dict | None = None
+    ) -> None:
+        # Resolution order: explicit persist_dir > resolve_paths(config), where the
+        # resolver honors EVENT_INTEL_CHROMA_DIR (env), then config.paths.chroma_dir,
+        # then the ~/.event-intel/chroma default. This is the bug-(b) fix: previously
+        # config.paths.chroma_dir — a key preflight *requires* — was silently ignored.
+        if persist_dir is not None:
+            self.persist_dir = Path(persist_dir).expanduser()
+        else:
+            self.persist_dir = _paths.resolve_paths(config).chroma_dir
         self._client = None
 
     def _get_client(self) -> Any:

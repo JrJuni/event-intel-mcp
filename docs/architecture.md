@@ -215,6 +215,8 @@ No separate ML worker (unlike bd-coldcall-agent). The complexity wasn't justifie
 
 All Chroma collection names and filesystem paths pass through `storage/identifiers.py::sanitize_slug` (`^[a-zA-Z0-9_-]{1,64}$`). Invalid slugs return `INVALID_INPUT` envelope with `hint.suggested_slug`.
 
+**Path resolution is centralized in `runtime/paths.py::ResolvedPaths`** (W0). Two roots: the **workspace root** (user-facing cards / sources / event reports) and the **data root** (`~/.event-intel`: chroma / artifacts / cache / resume / source-index). Per-leaf precedence: fine-grained env (`EVENT_INTEL_OUTPUT_DIR`/`_ARTIFACTS_DIR`/`_CHROMA_DIR`) → coarse env (`EVENT_INTEL_WORKSPACE_DIR`/`_DATA_DIR`) → `config.paths.*` → built-in default. The workspace-root default is `~/EventIntel`, but an existing checkout (where `<repo>/outputs/` exists) transparently keeps using `<repo>/outputs` (back-compat fallback) until the W5 `storage migrate` step. The resolver is stdlib-only (cold-import safe) and side-effect-free. This closed two bugs: `draft_capability_cards` wrote to a cwd-relative `outputs/` (unwritable under the server's foreign cwd), and `ChromaProvider` ignored `config.paths.chroma_dir` despite preflight requiring it.
+
 ## Error model
 
 14 stable error_codes × 7 stages, defined in `event_intel/errors.py` (Phase 18T added 4 codes — `ACQUISITION_AMBIGUOUS`, `LOGIN_REQUIRED`, `OPERATOR_CAPTURE_REQUIRED`, `ROBOTS_DISALLOWED` — and 1 stage — `acquisition`). Every tool returns either `{"ok": True, ...}` or the `MCPError` envelope:
