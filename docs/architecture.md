@@ -30,13 +30,14 @@
         │                     │                          │
         └────┬────────────────┼──────────────────────────┘
              │                ▼
-             │       acquisition/ (Phase 18T)
-             │         ├ analyzer.py         — verdict + hints (1 Sonnet call)
-             │         ├ probe.py            — XHR / embedded_json probe
-             │         ├ acquire.py          — orchestrator (5 verdict branches)
+             │       acquisition/ (Phase 18T + ladder)
+             │         ├ analyzer.py         — analyze_response (verdict + hints,
+             │         │                        1 Sonnet call) + <base>/bundle discovery
+             │         ├ probe.py            — XHR / embedded_json probe + roster validator
+             │         ├ acquire.py          — orchestrator (strategy ladder + budget)
              │         ├ url_safety.py       — validate_url + host_relation
              │         ├ robots.py           — httpx-direct + status→policy
-             │         ├ raw_fetch.py        — shared UA, status=0 on transport fail
+             │         ├ raw_fetch.py        — shared UA, streaming byte cap, status=0
              │         └ http_status_map.py  — HTTP → MCPError envelope
              ▼
                      providers/ (ABC + default impl)
@@ -50,30 +51,61 @@
 
 The MCP surface (Claude Desktop stdio) is the day-to-day driver. A thin CLI (`event-intel`) re-uses the same tool handlers for smoke / debug. No FastAPI, no Web UI, no DB — artifacts under `outputs/{workspace_id}/{event_slug}/` are the durable record.
 
-## Source acquisition layer (Phase 18T)
+## Source acquisition layer (Phase 18T + agentic ladder)
+
+`acquire_exhibitor_source` no longer branches one-to-one on the analyzer verdict.
+The verdict is a **prior** that orders a fixed set of strategy rungs; every rung
+is reachable, evidence-gated, and budget-bounded, so a wrong prior still recovers.
 
 ```
 [URL]
-  │ analyze_event_page (1 Sonnet call + page fetch + regex pre-scan)
+  │ url_safety + robots (landing gates — fatal, never bypassed)
+  │ fetch landing ONCE (streaming byte cap) ── shared across all rungs
+  │ analyze_response(resp)  (1 Sonnet call; HTTP status mapped first →
+  │                          401/403/404/5xx/transport raises BEFORE the LLM)
   ▼
-verdict ∈ {static_html, xhr_endpoint, embedded_json, operator_capture_required, login_required}
-  │
-  │ if static_html         → fetch page → save as source.html
-  │ if xhr_endpoint        → probe_exhibitor_endpoint → winning candidate URL
-  │                          → fetch (max_pages=3 pagination) → save as source.html
-  │ if embedded_json       → extract via regex script_id/var_name + dotted key_path
-  │                          → save as source.txt (text_file source kind)
-  │ if operator_capture_required → return envelope with operator_action hint
-  │ if login_required      → return LOGIN_REQUIRED envelope
+verdict (prior) orders the rungs ─ same fixed set, never removed:
+  ├ static    — the already-fetched landing body, IF it scores as a roster
+  │             (an SPA shell scores below the floor → never a static success)
+  ├ embedded  — embedded-JSON selectors against the shared landing body
+  ├ xhr       — candidate endpoints from hints → probe_exhibitor_endpoint
+  ├ bundle    — endpoints discovered inside same-origin external <script src>
+  │             bundles, resolved against <base href> (the H.C.R. Vue-SPA case)
+  └ operator  — terminal: OPERATOR_CAPTURE_REQUIRED (or LOGIN_REQUIRED when the
+                prior was login_required)
   ▼
-~/.event-intel/artifacts/{workspace_id}/{event_slug}/source.{html,txt}
-                                                  + manifest.json (sha256 + verdict + meta)
+roster body → content-type-aware artifact:
+  JSON-shaped → source.json (text_file) ·  else → source.html (html_file)
+  ▼
+~/.event-intel/artifacts/{workspace_id}/{event_slug}/source.{html,json}
+        + manifest.json (sha256 + verdict + selected_rung + winning_request
+                         (redacted) + analysis_fp + config_fp + meta)
   │
   ▼
 (source_kind, source_ref) → build_event_tier_list
 ```
 
-Cache hit re-verifies sha256 from manifest. Corrupt artifact triggers refetch + warning. `EVENT_INTEL_ARTIFACTS_DIR` env override supported.
+**Budget (`AcquireBudget`).** One run enforces a per-response byte cap
+(`max_bytes_per_fetch`), a cumulative byte cap, a total HTTP-call cap, and a
+wall-clock deadline, reserving calls for the bundle rung (`reserved_calls_bundle_rung`)
+so a wrong prior can't starve it. Acquire-direct fetches (landing / bundle /
+pagination) are charged per-byte; probe rungs are gated by a pre-check and
+accounted in bulk (they fetch endpoints, not the landing, and the deadline still
+bounds them). All values live in the `acquisition:` block of `config/defaults.yaml`.
+
+**Determinism scope.** For a fixed stored analysis/hints + fixed HTTP responses,
+the internal ladder run is deterministic (the analyzer LLM and the host retry
+loop are not). The manifest records the inputs (`analysis_fp`, `config_fp`) and
+the winning request so a run is reproducible.
+
+**Roster validation** is language-neutral and structural for JSON (`probe.py`:
+bounded nested search for the largest list-of-dicts + a company-specific signal +
+a minimum unique-name count), keyword-based for HTML — so a JP/KO/EN roster is
+accepted while a product/staff/menu/config JSON is rejected.
+
+Cache hit re-verifies sha256 from manifest (0 fetch / 0 LLM). Corrupt artifact
+triggers refetch + warning. Pre-ladder manifests (no provenance fields) still load
+via `.get()` defaults. `EVENT_INTEL_ARTIFACTS_DIR` env override supported.
 
 ## Two-flow model
 
@@ -157,9 +189,10 @@ No separate ML worker (unlike bd-coldcall-agent). The complexity wasn't justifie
   cache/
     search/{ws}/{sha1(query+kind+lang)}.json  # per-call Brave response cache
   artifacts/
-    {workspace_id}/{event_slug}/     # Phase 18T acquisition output
-      source.html | source.txt       # captured page or extracted JSON
-      manifest.json                  # sha256 + verdict + meta + fetch timestamp
+    {workspace_id}/{event_slug}/     # acquisition ladder output
+      source.html | source.json      # captured page or extracted/probed JSON roster
+      manifest.json                  # sha256 + verdict + selected_rung +
+                                     # winning_request (redacted) + analysis_fp + config_fp
   resume/
     {workspace_id}.jsonl             # per-row enrichment resume artifact
   chatgpt_auth.json                  # ChatGPT OAuth tokens (refresh-rotated)

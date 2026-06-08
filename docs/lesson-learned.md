@@ -180,7 +180,73 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 ---
 
+## [2026-06-08] acquisition ladder e2e fixture의 JSON roster가 <1KB면 short-body operator heuristic에 먹힌다
+
+**Tried**: C7 ladder의 HCR e2e 테스트에서 bundle→endpoint가 반환하는 JP JSON roster fixture를 8개 회사(~300자)로 만들었다. 번들 discovery·구조 validator는 단독 호출에서 통과(score 0.608)했는데, **전체 acquire 경로에서는 ACQUISITION_AMBIGUOUS로 떨어지고 결국 operator로 종료**.
+
+**Result**: 실패. 원인은 `http_status_map.map_http_response`의 short-body 규칙: `200 + body < 1024 bytes + script/endpoint 힌트 없음 → OPERATOR_CAPTURE_REQUIRED`. JSON roster 본문에 `fetch(`/`axios`/`.json`/`api/` 같은 힌트 토큰이 없으니 inert shell로 오판 → probe가 should_proceed=False로 점수 0 → winner 없음. validator를 의심하느라 시간을 썼지만 validator는 정상이었고, 진짜 게이트는 그 **앞단의 status 매핑**이었다.
+
+**Lesson**:
+- **probe/acquire를 합성 fixture로 e2e 테스트할 때 응답 본문은 1KB를 넘겨라.** 실 HCR roster는 ~577KB라 현실에선 안 걸리지만, 작은 fixture는 short-body heuristic을 밟는다. (실데이터 크기를 fixture 주석에 명시해 의도를 남길 것.)
+- **단계별 단독 검증이 통과해도 파이프라인 e2e는 그 사이의 게이트(여기선 status 매핑)를 또 밟는다.** "validator 통과 = 경로 통과"가 아니다 — 실패를 만나면 의심을 한 모듈에 고정하지 말고 호출 순서상 **앞단부터** 확인.
+
+**Related**: `acquisition/http_status_map.py`(short-body 규칙), `tests/test_acquire.py::test_ladder_hcr_e2e_operator_prior_bundle_to_json`(fixture를 40개 회사로 상향 + 주석). C7 (commit 2411c2a).
+
+---
+
 ## Blind Review 판정 누적
+
+### Agentic Acquisition Ladder impl plan 라운드 1 (design v2→v2.1) — 2026-06-08
+
+| # | 카테고리 | 판정 | 사유 |
+|---|---|---|---|
+| 1 | architecture | accepted | analyze_page(analyzer.py:236)가 자체 fetch(273) → "landing 1회" 모순, budget/결정성 어긋남. v2.1 §A: `analyze_response` 분리 + landing 공유 |
+| 2 | corner-case | accepted | early-exit이 landing/파생후보 미구분 → 악성 bundle 하나가 전체 ladder 중단. v2.1 §B 오류 matrix(기존 probe candidate-local skip을 ladder로 일반화) |
+| 3 | corner-case | accepted | validator가 `{"products":[{"product_name"}]}`를 roster 오인. v2.1 §C: bounded nested + 회사-특정 신호 + negative 4종 |
+| 4 | corner-case | accepted | 총호출만 cap → 잘못된 prior가 예산 소진해 bundle rung 미도달. v2.1 §D: per-rung quota + bundle rung 최소예약 + cumulative byte |
+| + | corner-case | accepted | winner=채점 response 보존 확정(§E) + 민감값(Authorization/Cookie/token) redaction(§F) |
+
+**메타**: 8개 중 3 closed/4 partial/1 deferred로 정밀 진단 — 표면 동의가 아니라 "실행 계약 기준" 미충족분을 정확히 짚음. 전부 Factual 최상(analyzer.py:273 자체fetch·probe.py:222 candidate-local skip 확인). rejected 0. **2라운드 연속 코드기반 corner-case 우수** — 같은 외부 AI(Codex)지만 신규성 유지(design→impl로 대상 이동, 새 충돌면 발견). echo 신호 없음. **교훈**: 내 impl plan이 "landing 1회"를 적었지만 analyze_page 분리를 설계 안 해 실제론 2-fetch — *계약 문장과 실제 호출 경로의 정합*을 plan 단계에서 grep으로 검증했어야. 리뷰어 권고대로 full 재검토 없이 v2.1로 4건 closure 후 구현 진입.
+**Skeptic(7.5)**: 미실시(사용자가 closure 후 구현 지시 흐름).
+
+### Agentic Acquisition Ladder 18T 충돌 grep (impl 착수 직전) — 2026-06-08
+
+외부 AI가 18T 스냅샷/계약 충돌을 직접 grep. **새 P1 발견**: EN prompt:68-69 / KO prompt:67-68이 verdict로 hints를
+강제 비움(`verdict≠xhr→candidate_endpoints=[]` 등) → v2.1 "verdict는 prior, hints 독립"과 충돌. LLM이 operator
+오판 시 관찰 hint 폐기 = false-operator 그대로. **검증**: 프롬프트 실재 확인 → accept, v2.1 §G로 규칙 제거 + C3 반영.
+직접 깨지는 테스트(test_acquire.py:141/204/222/332 + `_patch_analyze`)는 §4b 전환 목록으로 커밋 매핑. **교훈**:
+설계 계약("hints 독립")이 *데이터가 아니라 프롬프트 규칙*에 박혀 있을 수 있다 — 코드뿐 아니라 prompt도 계약면. 이로써
+18T 충돌 closed, 추가 리뷰 없이 C1 진입 승인.
+
+### Agentic Acquisition Ladder design v1 라운드 1 — 2026-06-08
+
+| # | 카테고리 | 판정 | 사유 |
+|---|---|---|---|
+| 1 | corner-case | accepted | axios regex(analyzer.py:125)가 `_ajax/...` 상대URL 미탐 + 외부번들 미fetch **2겹**. v1이 외부번들만 짚고 regex 버그를 놓침 — 리뷰어가 한 겹 더 팜. v2 §5 |
+| 2 | corner-case | accepted | 키워드 scorer(probe.py:77)가 구조적 JSON roster 미탐(`company_name`→"company" 토큰 미스 확인). v2 §6 언어중립 structural validator |
+| 3 | corner-case | accepted | winner 재fetch(probe.py:267)가 params/body/Referer 유실. v2 §7 |
+| 4 | architecture | accepted(refine) | 결정성 주장 과대 → "저장 analysis/hints + HTTP fixture 내부 run만 결정적"으로 범위축소. v2 §10 |
+| 5 | corner-case | accepted | raw_fetch.py:119 전체 버퍼링 → 사후 길이검사는 cap 아님. v2 §9 streaming byte cap + 횟수/시간 budget + 재귀금지 |
+| 6 | architecture | accepted | 순서/early-exit 불명확 → v2 §4 per-verdict 순서표(고정 집합·budget) + §11 early-exit 계약 |
+| 7 | corner-case | accepted | acquire.py:215 xhr가 content-type 무관 html_file 오저장 → v2 §8 content-type 인지 artifact |
+| 8 | over-engineering | deferred | session_emul + in-rung LLM은 v1 over-harness(호출마다 새 client라 쿠키 미연속, HCR 불필요) → Deferred |
+
+**메타**: 8 findings 전부 Factual 최상(file:line 인용, grep 전수 검증 일치). rejected 0. **이 라운드가 본 phase 최고 품질** — 코드 직독 기반 corner-case 6 + architecture 2. echo 신호 없음(round 1). **교훈**: 외부 리뷰어가 내 design note(v1)보다 한 겹 더 깊은 버그(#1 regex 자체) 발견 — design note도 "주장이 HEAD 코드와 일치하는가"를 내가 먼저 grep으로 검증했어야. **핵심 재조정**: "더 시도하는 에이전트 < 발견을 언어·형식 무관 정확 검증" — validation correctness가 acquisition ladder의 본질.
+**Skeptic(7.5)**: round 1 + 사용자가 즉시 v2 지시 → 미실행.
+
+### Y1A Benchmark Contract plan v1 라운드 1 — 2026-06-07
+
+| # | 심각도 | Finding | 판정 |
+|---|---|---|---|
+| 1 | P1 | 대형 이벤트(300~550)에서 `max_companies:30`만 점수화하면 "전체 top-10"이 아님 | **accepted** — HEAD 대조 시 `max_chunks_per_event:12`(추출 cap)도 2겹임을 추가 발견. D2.1 benchmark universe(전수 override A / 사전고정 subset B + 예산) 신설 |
+| 2 | P1 | "출력 전 라벨" vs "엔진 top-10만 라벨" 모순, `rank`을 gold에 넣음 | **accepted** — D3 blind labeling protocol(freeze→run→blind packet→label→reveal), rank을 run-result로 이동 |
+| 3 | P1 | gold가 name-string only → JP 법인접두어·영문표기·공동부스 join 불안정 | **accepted** — D3.1 roster_id/canonical_name/aliases + 매칭 provenance 분리 |
+| 4 | P1 | 완전라벨 이벤트에 class 부재 시 leakage/AUC 미정의 | **accepted** — D4.1 사전 class 확인 + N/A 기록 + 대체규칙, partner target=mode-relative 정의 |
+| 5 | P2 | "spot-check" 임의성 → 0.85 재현 불가 | **accepted** — D5.1 고정 sampling(P6 전수/holdout seed≤30) + item verdict 4분류 + holdout≥1 측정 |
+| 6 | P2 | run-summary 재현 정보 부족 | **accepted** — §2b에 commit SHA·cards/source/config SHA-256·model ID·ref-timestamp·caps·mode·cache 추가 |
+| OH | — | contract-replay 8개 전부 불필요·holdout snapshot CI 금지 | **accepted** — §3 DEV static+xhr 1~2개로 한정, holdout 원본 CI fixture 금지 |
+
+**메타**: 6 findings(4 P1+2 P2)+over-harness 전부 HEAD 대조 후 accept, rejected 0. 닫힌 이전 피드백 6건(메트릭 적격성·통과기준 사전고정·replay/실모델 분리·관측성 선행·job deferred·문서중복)은 v1 유지. 리뷰어가 fresh-vendor skeptic 생략+반영 후 Y1A.0 착수 권고 → plan v2 합성. **교훈**: #1 검증 중 리뷰어가 짚은 `max_companies`보다 상위에 `max_chunks_per_event` 추출 cap이 먼저 후보를 자름을 실코드(`defaults.yaml` L7/L13)로 확인 — 외부 리뷰의 방향이 맞아도 **근본 원인은 HEAD에서 한 겹 더 파야** 정확.
 
 ### Phase 18U (스코어링 변별력) 라운드 1~3 — 2026-06-05
 

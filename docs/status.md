@@ -6,6 +6,20 @@
 
 ## 진행 중
 
+- **Agentic Acquisition Ladder — 무개입 source 수집 (2026-06-08, plan `agentic-acquisition-ladder-impl-v1.md`, branch `feat/acquisition-ladder`)**
+  - **계기.** Y1A 벤치마크용 H.C.R.(일본 B2G 케어로봇 전시회) 수집이 operator-capture(수동 Ctrl+S)로만 가능하다고 판정됐는데, UX가 나빴다. 실제로는 Vue SPA가 외부 `<script src>` 번들 안에서 `axios.get('_ajax/exhibitor/get_exhibitor_data/')`로 296사 JSON을 부르는 깨끗한 엔드포인트가 있었음 — `<base href>` 해석 누락 + analyzer가 inline script만 스캔 + regex가 document-relative URL을 거부해서 놓쳤던 것. → "AI 판단은 prior로만 쓰고, 결정적 ladder가 여러 전략을 예산 안에서 시도"하는 구조로 재설계.
+  - **설계.** design v1→v2→v2.1(blind review 2라운드 + 18T-conflict grep), impl plan C1–C7 슬라이스. LangGraph는 명시적으로 기각(재현성 — 제어흐름은 결정적, AI는 판단만).
+  - ✅ **C1 streaming byte cap** (`cf537f0`) — `raw_fetch`가 `client.stream()`+`iter_bytes()`로 진짜 대역폭 cap(사후 길이검사 아님). `RawResponse.truncated/byte_count`.
+  - ✅ **C2 endpoint regex** (`c066c2d`) — fetch/axios/$.get url 그룹이 document-relative 리터럴 허용(`_ajax/...`) + `_is_static_url_literal`(슬래시 필수·`${}`/concat 거부).
+  - ✅ **C4 언어중립 JSON roster validator** (`53be972`) — JSON은 구조(bounded nested DFS로 최대 list-of-dicts + 회사신호 키/필드 + 고유 회사명 수), HTML은 키워드. EN/KO/JP roster 통과 + product/staff/menu/config JSON 거부.
+  - ✅ **C5 winner provenance + redaction** (`5c06095`+`f850e13`) — 채점 response 보존(재fetch 제거), `RequestSpec`은 pagination/provenance 전용, token/key/secret/Authorization/Cookie redact. (cold-start fix: string-path patch.)
+  - ✅ **C6 content-type 인지 artifact** (`a23550c`) — JSON winner → `source.json`/`text_file`(본문 sniff 가드), else html_file.
+  - ✅ **C3 `<base>`+번들 discovery + analyze_response 분리** (`1e07826`) — `analyze_response(resp)` 분리(landing 1회 공유), `resolve_base_href`/`extract_script_srcs`/`discover_endpoints_from_bundles`(동일출처 1단계, 재귀 금지), prompt verdict-gated empty 규칙 제거(verdict 무관 hints 보고).
+  - ✅ **C7 ladder + budget + early-exit + manifest provenance** (`2411c2a`) — verdict switch → 고정 rung 집합(static/embedded/xhr/bundle/operator), verdict는 순서 prior. `AcquireBudget`(per-response/누적 byte cap + 호출 cap + monotonic deadline + bundle rung 예약). early-exit: landing 401/403/404/5xx만 fatal(LLM 전), 파생 실패는 skip. manifest에 selected_rung/winning_request(redacted)/analysis_fp/config_fp(`.get()` 하위호환). `acquisition:` config 블록 신설.
+  - **테스트**: **515 passed**, ruff clean. DoD e2e(operator-prior→bundle→JP JSON→source.json+provenance, landing 1회) green. SPA-shell-not-static / budget-deadline-blocks-bundle / operator-prior-doesn't-block-static / landing-401→LOGIN_REQUIRED / manifest backward-compat.
+  - **gotcha(lesson 기록)**: 합성 JSON roster fixture가 <1KB면 http_status_map의 short-body operator heuristic에 먹힘 — 실 HCR은 577KB라 무관하나 fixture는 1KB 초과 필요.
+  - **남은 것**: PR→main 머지 후 Y1A 재개(나머지 이벤트 수집→roster→gold label→ingest→측정).
+
 - **Phase 18W — 범용화 잔여 (2026-06-07, plan `phase-18w-p2.md`)**
   - ✅ **9-셀 full eval matrix** — 제품(DB/부품/B2B) × 행사(AI/제조/일반) 9셀 labeled fixture(`tests/fixtures/eval/*.yaml`). 단일 gold set 과적합 한계 보완 — 9셀 모두 AUC 1.0 / competitor leakage 0 / evidence-FP 0. parametrized 게이트 9셀 자동 커버. backlog #13에서 promote. (PR #17)
   - **P2 4건 — 정적 blind review 2라운드(14건, 전부 HEAD 대조 후 수용) 후 실행. 각 항목 CI 게이트 통과 머지.**
