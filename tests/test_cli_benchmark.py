@@ -160,3 +160,66 @@ def test_measure_joins_and_reports_gates(tmp_path):
     # all 3 roster materialized → coverage 1.0
     assert payload["metrics"]["extraction_coverage"]["value"] == 1.0
     assert "gates" in payload
+
+
+# ---------- CS9 labeling-sheet + seal-labels ----------
+
+_SOURCE_CSV = "name,description,url\nClickHouse,OLAP column store,https://clickhouse.com\nCoreWeave,GPU cloud,https://coreweave.com\nGlobex,nosql db,\n"
+_CARD_YAML = (
+    "schema_version: 2\nproduct_name: TestDB\none_liner: a database\n"
+    "capabilities:\n  - name: vectors\n    keywords: [v]\n    buyer_pains: [p]\n    evidence_queries: [q]\n"
+    "ideal_customer:\n  industries: [saas]\n  company_signals: [s]\n"
+    "competitors:\n  - name: ClickHouse\nbad_fit:\n  - reason: gpu clouds\n"
+)
+
+
+def test_labeling_sheet_and_seal_roundtrip(tmp_path):
+    # packet (full cohort over the 3 source companies)
+    roster = _write(tmp_path / "roster.json", [
+        {"roster_id": "r1", "canonical_name": "ClickHouse"},
+        {"roster_id": "r2", "canonical_name": "CoreWeave"},
+        {"roster_id": "r3", "canonical_name": "Globex"},
+    ])
+    packet = tmp_path / "packet.json"
+    runner.invoke(app, ["benchmark", "company-packet", "--pair", "p", "--roster", roster,
+                        "--cohort", "full", "--out", str(packet)])
+    src = tmp_path / "src.csv"
+    src.write_text(_SOURCE_CSV, encoding="utf-8")
+    card = tmp_path / "card.yaml"
+    card.write_text(_CARD_YAML, encoding="utf-8")
+    sheet = tmp_path / "sheet.json"
+    wmd = tmp_path / "work.md"
+
+    res = runner.invoke(app, [
+        "benchmark", "labeling-sheet", "--pair", "p", "--packet", str(packet),
+        "--source", str(src), "--source-format", "csv",
+        "--name-key", "name", "--overview-keys", "description", "--url-key", "url",
+        "--card", str(card), "--out-json", str(sheet), "--out-md", str(wmd),
+    ])
+    assert res.exit_code == 0, res.stdout
+    rows = json.loads(sheet.read_text(encoding="utf-8"))
+    assert len(rows) == 3 and all(r["label"] == "" for r in rows)
+    assert {r["name"]: r["overview"] for r in rows}["ClickHouse"] == "OLAP column store"
+    assert "TestDB" in wmd.read_text(encoding="utf-8")  # rubric header rendered
+
+    # fill labels and seal
+    for r in rows:
+        r["label"] = "competitor" if r["name"] == "ClickHouse" else "target"
+    sheet.write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
+    sealed = tmp_path / "sealed.json"
+    res2 = runner.invoke(app, ["benchmark", "seal-labels", "--sheet", str(sheet),
+                               "--packet", str(packet), "--out", str(sealed)])
+    assert res2.exit_code == 0, res2.stdout
+    sl = json.loads(sealed.read_text(encoding="utf-8"))
+    assert sl["labels"]["ClickHouse"] == "competitor" and sl["sha"]
+
+
+def test_seal_labels_rejects_partial_without_flag(tmp_path):
+    roster = _write(tmp_path / "roster.json", [{"roster_id": "r1", "canonical_name": "A"}])
+    packet = tmp_path / "packet.json"
+    runner.invoke(app, ["benchmark", "company-packet", "--pair", "p", "--roster", roster,
+                        "--cohort", "full", "--out", str(packet)])
+    sheet = _write(tmp_path / "sheet.json", [{"index": 0, "name": "A", "label": ""}])
+    res = runner.invoke(app, ["benchmark", "seal-labels", "--sheet", sheet,
+                              "--packet", str(packet), "--out", str(tmp_path / "s.json")])
+    assert res.exit_code != 0  # unlabeled row → error

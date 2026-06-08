@@ -518,6 +518,97 @@ def benchmark_measure_cmd(
     raise typer.Exit(code=0 if report.passed() else 1)
 
 
+@benchmark_app.command("labeling-sheet")
+def benchmark_labeling_sheet_cmd(
+    pair: str = typer.Option(..., "--pair"),
+    packet: str = typer.Option(..., "--packet", help="Company packet JSON (names only)."),
+    source: str = typer.Option(..., "--source", help="Raw event source (csv or json)."),
+    source_format: str = typer.Option("csv", "--source-format", help="csv | json."),
+    records_path: str = typer.Option(
+        "", "--records-path", help="For json: dotted key to the records list (e.g. company_data). Empty = top-level list."
+    ),
+    name_key: str = typer.Option("name", "--name-key"),
+    overview_keys: str = typer.Option("description", "--overview-keys", help="Comma-separated, tried in order."),
+    url_key: str | None = typer.Option(None, "--url-key"),
+    card: str | None = typer.Option(None, "--card", help="Capability card yaml for the rubric header."),
+    lang: str = typer.Option("ko", "--lang"),
+    out_json: str = typer.Option(..., "--out-json", help="Fillable sheet JSON (edit the `label` field)."),
+    out_md: str | None = typer.Option(None, "--out-md", help="Human-readable worksheet markdown."),
+) -> None:
+    """Build a fillable labeling sheet — packet names + NEUTRAL source overviews +
+    product rubric. No engine score/tier/rank is included (blindness preserved).
+    """
+    import csv as _csv
+    from pathlib import Path
+
+    import yaml as _yaml
+
+    from event_intel.eval import blind as _blind
+    from event_intel.eval import labeling as _labeling
+
+    # load raw source records
+    if source_format == "csv":
+        with open(source, encoding="utf-8") as f:
+            records = list(_csv.DictReader(f))
+    else:
+        data = json.loads(Path(source).read_text(encoding="utf-8"))
+        for key in (k for k in records_path.split(".") if k):
+            data = data[key]
+        records = data
+    ctx = _labeling.build_context_from_records(
+        records, name_key=name_key,
+        overview_keys=tuple(k.strip() for k in overview_keys.split(",") if k.strip()),
+        url_key=url_key,
+    )
+
+    pkt = _blind.packet_from_dict(json.loads(Path(packet).read_text(encoding="utf-8")))
+    sheet = _labeling.build_labeling_sheet(pkt.entries, ctx)
+
+    Path(out_json).parent.mkdir(parents=True, exist_ok=True)
+    Path(out_json).write_text(json.dumps(sheet, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    covered = sum(1 for r in sheet if r["overview"])
+    if out_md:
+        header = ""
+        if card:
+            card_dict = _yaml.safe_load(Path(card).read_text(encoding="utf-8"))
+            header = _labeling.product_header_from_card(card_dict, lang=lang)
+        md = _labeling.render_worksheet_md(
+            pair=pair, product_header=header, sheet=sheet, lang=lang
+        )
+        Path(out_md).write_text(md, encoding="utf-8")
+
+    _print_json({
+        "ok": True, "sheet_path": out_json, "worksheet_path": out_md,
+        "companies": len(sheet), "with_overview": covered,
+    })
+
+
+@benchmark_app.command("seal-labels")
+def benchmark_seal_labels_cmd(
+    sheet: str = typer.Option(..., "--sheet", help="Filled labeling sheet JSON."),
+    packet: str = typer.Option(..., "--packet", help="The company packet the sheet was built from."),
+    out: str = typer.Option(..., "--out", "-o", help="Sealed labels JSON path."),
+    allow_partial: bool = typer.Option(False, "--allow-partial", help="Permit unlabeled rows."),
+) -> None:
+    """Seal a filled labeling sheet into sealed company labels (state machine step 5)."""
+    from pathlib import Path
+
+    from event_intel.eval import blind as _blind
+    from event_intel.eval import labeling as _labeling
+
+    rows = json.loads(Path(sheet).read_text(encoding="utf-8"))
+    labels = _labeling.parse_filled_sheet(rows, require_all=not allow_partial)
+    pkt = _blind.packet_from_dict(json.loads(Path(packet).read_text(encoding="utf-8")))
+    sealed = _blind.seal_company_labels(pkt, labels)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(
+        json.dumps(_blind.sealed_labels_to_dict(sealed), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    _print_json({"ok": True, "sealed_labels_path": out, "labeled": len(labels), "sha": sealed.sha})
+
+
 def main() -> None:
     """Module entrypoint for `python -m event_intel.cli`."""
     app()
