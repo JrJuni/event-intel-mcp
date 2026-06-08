@@ -167,3 +167,52 @@ def gather_workspace_source_text(
         "truncated": truncated,
     }
     return blob, meta
+
+
+def gather_exhibitor_provenance(
+    *,
+    items: list[tuple[str, str]],
+    workspace_id: str,
+    embedding_provider: EmbeddingProvider,
+    vectorstore_provider: VectorStoreProvider,
+    top_k: int = 3,
+    snippet_chars: int = 240,
+) -> dict[str, list[dict]]:
+    """Per-exhibitor raw-source grounding for the tier-list report (WSL W4).
+
+    ``items`` is a list of ``(exhibitor_name, query_text)``. Returns
+    ``{name: [{source_path, locator, snippet}]}`` (top ``top_k`` chunks each).
+
+    Graceful by design — this is RATIONALE-ONLY and must never fail a build: an
+    empty/missing collection or any error yields ``{}`` (the report then simply
+    carries no provenance, falling back to the card-based rationale). It reads
+    ``product_sources_{ws}`` and never touches any scoring input.
+    """
+    if not items:
+        return {}
+    collection = source_collection_name(workspace_id)
+    names = [n for n, _ in items]
+    qtexts = [q for _, q in items]
+    embeddings = embedding_provider.embed(qtexts)
+    if len(embeddings) != len(qtexts):
+        return {}
+    batch = vectorstore_provider.query(
+        collection=collection, query_embeddings=embeddings, top_k=top_k
+    )
+    out: dict[str, list[dict]] = {}
+    for name, hits in zip(names, batch, strict=False):
+        prov: list[dict] = []
+        for h in hits:
+            md = h.get("metadata") or {}
+            text = (h.get("document") or "").strip()
+            snippet = " ".join(text.split())[:snippet_chars]
+            prov.append(
+                {
+                    "source_path": md.get("source_path", "?"),
+                    "locator": _provenance_label(md),
+                    "snippet": snippet,
+                }
+            )
+        if prov:
+            out[name] = prov
+    return out

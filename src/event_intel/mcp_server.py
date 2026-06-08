@@ -90,8 +90,15 @@ def ingest_product_context(
     workspace_id: str = "default",
     cards_path: str = "",
     extra_source_paths: list[str] | None = None,
+    sync_sources: bool = False,
+    force_source_sync: bool = False,
 ) -> dict:
-    """Ingest validated capability cards into the Product Context mini-RAG (S2)."""
+    """Ingest validated capability cards into the Product Context mini-RAG (S2).
+
+    Set sync_sources=true to also index the workspace source library into
+    product_sources_{workspace_id} first (WSL W4); a partial source sync aborts
+    before the card collection is touched.
+    """
     from event_intel.tools.ingest_capability_cards import (
         ingest_product_context as _impl,
     )
@@ -100,6 +107,8 @@ def ingest_product_context(
         workspace_id=workspace_id,
         cards_path=cards_path,
         extra_source_paths=extra_source_paths,
+        sync_sources=sync_sources,
+        force_source_sync=force_source_sync,
     )
 
 

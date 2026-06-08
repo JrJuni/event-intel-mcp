@@ -146,6 +146,12 @@ class RunSummary:
     companies: list[CompanyScore] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     pair: str | None = None
+    # WSL W4: content_fingerprint of the product_sources_{ws} manifest the build
+    # had available, so a measurement records WHICH product+source state it ran
+    # against. None when no source library was synced. Recorded for reproducibility
+    # only — deliberately NOT folded into run_fingerprint (that would churn the
+    # committed baselines; sources don't affect scores, only drafting/rationale).
+    source_index_fingerprint: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

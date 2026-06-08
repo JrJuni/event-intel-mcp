@@ -324,13 +324,15 @@ def sync_sources(
     max_chars: int = _DEFAULT_MAX_CHARS,
     overlap: int = _DEFAULT_OVERLAP,
     limits: SourceLimits | None = None,
+    force: bool = False,
 ) -> dict:
     """Incrementally index ``sources_dir`` into ``product_sources_{workspace_id}``.
 
     Returns a summary dict (never raises for per-file problems — those land in
     ``failed_files`` / ``warnings`` with ``partial=True``). ``now_iso`` is the
     instance timestamp written to the manifest; it is NOT part of the content
-    fingerprint (CS7 receipt-vs-fingerprint split).
+    fingerprint (CS7 receipt-vs-fingerprint split). ``force=True`` ignores the
+    prior manifest so every file is re-parsed + re-embedded (full re-index).
     """
     sources_dir = Path(sources_dir).expanduser()
     limits = limits or SourceLimits()
@@ -341,9 +343,12 @@ def sync_sources(
     pipeline_fp = _pipeline_fingerprint(model_id, max_chars, overlap)
 
     prev = read_manifest(manifest_path) or {}
-    # A pipeline change invalidates every cached file → re-index all.
+    # A pipeline change (or an explicit force) invalidates every cached file →
+    # re-index all.
     prev_files: dict[str, dict] = (
-        prev.get("files", {}) if prev.get("pipeline_fingerprint") == pipeline_fp else {}
+        prev.get("files", {})
+        if not force and prev.get("pipeline_fingerprint") == pipeline_fp
+        else {}
     )
 
     discovered, warnings = _discover(sources_dir, limits)

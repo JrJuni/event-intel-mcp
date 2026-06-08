@@ -204,11 +204,24 @@ def validate_cmd(
 def ingest_cmd(
     cards: str = typer.Option(..., "--cards", "-c", help="Path to capability_cards.yaml."),
     workspace: str = typer.Option("default", "--workspace", "-w", help="Workspace ID."),
+    sync_sources: bool = typer.Option(
+        False,
+        "--sync-sources",
+        help="Also index the workspace source library (product_sources_{ws}) first (WSL).",
+    ),
+    force_source_sync: bool = typer.Option(
+        False, "--force-source-sync", help="Force a full source re-index (implies --sync-sources)."
+    ),
 ) -> None:
     """Embed + upsert cards into the product_{workspace} Chroma collection."""
     from event_intel.tools.ingest_capability_cards import ingest_product_context
 
-    result = ingest_product_context(workspace_id=workspace, cards_path=cards)
+    result = ingest_product_context(
+        workspace_id=workspace,
+        cards_path=cards,
+        sync_sources=sync_sources or force_source_sync,
+        force_source_sync=force_source_sync,
+    )
     _print_json(result)
     raise typer.Exit(code=0 if result.get("ok") else 1)
 
