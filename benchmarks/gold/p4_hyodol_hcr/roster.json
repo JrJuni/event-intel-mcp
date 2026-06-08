@@ -1,0 +1,2570 @@
+[
+  {
+    "roster_id": "450",
+    "canonical_name": "（有）貞苅椅子製作所",
+    "aliases": [
+      "sadakariisuseisakusho co.,LTD",
+      "サダカリイスセイサクショ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "452",
+    "canonical_name": "Sincare International（同）",
+    "aliases": [
+      "Sincare International Inc.",
+      "シンケアインターナショナル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "456",
+    "canonical_name": "AbleNet, Inc.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "457",
+    "canonical_name": "Guldmann GmbH",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "458",
+    "canonical_name": "Ayida (xiamen) P&C Technology Co.,Ltd.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "459",
+    "canonical_name": "BH MEDICAL PRODUCTS CO., LTD.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "460",
+    "canonical_name": "Shanghai Bangbang Robotics Co.,Ltd",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "467",
+    "canonical_name": "アース製薬（株）",
+    "aliases": [
+      "Earth Corporation",
+      "アースセイヤク"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "468",
+    "canonical_name": "アーバン警備保障（株）",
+    "aliases": [
+      "urbankeibi",
+      "アーバンケイビホショウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "469",
+    "canonical_name": "RT.ワークス（株）",
+    "aliases": [
+      "RT. WORKS CO., LTD.",
+      "アールティーワークス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "471",
+    "canonical_name": "（株）iSEED",
+    "aliases": [
+      "iSEED Co., LTD",
+      "アイシード"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "472",
+    "canonical_name": "アイホン（株）",
+    "aliases": [
+      "AIPHONE CO.,LTD.",
+      "アイホン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "475",
+    "canonical_name": "（株）あかね福祉",
+    "aliases": [
+      "Akane fukushi Co.,Ltd",
+      "アカネフクシ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "477",
+    "canonical_name": "アクセスエンジニアリング（株）",
+    "aliases": [
+      "Access Engineering Co., Ltd.",
+      "アクセスエンジニアリング"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "478",
+    "canonical_name": "朝日産業（株）",
+    "aliases": [
+      "ASAHI INDUSTRY CO.,LTD",
+      "アサヒサンギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "479",
+    "canonical_name": "（株）明日櫻",
+    "aliases": [
+      "Asusakura Co., Ltd",
+      "アスサクラ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "480",
+    "canonical_name": "（株）アズパートナーズ",
+    "aliases": [
+      "As-partners",
+      "アズパートナーズ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "481",
+    "canonical_name": "アズワン（株）",
+    "aliases": [
+      "AS ONE Corporation",
+      "アズワン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "483",
+    "canonical_name": "（株）アップイット",
+    "aliases": [
+      "UPIT.inc",
+      "アップイット"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "484",
+    "canonical_name": "アビリティーズ・ケアネット（株）",
+    "aliases": [
+      "Abilities Care-net, Inc.",
+      "アビリティーズケアネット"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "485",
+    "canonical_name": "（株）アマノ",
+    "aliases": [
+      "AMANO Co., Ltd.",
+      "アマノ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "487",
+    "canonical_name": "アルインコ（株）",
+    "aliases": [
+      "ALINCO INCORPORATED",
+      "アルインコ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "488",
+    "canonical_name": "（株）アルコ・イーエックス",
+    "aliases": [
+      "ALCO-EX CO., LTD.",
+      "アルコイーエックス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "489",
+    "canonical_name": "（株）アルバジャパン",
+    "aliases": [
+      "Alber Japan Co.,Ltd.",
+      "アルバジャパン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "490",
+    "canonical_name": "アルプスアルパイン（株）",
+    "aliases": [
+      "ALPS ALPINE CO.,LTD.",
+      "アルプスアルパイン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "491",
+    "canonical_name": "安寿／アロン化成（株）",
+    "aliases": [
+      "ARONKASEI CO.,LTD",
+      "アンジュアロンカセイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "492",
+    "canonical_name": "（株）アンネルベッド",
+    "aliases": [
+      "ANNELBED CO.,LTD.",
+      "アンネルベッド"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "493",
+    "canonical_name": "（株）イーストアイ",
+    "aliases": [
+      "EAST I. CO., LTD.",
+      "イーストアイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "494",
+    "canonical_name": "（株）いうら",
+    "aliases": [
+      "IURA CO.,LTD.",
+      "イウラ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "495",
+    "canonical_name": "移乗サポートロボットHug／（株）ＦＵＪＩ",
+    "aliases": [
+      "FUJI CORPORATION",
+      "イジョウサポートロボットハグフジ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "497",
+    "canonical_name": "抱き上げ式移乗ロボットROBOHELPER SASUKE／MUSCLE（株）",
+    "aliases": [
+      "Muscle Corporation",
+      "ダキアゲシキイジョウロボットロボヘルパーサスケマッスル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "498",
+    "canonical_name": "イズミ（株）",
+    "aliases": [
+      "IZUMI INC.",
+      "イズミ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "500",
+    "canonical_name": "（株）イノアックコーポレーション",
+    "aliases": [
+      "INOAC CORPORATION",
+      "イノアックコーポレーション"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "501",
+    "canonical_name": "（株）今仙技術研究所",
+    "aliases": [
+      "IMASEN ENGINEERING CORPORATION",
+      "イマセンギジュツケンキュウショ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "503",
+    "canonical_name": "（株）インタージェット",
+    "aliases": [
+      "InterJet Incorporated",
+      "インタージェット"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "504",
+    "canonical_name": "イントロン・スペース（株）",
+    "aliases": [
+      "Intron Space Inc",
+      "イントロンスペース"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "506",
+    "canonical_name": "（株）WeOur",
+    "aliases": [
+      "WeOur",
+      "ウィーアー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "507",
+    "canonical_name": "（株）ZOZO",
+    "aliases": [
+      "ZOZO,Inc.",
+      "ゾゾ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "508",
+    "canonical_name": "ウィズワン（株）",
+    "aliases": [
+      "WITHONE.CO.,LTD",
+      "ウィズワン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "509",
+    "canonical_name": "WHILL（株）",
+    "aliases": [
+      "WHILL Inc.",
+      "ウィル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "510",
+    "canonical_name": "（株）ウェルパートナーズ",
+    "aliases": [
+      "Wel-Partners Co., Ltd.",
+      "ウェルパートナーズ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "512",
+    "canonical_name": "（株）ウェルモ",
+    "aliases": [
+      "Welmo Inc.",
+      "ウェルモ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "513",
+    "canonical_name": "（株）walkey",
+    "aliases": [
+      "walkey Inc",
+      "ウォーキー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "514",
+    "canonical_name": "ウチヱ（株）",
+    "aliases": [
+      "UCHIE CORPORATION",
+      "ウチエ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "516",
+    "canonical_name": "宇宙航空研究開発機構（JAXA）",
+    "aliases": [
+      "Japan Aerospace Exploration Agency",
+      "ウチュウコウクウケンキュウカイハツキコウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "517",
+    "canonical_name": "トヨタ紡織（株）",
+    "aliases": [
+      "TOYOTA BOSHOKU CORPORATION",
+      "トヨタボウショク"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "518",
+    "canonical_name": "エア・ウォーター・メディカル（株）",
+    "aliases": [
+      "AIR WATER MEDICAL INC.",
+      "エアウォーターメディカル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "520",
+    "canonical_name": "（株）永和システムマネジメント",
+    "aliases": [
+      "ESM, Inc.",
+      "エイワシステムマネジメント"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "521",
+    "canonical_name": "（株）エースシステム",
+    "aliases": [
+      "ACESYSTEM CORPORATION",
+      "エースシステム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "522",
+    "canonical_name": "（株）エクサホームケア",
+    "aliases": [
+      "ExaHomeCare Co. Ltd.",
+      "エクサホームケア"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "524",
+    "canonical_name": "エコナビスタ（株）",
+    "aliases": [
+      "EcoNaviSta, Inc.",
+      "エコナビスタ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "525",
+    "canonical_name": "グローリー（株）",
+    "aliases": [
+      "GLORY LTD.",
+      "グローリー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "528",
+    "canonical_name": "エコベニ（株）",
+    "aliases": [
+      "Ecobeni Co., ltd",
+      "エコベニ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "529",
+    "canonical_name": "江崎器械（株）",
+    "aliases": [
+      "Esaki Medical Instrument Co.,Ltd",
+      "エサキキカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "530",
+    "canonical_name": "（株）エス・エム・エス",
+    "aliases": [
+      "SMS Co.,Ltd.",
+      "エスエムエス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "531",
+    "canonical_name": "SFA Japan（株）",
+    "aliases": [
+      "SFA Japan Co., Ltd.",
+      "エスエフエージャパン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "533",
+    "canonical_name": "NCS&A（株）",
+    "aliases": [
+      "NCS&A Co., Ltd.",
+      "エヌシーエスアンドエー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "534",
+    "canonical_name": "NDソフトウェア（株）",
+    "aliases": [
+      "NDSoftware Co.,Ltd.",
+      "エヌデーソフトウェア"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "536",
+    "canonical_name": "（株）エルエーピー",
+    "aliases": [
+      "LAP Co., Ltd.",
+      "エルエーピー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "537",
+    "canonical_name": "（株）エンドウ商事",
+    "aliases": [
+      "Endo Shoji Co.,Ltd",
+      "エンドウショウジ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "538",
+    "canonical_name": "大分県医療ロボット・機器産業協議会",
+    "aliases": [
+      "The organization to promote the Health-care And Medical device Industry in K(Q)yushu",
+      "オオイタケンイリョウロボットキキサンギョウキョウギカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "539",
+    "canonical_name": "（株）オーエックスエンジニアリング",
+    "aliases": [
+      "OX ENGINEERING CO., LTD.",
+      "オーエックスエンジニアリング"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "540",
+    "canonical_name": "AUTOCARE",
+    "aliases": [
+      "AUTOCARE LLC",
+      "オートケア"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "541",
+    "canonical_name": "オカ（株）",
+    "aliases": [
+      "OKA Co., Ltd.",
+      "オカ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "542",
+    "canonical_name": "（株）岡部洋食器製作所",
+    "aliases": [
+      "OKABE YOSHOKKI CO., LTD.",
+      "オカベヨウショッキセイサクショ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "543",
+    "canonical_name": "岡山市",
+    "aliases": [
+      "Okayama City",
+      "オカヤマシ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "544",
+    "canonical_name": "（株）オフィス・ラボ",
+    "aliases": [
+      "OFFICELABO. CO. LTD",
+      "オフィスラボ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "545",
+    "canonical_name": "KaigoDX",
+    "aliases": [
+      "カイゴディーエックス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "547",
+    "canonical_name": "介援隊",
+    "aliases": [
+      "THE Kaientai",
+      "カイエンタイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "549",
+    "canonical_name": "介護系スタートアップ支援事業（powered by CARISO）",
+    "aliases": [
+      "CARISO （CARe Innovation Support Office）",
+      "カイゴケイスタートアップシエンジギョウパワードバイキャリソ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "550",
+    "canonical_name": "Foshan Dahao Medical Technology Co.,Ltd.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "551",
+    "canonical_name": "介護現場の生産性向上の取組・普及支援ナビ",
+    "aliases": [
+      "Productivity Improvement Initiative and Promotion Support Navigator for Nursing Care Sites",
+      "カイゴゲンバノセイサンセイコウジョウノトリクミフキュウシエンナビ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "552",
+    "canonical_name": "Guangdong Coagent Intelli-go Technology Co.,Ltd.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "553",
+    "canonical_name": "快歩主義／アサヒシューズ（株）",
+    "aliases": [
+      "KAIHOSHUGI / ASAHI SHOES, LTD.",
+      "カイホシュギアサヒシューズ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "555",
+    "canonical_name": "花王（株）",
+    "aliases": [
+      "Kao Corporation",
+      "カオウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "871",
+    "canonical_name": "（株）加地／エクスジェル シーティング ラボ",
+    "aliases": [
+      "KAJI CORPORATION / EXGEL SEATING LAB",
+      "カヂエクスジェルシーティングラボ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "873",
+    "canonical_name": "（株）カナミックネットワーク",
+    "aliases": [
+      "Kanamic Network Co.,LTD",
+      "カナミックネットワーク"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "874",
+    "canonical_name": "カルバオン（株）",
+    "aliases": [
+      "KALVAON Co., Ltd.",
+      "カルバオン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "884",
+    "canonical_name": "（株）カワムラサイクル",
+    "aliases": [
+      "KAWAMURA CYCLE CO., LTD.",
+      "カワムラサイクル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "885",
+    "canonical_name": "（株）Keeper",
+    "aliases": [
+      "Keeper, Inc.",
+      "キーパー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "887",
+    "canonical_name": "キシ・エンジニアリング（株）",
+    "aliases": [
+      "KISHI ENGINEERING CO.,LTD.",
+      "キシエンジニアリング"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "888",
+    "canonical_name": "（公財）岐阜県産業経済振興センター",
+    "aliases": [
+      "Gifu Economic and Industrial Promotion Center",
+      "ギフケンサンギョウケイザイシンコウセンター"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "889",
+    "canonical_name": "（株）キャロッツシステム",
+    "aliases": [
+      "Carrots System Co.,Ltd.",
+      "キャロッツシステム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "891",
+    "canonical_name": "牛乳石鹸共進社（株）",
+    "aliases": [
+      "COW BLAND SOAP KYOSHINSHA CO.,LTD.",
+      "ギュウニュウセッケンキョウシンシャ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "893",
+    "canonical_name": "キング通信工業（株）",
+    "aliases": [
+      "KING TSUSHIN KOGYO CO.,LTD",
+      "キングツウシンコウギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "894",
+    "canonical_name": "（株）金星",
+    "aliases": [
+      "KINBOSHI",
+      "キンボシ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "895",
+    "canonical_name": "（株）クーランス",
+    "aliases": [
+      "CURANS Co., Ltd.",
+      "クーランス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "897",
+    "canonical_name": "シューペルブリアン（株）",
+    "aliases": [
+      "shupelbrillant.Co",
+      "シューペルブリアン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "899",
+    "canonical_name": "クリロン化成（株）",
+    "aliases": [
+      "Kurilon Chemicals Co., Ltd.",
+      "クリロンカセイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "900",
+    "canonical_name": "（株）クレアクト",
+    "aliases": [
+      "Creact Corp.",
+      "クレアクト"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "903",
+    "canonical_name": "（株）ケアコネクトジャパン",
+    "aliases": [
+      "CARE CONNECT JAPAN,Inc.",
+      "ケアコネクトジャパン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "904",
+    "canonical_name": "（株）ケアコム",
+    "aliases": [
+      "CARECOM CO.,LTD.",
+      "ケアコム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "905",
+    "canonical_name": "ケアフォート（株）",
+    "aliases": [
+      "CareFort, Inc.",
+      "ケアフォート"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "907",
+    "canonical_name": "（株）ケアリング",
+    "aliases": [
+      "CARING.,CO.Ltd",
+      "ケアリング"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "909",
+    "canonical_name": "（株）ケンコー・トキナー",
+    "aliases": [
+      "Kenko Tokina Co., Ltd.",
+      "ケンコートキナー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "910",
+    "canonical_name": "弘進ゴム（株）",
+    "aliases": [
+      "KOHSHIN RUBBER CO.,LTD",
+      "コウシンゴム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "914",
+    "canonical_name": "（株）コーヤシステムデザイン",
+    "aliases": [
+      "KOYA SYSTEM DESIGN Co.,Ltd",
+      "コーヤシステムデザイン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "915",
+    "canonical_name": "（公社）国民健康保険中央会",
+    "aliases": [
+      "All-Japan Federation of National Health Insurance Organizations",
+      "コクミンケンコウホケンチュウオウカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "918",
+    "canonical_name": "（有）コス・インターナショナル",
+    "aliases": [
+      "KOS INTERNATIONAL CORP.",
+      "コスインターナショナル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "919",
+    "canonical_name": "（株）コスモテック（wemo®）",
+    "aliases": [
+      "Cosmotec Co., Ltd. （wemo®）",
+      "コスモテックウェモ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "920",
+    "canonical_name": "コニカミノルタ（株）",
+    "aliases": [
+      "KONICA MINOLTA,INC.",
+      "コニカミノルタ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "921",
+    "canonical_name": "（株）コムラ製作所",
+    "aliases": [
+      "KOMURA CORPORATION",
+      "コムラセイサクショ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "922",
+    "canonical_name": "（株）サイ",
+    "aliases": [
+      "Sai Co., Ltd.",
+      "サイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "923",
+    "canonical_name": "（株）サイエンスアーツ",
+    "aliases": [
+      "Science Arts, Inc.",
+      "サイエンスアーツ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "924",
+    "canonical_name": "斉藤工業（株）",
+    "aliases": [
+      "Saitou industrial co., ltd.",
+      "サイトウコウギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "925",
+    "canonical_name": "（同）道設計",
+    "aliases": [
+      "The Way Design LLC",
+      "ザウェイデザイン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "926",
+    "canonical_name": "酒井医療（株）",
+    "aliases": [
+      "SAKAI Medical Co.,Ltd.",
+      "サカイイリョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "927",
+    "canonical_name": "（株）サカエ工業",
+    "aliases": [
+      "SAKAE　INDUSTRY　INC.",
+      "サカエコウギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "928",
+    "canonical_name": "（株）さくらほりきり",
+    "aliases": [
+      "SAKURAHORIKIRI Co., Ltd.",
+      "サクラホリキリ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "929",
+    "canonical_name": "さつき（株）",
+    "aliases": [
+      "SATSUKI.CO.,LTD.",
+      "サツキ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "930",
+    "canonical_name": "サラヤ（株）",
+    "aliases": [
+      "Saraya Co., Ltd.",
+      "サラヤ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "931",
+    "canonical_name": "LeAILE",
+    "aliases": [
+      "ルエイル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "932",
+    "canonical_name": "三協エアテック（株）",
+    "aliases": [
+      "SANKYO AIR TECH CO., LTD",
+      "サンキョウエアテック"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "933",
+    "canonical_name": "（株）サンコー",
+    "aliases": [
+      "SANKO Co., Ltd.",
+      "サンコー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "935",
+    "canonical_name": "サンライズメディカルジャパン（株）",
+    "aliases": [
+      "Sunrise Medical Japan Co.,Ltd",
+      "サンライズメディカルジャパン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "936",
+    "canonical_name": "（株）サンワ",
+    "aliases": [
+      "SUNWA LTD.",
+      "サンワ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "938",
+    "canonical_name": "（株）GSIクレオス",
+    "aliases": [
+      "GSI Creos Corporation",
+      "ジーエスアイクレオス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "939",
+    "canonical_name": "ジーコム（株）",
+    "aliases": [
+      "Gcomm Corporation",
+      "ジーコム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "940",
+    "canonical_name": "シーホネンス（株）",
+    "aliases": [
+      "SEAHONENCE Inc.",
+      "シーホネンス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "941",
+    "canonical_name": "（株）Z-Works",
+    "aliases": [
+      "Z-Works Inc.",
+      "ジーワークス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "942",
+    "canonical_name": "ジェイセップ九州（有）",
+    "aliases": [
+      "JSEP KYUSHU CO.,LTD",
+      "ジェイセップキュウシュウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "943",
+    "canonical_name": "（株）シコク　微笑（ほほえみ）",
+    "aliases": [
+      "SHIKOKU CORPORATION",
+      "シコクホホエミ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "944",
+    "canonical_name": "（株）ZIPCARE",
+    "aliases": [
+      "ZIPCARE Corp.",
+      "ジップケア"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "945",
+    "canonical_name": "シティーリフトかわさき（株）",
+    "aliases": [
+      "Citylift Kawasaki Ltd.",
+      "シティーリフトカワサキ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "947",
+    "canonical_name": "（株）シフトメーション",
+    "aliases": [
+      "Shiftmation, Inc.",
+      "シフトメーション"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "949",
+    "canonical_name": "（株）島津製作所",
+    "aliases": [
+      "SHIMADZU CORPORATION",
+      "シマヅセイサクショ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "950",
+    "canonical_name": "（株）シモヤマ",
+    "aliases": [
+      "SHIMOYAMA. CO. LTD.",
+      "シモヤマ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "951",
+    "canonical_name": "ジヤトコ（株）",
+    "aliases": [
+      "JATCO Ltd",
+      "ジヤトコ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "952",
+    "canonical_name": "住宅防火対策推進協議会",
+    "aliases": [
+      "Residential Fire Prevention Committee",
+      "ジュウタクボウカタイサクスイシンキョウギカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "953",
+    "canonical_name": "湘南工科大学 中茂研究室",
+    "aliases": [
+      "Shonan Institute of Technology",
+      "ショウナンコウカダイガクナカシゲケンキュウシツ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "954",
+    "canonical_name": "（国研）情報通信研究機構",
+    "aliases": [
+      "National Institute of Information and Communications Technology",
+      "ジョウホウツウシンケンキュウキコウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "957",
+    "canonical_name": "シルバー新報（環境新聞社）",
+    "aliases": [
+      "SILVER SHIMPO (Kankyoshimbunsha, Co., Ltd.)",
+      "シルバーシンポウカンキョウシンブンシャ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "959",
+    "canonical_name": "（株）シンエンス",
+    "aliases": [
+      "SINENTH CO., LTD.",
+      "シンエンス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "961",
+    "canonical_name": "（株）ジンズ",
+    "aliases": [
+      "JINS Inc.",
+      "ジンズ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "962",
+    "canonical_name": "シンテックス（株）",
+    "aliases": [
+      "SYNTEX Corporation",
+      "シンテックス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "963",
+    "canonical_name": "SK8INSOLL（株）",
+    "aliases": [
+      "SK8INSOLL Co.",
+      "スケートインソール"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "964",
+    "canonical_name": "（株）scoville",
+    "aliases": [
+      "Scoville Co., Ltd",
+      "スコヴィル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "965",
+    "canonical_name": "スズキ（株）",
+    "aliases": [
+      "Suzuki Motor Corporation",
+      "スズキ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "966",
+    "canonical_name": "（株）スマート",
+    "aliases": [
+      "SMART INC.",
+      "スマート"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "967",
+    "canonical_name": "スマート介護／プラス（株）ジョインテックスカンパニー",
+    "aliases": [
+      "smart kaigo/PLUS CORPORATION JOINTEX Company",
+      "スマートカイゴプラスジョインテックスカンパニー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "969",
+    "canonical_name": "（株）星光医療器製作所",
+    "aliases": [
+      "SEIKO MEDICAL INSTRUMENTS CO., LTD.",
+      "セイコウイリョウキセイサクショ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "972",
+    "canonical_name": "（株）ゼスト",
+    "aliases": [
+      "ZEST inc.",
+      "ゼスト"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "973",
+    "canonical_name": "セパレーターシステム工業（株）",
+    "aliases": [
+      "SEPARATOR SYSTEM INDUSTRY CO.,Ltd",
+      "セパレーターシステムコウギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "974",
+    "canonical_name": "（株）セリオ",
+    "aliases": [
+      "SERIO CO.,LTD.",
+      "セリオ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "975",
+    "canonical_name": "（福）全国社会福祉協議会 出版部",
+    "aliases": [
+      "Japan National Council of Social Welfare",
+      "ゼンコクシャカイフクシキョウギカイシュッパンブ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "978",
+    "canonical_name": "（株）総合サービス",
+    "aliases": [
+      "SOGO SERVICE CO., Ltd.",
+      "ソウゴウサービス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "979",
+    "canonical_name": "象印マホービン（株）",
+    "aliases": [
+      "ZOJIRUSHI CORPORATION",
+      "ゾウジルシマホービン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "981",
+    "canonical_name": "（株）タイカ",
+    "aliases": [
+      "Taica Corporation",
+      "タイカ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "982",
+    "canonical_name": "（株）ダイト",
+    "aliases": [
+      "DAITO CO.,LTD.",
+      "ダイト"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "983",
+    "canonical_name": "ダイハツ工業（株）",
+    "aliases": [
+      "DAIHATSU MOTOR CO., LTD.",
+      "ダイハツコウギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "984",
+    "canonical_name": "大邦機電（有）",
+    "aliases": [
+      "Taihokiden Co., Ltd.",
+      "タイホウキデン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "985",
+    "canonical_name": "タカノ（株）",
+    "aliases": [
+      "TAKANO Co.,Ltd.",
+      "タカノ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "986",
+    "canonical_name": "（株）タカラトミー",
+    "aliases": [
+      "Tomy Co.Ltd.",
+      "タカラトミー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "987",
+    "canonical_name": "（株）竹虎",
+    "aliases": [
+      "Taketora Co.,Ltd.",
+      "タケトラ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "988",
+    "canonical_name": "（株）タジマモーターコーポレーション",
+    "aliases": [
+      "TAJIMA MOTOR CORPORATION Co., Ltd.",
+      "タジマモーターコーポレーション"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "989",
+    "canonical_name": "Heartway Medical Products Co., Ltd.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "990",
+    "canonical_name": "（株）ダスキンヘルスケア",
+    "aliases": [
+      "DUSKIN HEALTHCARE CO.,LTD.",
+      "ダスキンヘルスケア"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "991",
+    "canonical_name": "（株）タチエスH&P",
+    "aliases": [
+      "TACHI-S H&P CO.,LTD.",
+      "タチエスエイチアンドピー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "992",
+    "canonical_name": "（株）TF-METAL",
+    "aliases": [
+      "TF-METAL Co., Ltd",
+      "ティーエフメタル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "994",
+    "canonical_name": "TANO",
+    "aliases": [
+      "TANOTECH CORPORATION",
+      "タノ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "995",
+    "canonical_name": "ダブル技研（株）",
+    "aliases": [
+      "DOUBLE Research & Development Co., Ltd",
+      "ダブルギケン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "996",
+    "canonical_name": "（株）タマツ",
+    "aliases": [
+      "tamatsu co .ltd",
+      "タマツ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "998",
+    "canonical_name": "（株）CHAIN　WAITER",
+    "aliases": [
+      "CHAIN　WAITER",
+      "チェーンウェイター"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1000",
+    "canonical_name": "中央発條（株）",
+    "aliases": [
+      "CHUO SPRING CO.,LTD.",
+      "チュウオウハツジョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1002",
+    "canonical_name": "（株）つえ屋",
+    "aliases": [
+      "TSUEYA CO.,LTD",
+      "ツエヤ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1003",
+    "canonical_name": "DK Group（株）",
+    "aliases": [
+      "DK Group Co.,Ltd",
+      "ディーケーグループ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1004",
+    "canonical_name": "TPR（株）",
+    "aliases": [
+      "TPR Co., Ltd.",
+      "ティーピーアール"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1005",
+    "canonical_name": "TiMotion Japan（株）",
+    "aliases": [
+      "TiMotion Japan Co., Ltd.",
+      "ティーモーションジャパン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1006",
+    "canonical_name": "（株）ティグ",
+    "aliases": [
+      "TiG Co., Ltd.",
+      "ティグ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1009",
+    "canonical_name": "DIPPERホクメイ（株）",
+    "aliases": [
+      "DIPPER HOKUMEI CO.,LTD",
+      "ディッパーホクメイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1010",
+    "canonical_name": "（公財）テクノエイド協会",
+    "aliases": [
+      "The Association for Technical Aids",
+      "テクノエイドキョウカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1011",
+    "canonical_name": "（有）テクノケア",
+    "aliases": [
+      "TechnoCare Co.,Ltd",
+      "テクノケア"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1012",
+    "canonical_name": "（株）テクノスジャパン",
+    "aliases": [
+      "Technos Japan Co.,Ltd.",
+      "テクノスジャパン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1013",
+    "canonical_name": "（株）テクノブレイン",
+    "aliases": [
+      "TECHNOBRAIN Co.,Ltd.",
+      "テクノブレイン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1014",
+    "canonical_name": "（有）テクノム",
+    "aliases": [
+      "TECHNOM Ltd.",
+      "テクノム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1015",
+    "canonical_name": "（株）デベロ",
+    "aliases": [
+      "Develo Co.,Ltd",
+      "デベロ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1016",
+    "canonical_name": "（株）テレウス",
+    "aliases": [
+      "Terreus Co., LTD.",
+      "テレウス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1017",
+    "canonical_name": "東海エレクトロニクス（株）",
+    "aliases": [
+      "TOKAI ELECTRONICS CO.,LTD.",
+      "トウカイエレクトロニクス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1018",
+    "canonical_name": "東海機器工業（株）／燦",
+    "aliases": [
+      "TOKAI KIKI KOGYO CO.,LTD.",
+      "トウカイキキコウギョウサン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1021",
+    "canonical_name": "（公社）東京都障害者スポーツ協会",
+    "aliases": [
+      "Tokyo Sports Association for Persons with Disabilities",
+      "トウキョウトショウガイシャスポーツキョウカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1022",
+    "canonical_name": "東京都パラスポーツ応援プロジェクト「TEAM BEYOND」",
+    "aliases": [
+      "Para Sports support project“TEAM BEYOND”",
+      "トウキョウトパラスポーツオウエンプロジェクトチームビヨンド"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1023",
+    "canonical_name": "（公財）東京都福祉保健財団",
+    "aliases": [
+      "TOKYO METROPOLITAN FOUNDATION FOR SOCIAL WELFARE AND PUBLIC HEALTH",
+      "トウキョウトフクシホケンザイダン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1027",
+    "canonical_name": "トーテックアメニティ（株）",
+    "aliases": [
+      "TOTEC AMENITY",
+      "トーテックアメニティ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1028",
+    "canonical_name": "TOTO（株）",
+    "aliases": [
+      "TOTO LTD.",
+      "トートー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1029",
+    "canonical_name": "トクソー技研（株）",
+    "aliases": [
+      "TOKUSOGIKEN Co., Ltd.",
+      "トクソーギケン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1030",
+    "canonical_name": "（株）トマト",
+    "aliases": [
+      "TOMATO Corporation",
+      "トマト"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1031",
+    "canonical_name": "（一財）トヨタ・モビリティ基金",
+    "aliases": [
+      "TOYOTA Mobility Foundation",
+      "トヨタモビリティキキン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1032",
+    "canonical_name": "トヨタ自動車（株）",
+    "aliases": [
+      "TOYOTA MOTOR CORPORATION",
+      "トヨタジドウシャ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1034",
+    "canonical_name": "トリケアトプス／岡谷システム（株）",
+    "aliases": [
+      "TORICARETOPS / OKAYA SYSTEM Co.,LTD.",
+      "トリケアトプスオカヤシステム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1035",
+    "canonical_name": "トリニティプリントソリューションズ（株）",
+    "aliases": [
+      "TRINITY PRINT SOLUTIONS CO.LTD",
+      "トリニティプリントソリューションズ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1036",
+    "canonical_name": "Superpi Robot Co.,Ltd.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1037",
+    "canonical_name": "（株）トンボ",
+    "aliases": [
+      "TOMBOW CO.,LTD.",
+      "トンボ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1038",
+    "canonical_name": "ナカ工業（株）",
+    "aliases": [
+      "NAKA CORPORATION",
+      "ナカコウギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1040",
+    "canonical_name": "日産自動車（株）",
+    "aliases": [
+      "NISSAN MOTOR CO.,LTD.",
+      "ニッサンジドウシャ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1041",
+    "canonical_name": "（株）ニッシリ　ユニバーサルテープ",
+    "aliases": [
+      "NISSILI CO.,LTD. Universal Tape",
+      "ニッシリユニバーサルテープ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1042",
+    "canonical_name": "日進医療器（株）",
+    "aliases": [
+      "NISSIN MEDICAL INDUSTRIES CO.,LTD.",
+      "ニッシンイリョウキ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1043",
+    "canonical_name": "日本クロージャー（株）",
+    "aliases": [
+      "Nippon Closures Co., Ltd",
+      "ニッポンクロージャー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1044",
+    "canonical_name": "（一社）日本介護支援専門員協会",
+    "aliases": [
+      "Japan Care Manager Association",
+      "ニホンカイゴシエンセンモンインキョウカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1045",
+    "canonical_name": "「にほんごをまなぼう」／（公社）日本介護福祉士会",
+    "aliases": [
+      "NIHONGO WO MANABOU／Japan Association of Certified Care Workers",
+      "ニホンカイゴフクシシカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1046",
+    "canonical_name": "日本ケアリフトサービス（株）",
+    "aliases": [
+      "JCLS / Japan Care Lift Service Co., Ltd.",
+      "ニホンケアリフトサービス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1048",
+    "canonical_name": "日本セイフティー（株）",
+    "aliases": [
+      "Nihon Safety Co., Ltd",
+      "ニホンセイフティー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1049",
+    "canonical_name": "（一社）日本福祉用具・生活支援用具協会（JASPA）",
+    "aliases": [
+      "JAPAN ASSISTIVE PRODUCTS ASSOCIATION(JASPA)",
+      "ニホンフクシヨウグセイカツシエンヨウグキョウカイジャスパ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1050",
+    "canonical_name": "（一社）日本福祉用具供給協会",
+    "aliases": [
+      "the association of care goods providers",
+      "ニホンフクシヨウグキョウキュウキョウカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1051",
+    "canonical_name": "（一社）日本リハビリテーション工学協会",
+    "aliases": [
+      "Rehabilitation Engineering Society of Japan",
+      "ニホンリハビリテーションコウガクキョウカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1052",
+    "canonical_name": "（株）NOAA",
+    "aliases": [
+      "NOAA CO.,LTD",
+      "ノア"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1053",
+    "canonical_name": "（株）ノアコンツェル",
+    "aliases": [
+      "noah konzer Co.Ltd",
+      "ノアコンツェル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1056",
+    "canonical_name": "（株）ハイテックシステムズ",
+    "aliases": [
+      "K.K.HITECSYS",
+      "ハイテックシステムズ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1057",
+    "canonical_name": "ハカルプラス（株）",
+    "aliases": [
+      "HAKARU PLUS CORPORATION",
+      "ハカルプラス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1058",
+    "canonical_name": "箸ぞうくん",
+    "aliases": [
+      "WIND CO. LTD",
+      "ハシゾウクン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1059",
+    "canonical_name": "パシフィックサプライ（株）",
+    "aliases": [
+      "Pacific Supply Co., Ltd.",
+      "パシフィックサプライ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1060",
+    "canonical_name": "橋本エンジニアリング（株）",
+    "aliases": [
+      "HASHIMOTO ENGINEERING CO.,LTD",
+      "ハシモトエンジニアリング"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1061",
+    "canonical_name": "花岡車輌（株）",
+    "aliases": [
+      "HANAOKA SHARYO CO., LTD.",
+      "ハナオカシャリョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1062",
+    "canonical_name": "パナソニック（株）",
+    "aliases": [
+      "Panasonic Corporation",
+      "パナソニック"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1064",
+    "canonical_name": "（有）ハニーインターナショナル",
+    "aliases": [
+      "hny International Co., LTD",
+      "ハニーインターナショナル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1067",
+    "canonical_name": "パラマウントベッド（株）",
+    "aliases": [
+      "PARAMOUNT BED CO.,LTD.",
+      "パラマウントベッド"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1068",
+    "canonical_name": "パンテーラ・ジャパン（株）",
+    "aliases": [
+      "Panthera Japan Inc.",
+      "パンテーラジャパン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1069",
+    "canonical_name": "（株）ピーエーエス",
+    "aliases": [
+      "P.A.S.Corporation",
+      "ピーエーエス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1070",
+    "canonical_name": "ファーストケア／（株）ビーシステム",
+    "aliases": [
+      "FirstCare/Bee System Co.",
+      "ファーストケアビーシステム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1073",
+    "canonical_name": "（株）日立ケーイーシステムズ",
+    "aliases": [
+      "Hitachi KE Systems,Ltd",
+      "ヒタチケーイーシステムズ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1076",
+    "canonical_name": "ピューラックス／（株）オーヤラックス",
+    "aliases": [
+      "OYALOX CO., LTD.",
+      "ピューラックスオーヤラックス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1077",
+    "canonical_name": "兵庫県立福祉のまちづくり研究所",
+    "aliases": [
+      "The Hyogo Institute of Assistive Technology",
+      "ヒョウゴケンリツフクシノマチヅクリケンキュウショ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1078",
+    "canonical_name": "（株）ファイブローバー",
+    "aliases": [
+      "FIVE ROVER co.,Ltd",
+      "ファイブローバー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1081",
+    "canonical_name": "（株）福祉新聞社",
+    "aliases": [
+      "The FUKUSHI Shimbun",
+      "フクシシンブンシャ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1082",
+    "canonical_name": "（有）フジオート",
+    "aliases": [
+      "FUJI AUTO INC.",
+      "フジオート"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1084",
+    "canonical_name": "芙蓉開発（株）",
+    "aliases": [
+      "Fuyo kaihatsu Co., Ltd.",
+      "フヨウカイハツ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1085",
+    "canonical_name": "（株）プラッツ",
+    "aliases": [
+      "PLATZ.co.,ltd",
+      "プラッツ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1086",
+    "canonical_name": "フランスベッド（株）",
+    "aliases": [
+      "FRANCE BED CO.,LTD.",
+      "フランスベッド"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1087",
+    "canonical_name": "FREE Bionics Japan（株）",
+    "aliases": [
+      "FREE Bionics Japan Inc.",
+      "フリーバイオニックスジャパン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1088",
+    "canonical_name": "（株）ブルーオーシャンシステム",
+    "aliases": [
+      "Blue Ocean System Co., Ltd.",
+      "ブルーオーシャンシステム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1089",
+    "canonical_name": "（株）フルノシステムズ",
+    "aliases": [
+      "FURUNOSYSTEMS Co.,Ltd.",
+      "フルノシステムズ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1090",
+    "canonical_name": "PLAYWORKS（株）",
+    "aliases": [
+      "PLAYWORKS Inc.",
+      "プレイワークス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1091",
+    "canonical_name": "PreMare（株）",
+    "aliases": [
+      "PreMare Co.,Ltd.",
+      "プレマーレ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1093",
+    "canonical_name": "プロンプター甲斐（有）",
+    "aliases": [
+      "PROMPTER.KAI Ltd.",
+      "プロンプターカイ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1094",
+    "canonical_name": "平安伸銅工業(株）",
+    "aliases": [
+      "HEIAN SHINDO KOGYO CO., LTD.",
+      "ヘイアンシンドウコウギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1095",
+    "canonical_name": "（株）平和テクノシステム",
+    "aliases": [
+      "HEIWA TECHNO SYSTEM Ltd",
+      "ヘイワテクノシステム"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1096",
+    "canonical_name": "ベッドの上で入浴企画（株）",
+    "aliases": [
+      "Kaigonyuyoku bed Inc.",
+      "ベッドノウエデニュウヨクキカク"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1098",
+    "canonical_name": "（株）ペリドット",
+    "aliases": [
+      "Peridot Co., Ltd.",
+      "ペリドット"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1099",
+    "canonical_name": "ボイット（株）",
+    "aliases": [
+      "Voyt Inc.",
+      "ボイット"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1101",
+    "canonical_name": "北海道",
+    "aliases": [
+      "Hokkaido Government",
+      "ホッカイドウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1102",
+    "canonical_name": "（株）BONX",
+    "aliases": [
+      "BONX INC.",
+      "ボンクス"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1104",
+    "canonical_name": "（株）マクルウ",
+    "aliases": [
+      "MACRW Co., Ltd.",
+      "マクルウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1105",
+    "canonical_name": "増田樹脂化学工業（株）",
+    "aliases": [
+      "MASUDA PLASTICS ＆ CHEMICALS.INC.",
+      "マスダジュシカガクコウギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1108",
+    "canonical_name": "（株）松永製作所",
+    "aliases": [
+      "MATSUNAGA MANUFACTORY CO., LTD.",
+      "マツナガセイサクショ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1110",
+    "canonical_name": "マツ六（株）",
+    "aliases": [
+      "MAZROC CO.,LTD.",
+      "マツロク"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1111",
+    "canonical_name": "（株）マリアンヌ製靴",
+    "aliases": [
+      "MARIANNU FOOTWEAR Co., LTD.",
+      "マリアンヌセイカ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1112",
+    "canonical_name": "マルハチ工業（株）",
+    "aliases": [
+      "MARUHACHIKOGYO",
+      "マルハチコウギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1115",
+    "canonical_name": "（株）ミキ",
+    "aliases": [
+      "MiKi Co., Ltd.",
+      "ミキ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1117",
+    "canonical_name": "（有）ミッツコミュニケーションズ",
+    "aliases": [
+      "Mit's Communications,Inc.",
+      "ミッツコミュニケーションズ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1118",
+    "canonical_name": "（株）南日本情報処理センター",
+    "aliases": [
+      "Minaminihon Information Processing Center Co., Ltd.",
+      "ミナミニホンジョウホウショリセンター"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1119",
+    "canonical_name": "宮崎県",
+    "aliases": [
+      "MIYAZAKI PREFECTURE",
+      "ミヤザキケン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1121",
+    "canonical_name": "（株）ムーンスター",
+    "aliases": [
+      "MoonStar Company",
+      "ムーンスター"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1122",
+    "canonical_name": "（株）メッセ・デュッセルドルフ・ジャパン",
+    "aliases": [
+      "Messe Düsseldorf Japan Ltd.",
+      "メッセデュッセルドルフジャパン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1126",
+    "canonical_name": "矢崎化工（株）",
+    "aliases": [
+      "Yazaki Kako Corporation",
+      "ヤザキカコウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1129",
+    "canonical_name": "ヤマハ発動機（株）",
+    "aliases": [
+      "Yamaha Motor Co., Ltd.",
+      "ヤマハハツドウキ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1130",
+    "canonical_name": "（株）ユーエスマネジメンツ",
+    "aliases": [
+      "USMANAGEMENTS LTD.",
+      "ユーエスマネジメンツ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1131",
+    "canonical_name": "（株）ユーキ・トレーディング",
+    "aliases": [
+      "YUKI TRADING CO.,LTD.",
+      "ユーキトレーディング"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1133",
+    "canonical_name": "ユーバ産業（株）",
+    "aliases": [
+      "UBER INDUSTRY CO.,LTD.",
+      "ユーバサンギョウ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1134",
+    "canonical_name": "LIFEHUB（株）",
+    "aliases": [
+      "LIFEHUB Inc.",
+      "ライフハブ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1135",
+    "canonical_name": "ライフモア（株）",
+    "aliases": [
+      "LIFEMORE Co., Ltd.",
+      "ライフモア"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1136",
+    "canonical_name": "ラヴィーナ（株）",
+    "aliases": [
+      "Raveena Inc.",
+      "ラヴィーナ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1138",
+    "canonical_name": "（株）リード",
+    "aliases": [
+      "LEAD INC.",
+      "リード"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1139",
+    "canonical_name": "（株）リクチル",
+    "aliases": [
+      "Rectil　Co. Ltd.",
+      "リクチル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1140",
+    "canonical_name": "（株）リッチェル",
+    "aliases": [
+      "Richell Corporation",
+      "リッチェル"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1142",
+    "canonical_name": "リナック（株）",
+    "aliases": [
+      "LINAK K.K.",
+      "リナック"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1143",
+    "canonical_name": "（株）Raise the Flag.",
+    "aliases": [
+      "Raise the Flag Co., Ltd.",
+      "レイズザフラッグ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1144",
+    "canonical_name": "（株）レクア",
+    "aliases": [
+      "Requa Inc.",
+      "レクア"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1145",
+    "canonical_name": "（独） 労働者健康安全機構 吉備高原医療リハビリテーションセンター",
+    "aliases": [
+      "Kibikogen Rehabilitation Center for Employment Injuries",
+      "ロウドウシャケンコウアンゼンキコウキビコウゲンイリョウリハビリテーションセンター"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1146",
+    "canonical_name": "（独）労働者健康安全機構 総合せき損センター",
+    "aliases": [
+      "Spinal Injuries Center",
+      "ロウドウシャケンコウアンゼンキコウソウゴウセキソンセンター"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1147",
+    "canonical_name": "（株）ロジック",
+    "aliases": [
+      "Logic inc.",
+      "ロジック"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1148",
+    "canonical_name": "（株）日本コンピュータコンサルタント",
+    "aliases": [
+      "Nihon Computer Consultant Co., Ltd.",
+      "ニホンコンピュータコンサルタント"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1149",
+    "canonical_name": "（株）ロングライフ",
+    "aliases": [
+      "LONGLIFE CO.,LTD.",
+      "ロングライフ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1150",
+    "canonical_name": "YKK（株）",
+    "aliases": [
+      "YKK CORPORATION",
+      "ワイケーケー"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1152",
+    "canonical_name": "（株）ワイズマン",
+    "aliases": [
+      "wiseman",
+      "ワイズマン"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1154",
+    "canonical_name": "CHARMING WORLD INC.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1155",
+    "canonical_name": "DYNAMIC COMPOSITE TAIWAN LTD.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1157",
+    "canonical_name": "Guldmann A/S",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1161",
+    "canonical_name": "InceptionLab. Inc.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1162",
+    "canonical_name": "JIANGSU INTCO MEDICAL PRODUCTS CO., LTD.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1164",
+    "canonical_name": "KIUMTECH",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1167",
+    "canonical_name": "MERITS HEALTH PRODUCTS CO., LTD.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1168",
+    "canonical_name": "Nanjing Sureway New Material Co., Ltd",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1169",
+    "canonical_name": "NINGBO GAOBO SPORTS CO., LTD YIWU BRANCH OFFICE",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1170",
+    "canonical_name": "Performance Health",
+    "aliases": [
+      "2005/12/1"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "1171",
+    "canonical_name": "RIFTON EQUIPMENT",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1173",
+    "canonical_name": "Vicair B.V.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1176",
+    "canonical_name": "Zhejiang Jiecang Linear Motion Technology Co., Ltd.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1177",
+    "canonical_name": "Etac AB",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1179",
+    "canonical_name": "Bullseye",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1180",
+    "canonical_name": "Golden Smart Home Technology",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1181",
+    "canonical_name": "Huizhou Foryou Medical Devices Co., Ltd.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1185",
+    "canonical_name": "NSBS Co., Ltd.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1187",
+    "canonical_name": "Prince Lionheart Inc",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1188",
+    "canonical_name": "QINGDAO DYNA-PAC FOOTWEAR CO., LTD",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1189",
+    "canonical_name": "Shandong Bangjie Aging-friendly Furniture Co., Ltd.",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1191",
+    "canonical_name": "Suzhou Sweetrich Vehicle Industry Technology Co., Ltd",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "1192",
+    "canonical_name": "Suzhou XCB Care Co. Ltd.",
+    "aliases": [],
+    "label": null
+  }
+]

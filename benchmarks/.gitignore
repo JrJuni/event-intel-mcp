@@ -21,3 +21,6 @@ gold/**/ai_labels.json
 gold/**/labels_TEMPLATE.json
 gold/**/drafted*.json
 gold/**/refined*.json
+# company_packet is names-only (not sensitive) but a regenerable intermediate —
+# keep gold/ to the canonical artifacts (roster / sealed_labels / measure_*).
+gold/**/company_packet.json

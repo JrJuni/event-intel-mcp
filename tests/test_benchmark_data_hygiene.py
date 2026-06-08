@@ -22,10 +22,13 @@ def test_local_dir_and_sheets_are_gitignored():
     assert _ignored("benchmarks/gold/p1/labeling_sheet.json")  # even inside gold/
     assert _ignored("benchmarks/gold/p1/worksheet.md")
     assert _ignored("benchmarks/gold/p1/ai_labels.json")
+    assert _ignored("benchmarks/gold/p1/company_packet.json")  # regenerable intermediate
     assert _ignored("benchmarks/_raw/anything.html")
 
 
 def test_committable_gold_artifacts_not_ignored():
     assert not _ignored("benchmarks/gold/p1/sealed_labels.json")
     assert not _ignored("benchmarks/gold/p1/roster.json")
-    assert not _ignored("benchmarks/gold/thresholds.json")
+    assert not _ignored("benchmarks/gold/p1/measure_no_enrich.json")
+    assert not _ignored("benchmarks/gold/p1/measure_enriched.json")
+    assert not _ignored("benchmarks/runs/p1/x/run_result.json")
