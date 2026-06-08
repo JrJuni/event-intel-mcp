@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
+from event_intel.acquisition import probe as _probe
 from event_intel.acquisition import raw_fetch as _raw_fetch
 from event_intel.acquisition.probe import (
     ProbeAttempt,
@@ -437,3 +438,50 @@ def test_probe_exhibitor_endpoint_tool_wrapper_empty_url():
     result = _tool_mod.probe_exhibitor_endpoint(url="")
     assert result["ok"] is False
     assert result["error_code"] == "INVALID_INPUT"
+
+
+# ===== C4: language-neutral JSON roster validator (review #2 / v2.1 §C) =====
+
+
+def _roster_json(key: str, name_field: str, names: list[str]) -> str:
+    return json.dumps(
+        {key: [{name_field: n, "booth": f"B{i}"} for i, n in enumerate(names)]},
+        ensure_ascii=False,
+    )
+
+
+_ROSTER_EN = _roster_json("exhibitors", "company_name", [f"Acme Robotics {i}" for i in range(10)])
+_ROSTER_KO = _roster_json("참가업체", "회사명", [f"테스트기업{i}" for i in range(10)])
+_ROSTER_JP = _roster_json("出展社", "会社名", [f"テスト会社{i}" for i in range(10)])
+
+
+@pytest.mark.parametrize("body", [_ROSTER_EN, _ROSTER_KO, _ROSTER_JP])
+def test_roster_validator_accepts_multilingual_json(body):
+    """Structural validator scores EN/KO/JP rosters even with no keyword tokens."""
+    assert _probe._response_looks_like_roster(body, "application/json") >= 0.5
+
+
+@pytest.mark.parametrize("body", [
+    json.dumps({"products": [{"product_name": f"Widget {i}"} for i in range(10)]}),
+    json.dumps({"staff": [{"name": f"Person {i}", "role": "eng"} for i in range(10)]}),
+    json.dumps({"menu": [{"label": f"Item {i}", "url": "/"} for i in range(10)]}),
+    json.dumps({"settings": {"theme": "dark"}, "version": 2, "datasets": [{"data": [1, 2, 3]}]}),
+])
+def test_roster_validator_rejects_non_roster_json(body):
+    """Product catalog / staff list / nav menu / config must NOT score as a roster."""
+    assert _probe._response_looks_like_roster(body, "application/json") == 0.0
+
+
+def test_roster_validator_hcr_shape():
+    """The real HCR shape (company_data + company_title) is accepted."""
+    body = json.dumps({"company_data": [
+        {"company_id": i, "company_title": f"会社{i}", "company_title_en": f"Co {i}"}
+        for i in range(20)
+    ]}, ensure_ascii=False)
+    assert _probe._response_looks_like_roster(body, "application/json") >= 0.5
+
+
+def test_roster_validator_html_falls_back_to_keyword():
+    """Non-JSON bodies still use the EN/KO keyword scorer."""
+    html = "Exhibitor company booth participant stand\n" * 10
+    assert _probe._response_looks_like_roster(html, "text/html") > 0.0

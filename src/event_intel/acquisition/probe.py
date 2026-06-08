@@ -99,6 +99,124 @@ def _response_looks_like_exhibitor_list(body: str, lang: str) -> float:
     return min(density + size_bonus, 1.0)
 
 
+# --- language-neutral JSON roster validator (review #2 / v2.1 §C) ---
+
+# A roster must carry a company-specific signal — not just a generic "name" field
+# (which a product catalog or staff list also has). The array KEY or a FIELD name
+# must match one of these tokens.
+_COMPANY_SIGNAL_RE = re.compile(
+    r"compan|exhibitor|organi[sz]ation|\borg\b|booth|vendor|participant|参展|出展"
+    r"|会社|社名|会員|회사|업체|기업|참가",
+    re.IGNORECASE,
+)
+# Fields whose VALUE is treated as the company name (for the unique-name count).
+_NAME_FIELD_RE = re.compile(
+    r"name|title|社名|会社|회사|업체|기업|compan|exhibitor", re.IGNORECASE
+)
+
+
+def _looks_like_json(body: str, content_type: str | None) -> bool:
+    if content_type and "json" in content_type.lower():
+        return True
+    head = body.lstrip()[:1]
+    return head in ("{", "[")
+
+
+def _find_largest_dict_list(
+    data: Any, *, max_depth: int, max_nodes: int
+) -> tuple[list, str | None]:
+    """Bounded DFS for the largest list-of-dicts and the key it hangs off.
+
+    HCR's roster is `{"company_data": [ ... ]}` — not the root — so we must look
+    past the top level, but depth/node caps keep a hostile JSON from blowing up.
+    """
+    best: tuple[list, str | None] = ([], None)
+    nodes = 0
+    stack: list[tuple[Any, str | None, int]] = [(data, None, 0)]
+    while stack:
+        obj, key, depth = stack.pop()
+        nodes += 1
+        if nodes > max_nodes or depth > max_depth:
+            continue
+        if isinstance(obj, list):
+            dicts = [x for x in obj if isinstance(x, dict)]
+            if len(dicts) > len(best[0]):
+                best = (dicts, key)
+            for x in obj:
+                if isinstance(x, (list, dict)):
+                    stack.append((x, key, depth + 1))
+        elif isinstance(obj, dict):
+            for k, v in obj.items():
+                if isinstance(v, (list, dict)):
+                    stack.append((v, str(k), depth + 1))
+    return best
+
+
+def _roster_structural_score(
+    data: Any, *, min_repeated: int, min_unique: int, max_depth: int, max_nodes: int
+) -> float:
+    """Score a parsed JSON value 0..1 as an exhibitor roster — language-neutral."""
+    dicts, parent_key = _find_largest_dict_list(
+        data, max_depth=max_depth, max_nodes=max_nodes
+    )
+    if len(dicts) < min_repeated:
+        return 0.0
+
+    field_names: set[str] = set()
+    for d in dicts[:50]:
+        field_names.update(str(k) for k in d.keys())
+
+    # Company-specific signal: the array key OR a field name. A product catalog
+    # ("products"/"product_name") or staff list ("staff"/"name") fails here.
+    signal_sources = list(field_names) + ([parent_key] if parent_key else [])
+    if not any(_COMPANY_SIGNAL_RE.search(s) for s in signal_sources):
+        return 0.0
+
+    name_fields = [f for f in field_names if _NAME_FIELD_RE.search(f)]
+    uniq: set[str] = set()
+    for d in dicts:
+        for f in name_fields:
+            v = d.get(f)
+            if isinstance(v, str) and v.strip():
+                uniq.add(v.strip())
+    if len(uniq) < min_unique:
+        return 0.0
+
+    return min(1.0, 0.6 + len(dicts) / 1000.0)
+
+
+def _response_looks_like_roster(
+    body: str,
+    content_type: str | None,
+    lang: str = "en",
+    *,
+    min_repeated: int = 5,
+    min_unique: int = 5,
+    max_depth: int = 4,
+    max_nodes: int = 2000,
+) -> float:
+    """Score a probe response: structural for JSON, keyword for HTML.
+
+    A JSON body is validated by structure (repeated company objects), so a
+    language-neutral roster with field names like `company_name` / `회사명` /
+    `会社名` scores even though it contains none of the EN/KO keyword tokens.
+    Non-JSON (or unparseable JSON) falls back to the keyword scorer.
+    """
+    if _looks_like_json(body, content_type):
+        try:
+            data = json.loads(body)
+        except (json.JSONDecodeError, ValueError):
+            return _response_looks_like_exhibitor_list(body, lang)
+        return _roster_structural_score(
+            data,
+            min_repeated=min_repeated,
+            min_unique=min_unique,
+            max_depth=max_depth,
+            max_nodes=max_nodes,
+        )
+    return _response_looks_like_exhibitor_list(body, lang)
+
+
 def _dotted_key_walk(obj: Any, key_path: str) -> Any:
     """Walk a nested dict/list using a dotted key path like 'props.pageProps.exhibitors'."""
     parts = key_path.split(".")
@@ -252,8 +370,8 @@ def probe_endpoints(
         # should_proceed=True + err_or_warn is not None → advisory warning (SPA shell).
         warning_msg = err_or_warn.message if err_or_warn else None
 
-        # e. Score.
-        score = _response_looks_like_exhibitor_list(resp.body, lang)
+        # e. Score (structural for JSON, keyword for HTML — review #2 / v2.1 §C).
+        score = _response_looks_like_roster(resp.body, resp.content_type, lang)
         attempts.append(ProbeAttempt(
             url=cand.url, method=method, status=resp.status, score=score,
             warning=warning_msg,
@@ -404,7 +522,7 @@ def probe_embedded_json(
         extracted_text = json.dumps(data, ensure_ascii=False)
         attempt = ProbeAttempt(
             url=url, method="GET", status=resp.status,
-            score=_response_looks_like_exhibitor_list(extracted_text, "en"),
+            score=_response_looks_like_roster(extracted_text, "application/json", "en"),
         )
         return ProbeResult(
             winner=attempt,
