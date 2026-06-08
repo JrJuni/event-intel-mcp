@@ -234,6 +234,28 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 **산출**: `~/.claude/plans/y1-execution-v4.md`(리뷰 종료, 구현 진입본. 인라인 마커 + Considered/Rejected + Changes v1→v2→v3→v4). v1/v2/v3 audit trail 보존.
 
+### Y1 라벨링 시스템 plan 라운드 1+2 (v1→v3) — 2026-06-08
+
+외부 AI: Codex. 멀티벤더(GPT-OAuth 초안 → Claude 검색보완) gold 생산 시스템 plan. "독립 gold 계약 vs AI 자동라벨·게이트 동작 충돌"에 집중.
+
+| # | 카테고리 | 판정 | 사유(HEAD 대조) |
+|---|---|---|---|
+| R1-1 | architecture | accepted | 엔진·Stage A 둘 다 GPT-OAuth + 비플래그 자동채택 → 독립성 위반. **silver(단일벤더)/gold(교차합의·사람·검색) 분리**, holdout=gold만 |
+| R1-2 | corner-case | accepted | `benchmark.py:226` `passed()=not gate_failures()` + N/A/insufficient_n=passed=None → **미측정 required가 통과로 둔갑**. L0 ineligible 도입 |
+| R1-3 | corner-case | accepted | freeze가 universe={} + class-coverage 게이트 없음 → v4 계약 미반영. 재freeze |
+| R1-4 | corner-case | accepted | gold 폴더 `labeling_sheet.json`에 원문 개요(README는 회사명+라벨만) → gitignore 로컬 분리 |
+| R1-5 | documentation | accepted | 로드맵 v3 Context가 stale(479 tests/Y1 미착수) → 방향만 보존, 현황 status 위임 + Y2 transport/세션 |
+| R2-1 | corner-case | accepted | grade가 `SealedLabels`(name→str)·measure까지 안 감 → holdout이 silver 거부 못함. **행단위 {label,grade,source,adjudicators}** + holdout measure 검증 |
+| R2-2 | corner-case | accepted | 전역 required면 partner competitor·evidence 비대상이 ineligible → manifest pair별 **required/optional/not_applicable** |
+| R2-3 | architecture | accepted | **P4는 이미 라벨/분포(competitor=3) 봤음 → 재freeze로 holdout 독립성 복구 불가**. P4→DEV 강등, 새 blind pair 사전지정 |
+| R2-4 | corner-case | accepted | waiver→pass면 실제 통과와 구분 불가 → 상태 `pass/fail/ineligible/waived` + 사유·승인자·시각 |
+| R2-5 | corner-case | accepted | 교차합의 gold는 2nd 라벨러가 GPT 제안 안 봤음 증명 필요 → input/prompt SHA·model ID provenance |
+| R2-6 | documentation | accepted | 기존 sheet/ai_labels 로컬 이동 migration 없음 → 이동 + `git check-ignore` 테스트 |
+
+**메타**: 2라운드 11건 전부 valid(oh/컨벤션충돌 0). 강점=계약을 **plan 산문이 아니라 코드 경계(sealed/measure/manifest)로 강제하라**는 corner-case + `benchmark.py:226` 정확 인용. R2가 v2의 "산문 수준 fix"를 정확히 재지적(높은 novelty). **가장 중요(R2-3)**: 라벨을 본 pair는 재freeze로 holdout 자격 복구 불가 — Y1 실행 plan의 Q3(P1 GTC 오염)와 동형 패턴, 이번엔 P4. echo chamber 아님.
+**판정**: 라운드 1+2 모두 강한 신호 → plan v3 재합성(인라인 마커). **L0(게이트 적격성)은 선행 코드 fix로 분리 착수**(commit `cd1b6a2`, 617 passed). 잔여 L1–L6은 v3 슬라이스로 구현.
+**핵심 교훈(반복 확인)**: 측정 인프라는 외부 리뷰 가치가 크다 — 이번에도 "미측정=통과" silent-validity 결함(R1-2)과 "본 pair는 holdout 불가"(R2-3)를 외부가 잡음. 계약은 문서가 아니라 **타입/검증 경계로 강제**해야 새지 않는다.
+
 ### Agentic Acquisition Ladder impl plan 라운드 1 (design v2→v2.1) — 2026-06-08
 
 | # | 카테고리 | 판정 | 사유 |

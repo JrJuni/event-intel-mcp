@@ -46,15 +46,39 @@ _POSITIVE_BY_MODE = {
     "ecosystem": frozenset({"target", "competitor"}),
 }
 
-# D6 pre-frozen gate thresholds (plan §6). (metric_name, direction, threshold).
+# Gate applicability per pair (L0 / review R2#2). A gate that doesn't apply to a
+# pair (e.g. competitor on a partner pair, evidence on a no-evidence pair) is
+# NOT_APPLICABLE and excluded from eligibility — never counted as ineligible.
+REQUIRED = "required"
+OPTIONAL = "optional"
+NOT_APPLICABLE = "not_applicable"
+
+# Measure eligibility (review R2#2/#4). A required gate that can't be measured
+# (N/A / insufficient_n) makes the whole run INELIGIBLE — not a silent pass.
+PASS = "pass"
+FAIL = "fail"
+INELIGIBLE = "ineligible"
+WAIVED = "waived"
+
+# D6 pre-frozen gate thresholds (plan §6). (metric_name, direction, threshold, applicability).
 # CS8's threshold-freeze manifest overrides these; kept here as the documented default.
-DEFAULT_GATES: tuple[tuple[str, str, float], ...] = (
-    ("extraction_coverage", ">=", 0.80),
-    ("precision_at_10", ">=", 0.60),
-    ("conditional_competitor_leakage_rate", "<=", 0.10),
-    ("conditional_bad_fit_leakage_rate", "<=", 0.05),
-    ("evidence_precision", ">=", 0.85),
+# Back-compat: a 3-tuple (name, direction, threshold) is read as REQUIRED.
+DEFAULT_GATES: tuple[tuple[str, str, float, str], ...] = (
+    ("extraction_coverage", ">=", 0.80, REQUIRED),
+    ("precision_at_10", ">=", 0.60, REQUIRED),
+    ("conditional_competitor_leakage_rate", "<=", 0.10, REQUIRED),
+    ("conditional_bad_fit_leakage_rate", "<=", 0.05, REQUIRED),
+    ("evidence_precision", ">=", 0.85, REQUIRED),
 )
+
+
+def _normalize_gate(g: tuple) -> tuple[str, str, float, str]:
+    """Accept a 3-tuple (name, direction, threshold) → REQUIRED, or a 4-tuple
+    with explicit applicability. Keeps old frozen manifests readable.
+    """
+    if len(g) == 4:
+        return (g[0], g[1], float(g[2]), g[3])
+    return (g[0], g[1], float(g[2]), REQUIRED)
 
 
 # ============================================================================
@@ -167,17 +191,20 @@ def load_run_result(run_dir: str | Path) -> RunResult:
 
 def freeze_thresholds(
     *,
-    gates: tuple[tuple[str, str, float], ...] = DEFAULT_GATES,
+    gates: tuple[tuple, ...] = DEFAULT_GATES,
     universe: dict[str, Any] | None = None,
     now_iso: str,
     path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Freeze the D6 gate thresholds + per-pair universe into an immutable manifest
-    (state machine step 1). The `sha` covers only the frozen content (gates +
-    universe), NOT `frozen_at`, so the freeze is provable and re-derivable. Writing
-    refuses to overwrite — a freeze happens once, before any label is seen.
+    (state machine step 1). Gates are normalized to 4-tuples (name, direction,
+    threshold, applicability) so per-pair required/optional/not_applicable is part
+    of the frozen contract (review R2#2). The `sha` covers only the frozen content
+    (gates + universe), NOT `frozen_at`, so the freeze is provable and re-derivable.
+    Writing refuses to overwrite — a freeze happens once, before any label is seen.
     """
-    content = {"gates": [list(g) for g in gates], "universe": universe or {}}
+    norm = [list(_normalize_gate(g)) for g in gates]
+    content = {"gates": norm, "universe": universe or {}}
     sha = hashlib.sha256(
         json.dumps(content, sort_keys=True, ensure_ascii=False).encode("utf-8")
     ).hexdigest()
@@ -193,10 +220,12 @@ def freeze_thresholds(
 
 def load_threshold_manifest(
     path: str | Path,
-) -> tuple[tuple[tuple[str, str, float], ...], dict[str, Any]]:
-    """Load a frozen manifest → (gates tuple, full manifest dict)."""
+) -> tuple[tuple[tuple[str, str, float, str], ...], dict[str, Any]]:
+    """Load a frozen manifest → (normalized 4-tuple gates, full manifest dict).
+    Old 3-tuple manifests are read as REQUIRED for back-compat.
+    """
     m = json.loads(Path(path).read_text(encoding="utf-8"))
-    gates = tuple((g[0], g[1], float(g[2])) for g in m["gates"])
+    gates = tuple(_normalize_gate(g) for g in m["gates"])
     return gates, m
 
 
@@ -211,7 +240,11 @@ class GateOutcome:
     result: _metrics.MetricResult
     threshold: float | None
     direction: str               # ">=" or "<="
-    passed: bool | None          # None when status != OK (N/A / insufficient_n: not gated)
+    applicability: str           # required | optional | not_applicable
+    passed: bool | None          # None when status != OK (N/A / insufficient_n)
+    waived: bool = False
+    waiver_reason: str | None = None
+    waiver_by: str | None = None
 
 
 @dataclass
@@ -224,10 +257,38 @@ class MeasureReport:
     gates: list[GateOutcome]
 
     def gate_failures(self) -> list[GateOutcome]:
-        return [g for g in self.gates if g.passed is False]
+        """REQUIRED gates that measured a real failure (not waived)."""
+        return [
+            g for g in self.gates
+            if g.applicability == REQUIRED and g.passed is False and not g.waived
+        ]
+
+    def eligibility(self) -> str:
+        """pass / fail / ineligible / waived (review R2#2·#4). A required gate that
+        could not be measured (passed is None) makes the run INELIGIBLE — it is
+        NEVER silently counted as a pass. not_applicable/optional gates don't block.
+        """
+        has_fail = has_ineligible = has_waived = False
+        for g in self.gates:
+            if g.applicability != REQUIRED:
+                continue
+            if g.waived:
+                has_waived = True
+            elif g.passed is False:
+                has_fail = True
+            elif g.passed is None:  # required but unmeasured (N/A / insufficient_n)
+                has_ineligible = True
+        if has_fail:
+            return FAIL
+        if has_ineligible:
+            return INELIGIBLE
+        if has_waived:
+            return WAIVED
+        return PASS
 
     def passed(self) -> bool:
-        return not self.gate_failures()
+        """True ONLY for a clean pass — waived/ineligible/fail are not passes."""
+        return self.eligibility() == PASS
 
     def to_dict(self) -> dict[str, Any]:
         def _m(r: _metrics.MetricResult) -> dict[str, Any]:
@@ -244,13 +305,18 @@ class MeasureReport:
                     "name": g.name,
                     "threshold": g.threshold,
                     "direction": g.direction,
+                    "applicability": g.applicability,
                     "passed": g.passed,
+                    "waived": g.waived,
+                    "waiver_reason": g.waiver_reason,
+                    "waiver_by": g.waiver_by,
                     "value": g.result.value,
                     "status": g.result.status,
                     "n": g.result.n,
                 }
                 for g in self.gates
             ],
+            "eligibility": self.eligibility(),
             "passed": self.passed(),
         }
 
@@ -292,20 +358,37 @@ def _project(
 
 def _evaluate_gates(
     metrics: dict[str, _metrics.MetricResult],
-    gates: tuple[tuple[str, str, float], ...],
+    gates: tuple[tuple, ...],
+    *,
+    target_mode: str = "customer",
+    waivers: dict[str, dict[str, Any]] | None = None,
 ) -> list[GateOutcome]:
+    waivers = waivers or {}
     out: list[GateOutcome] = []
-    for name, direction, threshold in gates:
+    for raw in gates:
+        name, direction, threshold, applicability = _normalize_gate(raw)
         r = metrics.get(name)
         if r is None:
             continue
+        # Partner mode: competitor is neutral, so any competitor gate is
+        # not_applicable (excluded), never ineligible (review R2#2).
+        if target_mode == "partner" and "competitor" in name:
+            applicability = NOT_APPLICABLE
         if r.status != _metrics.OK or r.value is None:
-            passed: bool | None = None  # N/A or insufficient_n → not gated, reported
+            passed: bool | None = None  # N/A or insufficient_n → unmeasured
         elif direction == ">=":
             passed = r.value >= threshold
         else:
             passed = r.value <= threshold
-        out.append(GateOutcome(name, r, threshold, direction, passed))
+        g = GateOutcome(name, r, threshold, direction, applicability, passed)
+        # A waiver converts a required gate's fail/ineligible into WAIVED (audited),
+        # but never fabricates a clean pass (review R2#4).
+        w = waivers.get(name)
+        if w and applicability == REQUIRED and (passed is False or passed is None):
+            g.waived = True
+            g.waiver_reason = w.get("reason")
+            g.waiver_by = w.get("by")
+        out.append(g)
     return out
 
 
@@ -319,7 +402,8 @@ def measure(
     target_mode: str = "customer",
     positive: set[str] | None = None,
     evidence_present: list[bool] | None = None,
-    thresholds: tuple[tuple[str, str, float], ...] | None = None,
+    thresholds: tuple[tuple, ...] | None = None,
+    waivers: dict[str, dict[str, Any]] | None = None,
 ) -> MeasureReport:
     """Reveal + join (step 9). Joins the run-result with sealed gold and the CS2
     match, then computes the CS6 metric table + gate outcomes.
@@ -394,7 +478,9 @@ def measure(
         else _metrics.MetricResult(None, _metrics.NA)
     )
 
-    gates = _evaluate_gates(metrics, thresholds or DEFAULT_GATES)
+    gates = _evaluate_gates(
+        metrics, thresholds or DEFAULT_GATES, target_mode=target_mode, waivers=waivers
+    )
     return MeasureReport(
         pair=run_result.pair,
         run_id=run_result.run_id,

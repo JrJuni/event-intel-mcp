@@ -186,3 +186,99 @@ def test_measure_report_to_dict_serializes():
     d = json.loads(json.dumps(rep.to_dict(), ensure_ascii=False))
     assert d["pair"] == "p1" and "metrics" in d and "gates" in d
     assert d["metrics"]["extraction_coverage"]["status"] == "ok"
+
+
+# ---------- L0: eligibility (pass/fail/ineligible/waived) + applicability ----------
+
+def _full_label_sealed():
+    # all 5 roster labeled so competitor (2) / bad_fit (1) classes exist
+    return _sealed({
+        "ACME Robotics": "target", "Globex": "target", "Initech": "bad_fit",
+        "RivalCorp": "competitor", "GhostCo": "competitor",
+    })
+
+
+def test_eligibility_pass_when_all_required_ok():
+    rr = B._run_result_from_payload("p1", _payload())
+    # gates that are all measurable + satisfied on this tiny fixture
+    gates = (("extraction_coverage", ">=", 0.5, B.REQUIRED),
+             ("precision_at_10", ">=", 0.1, B.REQUIRED))
+    rep = B.measure(run_result=rr, roster=_ROSTER, match=_match(),
+                    sealed_labels=_full_label_sealed(), thresholds=gates)
+    assert rep.eligibility() == "pass" and rep.passed() is True
+
+
+def test_eligibility_fail_takes_precedence():
+    rr = B._run_result_from_payload("p1", _payload())
+    gates = (("extraction_coverage", ">=", 0.99, B.REQUIRED),)  # 0.8 < 0.99 → fail
+    rep = B.measure(run_result=rr, roster=_ROSTER, match=_match(),
+                    sealed_labels=_full_label_sealed(), thresholds=gates)
+    assert rep.eligibility() == "fail" and rep.passed() is False
+
+
+def test_required_unmeasured_is_ineligible_not_pass():
+    """The headline R2#2 bug: a required gate that is insufficient_n must make the
+    run ineligible, NOT silently pass."""
+    rr = B._run_result_from_payload("p1", _payload())
+    # competitor conditional has only 1 scored competitor → insufficient_n
+    gates = (("conditional_competitor_leakage_rate", "<=", 0.1, B.REQUIRED),)
+    rep = B.measure(run_result=rr, roster=_ROSTER, match=_match(),
+                    sealed_labels=_sealed({"RivalCorp": "competitor"}), thresholds=gates)
+    assert rep.eligibility() == "ineligible"
+    assert rep.passed() is False
+
+
+def test_not_applicable_gate_does_not_make_ineligible():
+    rr = B._run_result_from_payload("p1", _payload())
+    gates = (("extraction_coverage", ">=", 0.5, B.REQUIRED),
+             ("conditional_competitor_leakage_rate", "<=", 0.1, B.NOT_APPLICABLE))
+    rep = B.measure(run_result=rr, roster=_ROSTER, match=_match(),
+                    sealed_labels=_sealed({"RivalCorp": "competitor"}), thresholds=gates)
+    assert rep.eligibility() == "pass"  # competitor n/a excluded, coverage ok
+
+
+def test_partner_competitor_gate_auto_not_applicable():
+    """Partner mode → competitor gate is not_applicable, never ineligible (R2#2)."""
+    rr = B._run_result_from_payload("p1", _payload())
+    gates = (("extraction_coverage", ">=", 0.5, B.REQUIRED),
+             ("conditional_competitor_leakage_rate", "<=", 0.1, B.REQUIRED))
+    rep = B.measure(run_result=rr, roster=_ROSTER, match=_match(),
+                    sealed_labels=_sealed({"RivalCorp": "competitor"}),
+                    target_mode="partner", thresholds=gates)
+    comp = next(g for g in rep.gates if g.name == "conditional_competitor_leakage_rate")
+    assert comp.applicability == "not_applicable"
+    assert rep.eligibility() == "pass"
+
+
+def test_waiver_yields_waived_not_pass():
+    """A waived required gate must serialize as `waived`, never passed=True (R2#4)."""
+    rr = B._run_result_from_payload("p1", _payload())
+    gates = (("conditional_competitor_leakage_rate", "<=", 0.1, B.REQUIRED),)
+    rep = B.measure(
+        run_result=rr, roster=_ROSTER, match=_match(),
+        sealed_labels=_sealed({"RivalCorp": "competitor"}), thresholds=gates,
+        waivers={"conditional_competitor_leakage_rate": {"reason": "class too small", "by": "tyrical"}},
+    )
+    assert rep.eligibility() == "waived"
+    assert rep.passed() is False
+    d = json.loads(json.dumps(rep.to_dict(), ensure_ascii=False))
+    g = d["gates"][0]
+    assert g["waived"] is True and g["waiver_by"] == "tyrical"
+    assert d["passed"] is False and d["eligibility"] == "waived"
+
+
+def test_freeze_load_roundtrips_applicability(tmp_path):
+    out = tmp_path / "thr.json"
+    B.freeze_thresholds(
+        gates=(("extraction_coverage", ">=", 0.8, B.REQUIRED),
+               ("conditional_competitor_leakage_rate", "<=", 0.1, B.NOT_APPLICABLE)),
+        now_iso="2026-06-08T00:00:00+00:00", path=out,
+    )
+    gates, m = B.load_threshold_manifest(out)
+    assert gates[0] == ("extraction_coverage", ">=", 0.8, "required")
+    assert gates[1][3] == "not_applicable"
+
+
+def test_old_3tuple_manifest_reads_as_required():
+    assert B._normalize_gate(("extraction_coverage", ">=", 0.8)) == (
+        "extraction_coverage", ">=", 0.8, "required")

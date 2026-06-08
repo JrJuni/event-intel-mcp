@@ -6,6 +6,15 @@
 
 ## 진행 중
 
+- **Y1 라벨링 시스템 — 멀티벤더 gold 생산 (2026-06-08, plan `snoopy-weaving-robin.md` 상단 v3, branch `feat/y1-labeling-system`)**
+  - **계기.** Y1 측정 인프라(CS1–CS9)는 완성됐지만 진짜 병목은 **gold 라벨 생산**. 수작업 전수는 비현실적(HCR 296사), 사람 전수검수는 "순서만 바뀜". AI는 이 분류를 충분히 함 — GTC 20사에서 다른벤더 AI(Claude) vs 사람 **95% 일치, competitor 100% 일치** 실증. 목표=개별정확도가 아니라 **싸고 반복가능하고 감사가능한 멀티벤더 gold 생산 시스템**(엔진=GPT-OAuth ↔ 라벨러=Claude → blind-spot 독립성 + 비용차익 + 불일치=불확실 신호).
+  - **설계.** plan v1→v3 (Codex blind review 2라운드, 11건 전부 HEAD 대조 후 수용). 핵심 교정: silver(단일벤더 자동채택)/gold(교차합의·검색·사람) 분리·holdout=gold만 / 미측정 required 게이트=ineligible(≠pass) / pair별 게이트 applicability / waived≠pass / 교차합의 독립성 증빙(SHA) / 데이터 위생. **R2-3: 이미 라벨 본 P4는 재freeze로 holdout 복구 불가 → P4=DEV 강등, 새 blind pair 사전지정.**
+  - **아키텍처**: company-packet → **Draft(GPT-OAuth, silver)** → **Flag(competitor/bad_fit·저확신)** → **Refine(Claude+웹서치, gold)** → Seal(grade 보존) → measure(holdout=gold만). 검색은 MCP 서버 아닌 호스트(Claude app/agent)가.
+  - ✅ **L0 게이트 적격성 fix** (`cd1b6a2`) — eligibility {pass/fail/ineligible/waived} + pair별 applicability(required/optional/not_applicable) + waiver(사유·승인자, ≠pass). partner competitor 자동 not_applicable. freeze/load 4-튜플. blind review가 잡은 "미측정=통과" silent-validity 버그 차단. **617 passed.**
+  - **남은 슬라이스**: L1(`label_draft.py` GPT 초안) · L2(SealedLabels grade 행단위 확장) · L3(교차합의+검색 gold) · L4(label-stats 메타지표) · L5(CLI 통합+데이터 위생 migration) · L6(후속 draft_labels MCP 도구).
+  - **사용자 결정 대기**: competitor holdout용 새 blind pair(로보월드/스마트테크/AI Expo Tokyo/Longevity 중, 라벨 보기 전).
+  - **기 생산물(로컬)**: GTC(P1) 사람 gold 20 + measure(P@10 0.3, no-enrich), HCR(P4→DEV) AI 라벨 296. 카드 3종 ingest + CS7 receipt(drift=match) 검증 완료.
+
 - **Y1 실데이터 벤치마크 — 코드 페이즈 완료 (2026-06-08, plan `y1-execution-v4.md` / 상위 `snoopy-weaving-robin.md`, branch `feat/y1-benchmark`)**
   - **계기.** 엔진은 빌드·내부정합성 완료지만 **독립 gold label 대비 정확도 미검증**. 현 `eval/harness.py`는 fit/sim/news 주입 + `cards=None`으로 scorer만 돈다. Y1은 실 카드 3종 × 실 이벤트 6종 × 독립 blind 라벨로 그 빈틈을 닫는다. **이 plan의 핵심 = 측정 자체의 타당성** — blind 경계·cohort·재현성을 코드 경계로 강제.
   - **설계.** plan v1→v4 (Codex 3라운드 + Gemini context-starved skeptic, 전부 HEAD 대조 후 수용). 측정 타당성 버그 다수 차단: blind 경계 자기모순, P@10 `/len` 부풀림, leakage 분모 게이밍, partner competitor 게이트 충돌, cap-0 sentinel, holdout 순서 모순, evidence 1건-통과.
