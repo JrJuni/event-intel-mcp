@@ -12,11 +12,15 @@
 전부 종료된 시점에서, 큰 그림 남은 일은 두 갈래. **북스타: 실데이터 정확도 검증(Y1) → 원격 배포(Y2).** 각 phase는
 착수 시 별도 상세 plan + blind review로 실행한다(이 섹션은 방향 박제일 뿐, 실행 계약 아님).
 
-- **Y1 — 실데이터 검증 + 근거기반 정확도 (지금)**: gold-label로 정확도가 검증된 적 없음(합성 fixture + 단일 gold-set
+- **Y1 — 실데이터 검증 + 근거기반 정확도**: gold-label로 정확도가 검증된 적 없음(합성 fixture + 단일 gold-set
   튜닝뿐). `eval/harness.py`는 scorer만 실행(cards=None)하므로 실데이터 정확도 미검증. → **Y1A** 벤치마크 계약(제품 2~3개
   × 대표 이벤트 5~8개, 라벨 종류별 메트릭 적격성, holdout 공개 전 통과기준 고정) → **Y1B** instrumentation 선행(verdict별
   성공정의 + 최소 run-summary) → **Y1C** 3계층(live smoke / contract-replay CI(fake embedding) / offline quality
   benchmark(실 bge-m3, 비필수 CI)) → **Y1D** 측정 후 조건부 fix. 9-cell은 scoring 회귀로 유지·분리.
+  - **⏸️ Y1D + holdout 보류 — 장기 과제로 강등 (2026-06-09, 사용자 결정)**: Y1A~C 측정 인프라(CS1–CS9) + 멀티벤더 라벨링(L0–L6)은
+    완성·머지됐고 GTC DEV 1-pair 측정·진단까지 했으나, **적합한 gold 데이터(대표 pair 다수 + 정식 holdout pair)를 확보하지 못해**
+    Y1D(rerank/retrieval) 통제 실험과 holdout 본측정을 **무기한 보류**한다. 정합성(`capability_fit`) 정확도 개선은 아래
+    **#1 / #6**으로 박제(데이터 확보 시 재개). 근시일 작업은 **#14(인앱 셋업 패리티)**부터.
 - **Y2 — 원격 배포 (계획까지)**: **Y2.0** 아키텍처 게이트(single-user-private 우선) → **Y2.1** Remote I/O + file-backed
   job(현 도구는 서버 로컬 경로 I/O라 원격 선결; DB persist는 OOS지만 job manifest는 허용) → **Y2.2** Streamable HTTP +
   표준 MCP 인증(resource-server / Protected Resource Metadata / audience 검증 / SDK·protocol 고정) → **Y2.3** 운영강화 + 비로컬 smoke.
@@ -88,6 +92,7 @@
 ### #1 양방향 fit retrieval (event ↔ product)
 v0는 단방향 (event evidence → product collection). 정확도 검증 후 양방향(product → event도 query) 도입 검토. plan v0.5 Mini-RAG 섹션 참조.
 **Y1D 측정 증거(2026-06-08, GTC×MongoDB measure-grade)**: `capability_fit`(단방향 RAG 코사인)이 전 라벨에서 **~0.5로 평평**(target 0.54 ≈ bad_fit 0.50) → target 양성 식별 실패. 양방향이 이 평탄함을 깰지 #6 rerank와 함께 후보.
+**⏸️ 보류(2026-06-09)**: #6과 함께 **정합성 정확도 개선 장기 과제**로 강등 — 적합 gold 데이터 확보가 선결.
 
 ### #2 Provider 교체 구현
 v0는 인터페이스만 두고 default 구현 1개씩 (Anthropic / bge-m3 / Chroma / Brave / httpx). v0.4+에서 OpenAI/Voyage embedding, Tavily search 등 교체 가능하게.
@@ -105,9 +110,10 @@ v0는 per-row resume (enrichment 실패 row만 재시도). v0.4+에서 stage 단
 
 ## P3 — v0.5+ 영역
 
-### #6 Cross-encoder rerank
+### #6 Cross-encoder rerank — 정합성 정확도 개선 (장기 과제, 데이터 블로커)
 bge-m3 only로 시작. 정확도 부족 검증 시 reranker 도입.
-**Y1D 측정이 1순위 fix로 지목(2026-06-08)**: GTC×MongoDB measure-grade에서 `capability_fit` RAG 코사인이 target/non-target을 못 가름(전 라벨 ~0.5). 가중치 재조정은 무의미(평평한 신호). top-K를 exhibitor↔product fit로 cross-encoder/LLM 재랭킹 → target 양성 식별 직접 개선. **단 별 phase plan으로 통제 실험(rerank→DEV 재measure + 9-cell 회귀), 선빌드 금지.**
+**Y1D 진단이 지목한 핵심 fix 후보(2026-06-08)**: GTC×MongoDB measure-grade에서 `capability_fit` RAG 코사인이 target/non-target을 못 가름(전 라벨 ~0.5). 가중치 재조정은 무의미(평평한 신호). top-K를 exhibitor↔product fit로 cross-encoder/LLM 재랭킹 → target 양성 식별 직접 개선.
+**⏸️ 보류(2026-06-09, 사용자 결정)**: **적합한 gold 데이터 미확보**로 장기 과제 강등. 재개 조건 = 대표 pair 다수 + 정식 holdout pair 확보. 재개 시 **별도 phase plan으로 통제 실험(rerank→DEV 재measure + 9-cell 회귀), 선빌드 금지.** (#1 양방향 retrieval과 함께 검토.)
 
 ### #7 bd-agent bridge
 event-intel-mcp 결과를 bd-coldcall-agent의 `Targets` 테이블로 export. 별도 phase로 분리.
