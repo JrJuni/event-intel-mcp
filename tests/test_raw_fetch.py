@@ -18,20 +18,46 @@ from event_intel.errors import ErrorCode, MCPError
 
 # ---------- helpers ----------
 
-def _make_httpx_response(*, status: int, text: str, url: str, headers: dict | None = None, history=None):
-    """Build a minimal mock that looks like an httpx.Response."""
+def _make_httpx_response(
+    *, status: int, text: str, url: str, headers: dict | None = None,
+    history=None, encoding: str = "utf-8", chunk_size: int | None = None,
+):
+    """Build a minimal mock that looks like a streamed httpx.Response.
+
+    fetch_raw now consumes the body via `client.stream(...)` + `resp.iter_bytes()`,
+    so the mock exposes iter_bytes() + encoding instead of .text.
+    """
     resp = MagicMock()
     resp.status_code = status
-    resp.text = text
     resp.url = MagicMock()
     resp.url.__str__ = lambda self: url
     resp.headers = headers or {"content-type": "text/html"}
     resp.history = history or []
+    resp.encoding = encoding
+    data = text.encode(encoding)
+    if chunk_size:
+        chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)] or [b""]
+    else:
+        chunks = [data]
+    resp.iter_bytes = lambda: iter(chunks)
     return resp
 
 
+class _FakeStream:
+    """Context manager yielded by _FakeClient.stream()."""
+
+    def __init__(self, response):
+        self._response = response
+
+    def __enter__(self):
+        return self._response
+
+    def __exit__(self, *_):
+        return False
+
+
 class _FakeClient:
-    """Context manager that returns a canned response."""
+    """Context manager whose stream() returns a canned response."""
 
     def __init__(self, response):
         self._response = response
@@ -40,10 +66,10 @@ class _FakeClient:
         return self
 
     def __exit__(self, *_):
-        pass
+        return False
 
-    def request(self, *args, **kwargs):
-        return self._response
+    def stream(self, *args, **kwargs):
+        return _FakeStream(self._response)
 
 
 def _fake_client(response):
@@ -126,3 +152,30 @@ def test_raw_fetch_does_not_map_404_to_invalid_input():
     # raw_fetch must NOT raise — returns the status as-is.
     assert result.status == 404
     assert result.network_error is None
+
+
+def test_byte_cap_truncates_stream():
+    """max_bytes stops the stream once the cap is reached (real bandwidth cap)."""
+    big = "x" * 10_000
+    mock_resp = _make_httpx_response(
+        status=200, text=big, url="https://example.com/big", chunk_size=1000
+    )
+    with _fake_client(mock_resp):
+        result = fetch_raw("https://example.com/big", max_bytes=3000)
+    assert result.truncated is True
+    assert result.byte_count >= 3000
+    # body cut near the cap (within one chunk), not the full 10k.
+    assert len(result.body.encode("utf-8")) <= 4000
+
+
+def test_no_byte_cap_reads_full_body():
+    """max_bytes=None (default) reads the whole body, truncated=False."""
+    big = "y" * 10_000
+    mock_resp = _make_httpx_response(
+        status=200, text=big, url="https://example.com/full", chunk_size=1000
+    )
+    with _fake_client(mock_resp):
+        result = fetch_raw("https://example.com/full")
+    assert result.truncated is False
+    assert result.byte_count == 10_000
+    assert result.body == big
