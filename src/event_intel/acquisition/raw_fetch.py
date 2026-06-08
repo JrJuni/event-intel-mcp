@@ -51,6 +51,8 @@ class RawResponse:
     final_url: str                        # URL after redirects
     history: list[str] = field(default_factory=list)  # intermediate URLs
     network_error: str | None = None      # set when status == 0
+    truncated: bool = False               # True if body was cut at max_bytes
+    byte_count: int = 0                   # bytes actually read off the wire
 
 
 def fetch_raw(
@@ -63,6 +65,7 @@ def fetch_raw(
     allow_cross_origin: bool = False,
     timeout: float = _DEFAULT_TIMEOUT,
     max_redirects: int = 5,
+    max_bytes: int | None = None,
 ) -> RawResponse:
     """Fetch `url` and return a RawResponse.
 
@@ -97,34 +100,51 @@ def fetch_raw(
             timeout=timeout,
             event_hooks={"request": [], "response": []},
         ) as client:
-            resp = client.request(
-                method=method.upper(),
-                url=url,
+            # Stream the body so max_bytes is a real bandwidth/memory cap: we stop
+            # pulling bytes off the socket once the cap is hit, rather than reading
+            # the whole response and trimming after the fact.
+            with client.stream(
+                method.upper(),
+                url,
                 headers=merged_headers,
                 params=params or {},
                 data=data or {},
-            )
+            ) as resp:
+                # Validate each redirect target (history is populated before the
+                # streaming response is yielded).
+                for r in resp.history:
+                    redirect_url = str(r.url)
+                    history_urls.append(redirect_url)
+                    _check_redirect(landing_host, redirect_url, allow_cross_origin)
 
-            # Validate each redirect target.
-            for r in resp.history:
-                redirect_url = str(r.url)
-                history_urls.append(redirect_url)
-                _check_redirect(landing_host, redirect_url, allow_cross_origin)
+                final_url = str(resp.url)
+                if final_url != url:
+                    _check_redirect(landing_host, final_url, allow_cross_origin)
 
-            final_url = str(resp.url)
-            if final_url != url:
-                _check_redirect(landing_host, final_url, allow_cross_origin)
+                chunks: list[bytes] = []
+                byte_count = 0
+                truncated = False
+                for chunk in resp.iter_bytes():
+                    chunks.append(chunk)
+                    byte_count += len(chunk)
+                    if max_bytes is not None and byte_count >= max_bytes:
+                        truncated = True
+                        break
+                raw = b"".join(chunks)
+                encoding = resp.encoding or "utf-8"
+                body = raw.decode(encoding, errors="replace")
 
-            ct = resp.headers.get("content-type", "")
-            body = resp.text  # httpx decodes; falls back to errors="replace"
-            return RawResponse(
-                status=resp.status_code,
-                headers=dict(resp.headers),
-                body=body,
-                content_type=ct,
-                final_url=final_url,
-                history=history_urls,
-            )
+                ct = resp.headers.get("content-type", "")
+                return RawResponse(
+                    status=resp.status_code,
+                    headers=dict(resp.headers),
+                    body=body,
+                    content_type=ct,
+                    final_url=final_url,
+                    history=history_urls,
+                    truncated=truncated,
+                    byte_count=byte_count,
+                )
 
     except MCPError:
         # Safety violations from _check_redirect — re-raise.

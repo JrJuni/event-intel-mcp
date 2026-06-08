@@ -269,6 +269,30 @@ def test_extract_endpoint_evidence_returns_empty_when_no_patterns():
     assert patterns == []
 
 
+@pytest.mark.parametrize("snippet,expected", [
+    # HCR-shaped: document-relative axios literal (no leading slash) — now found.
+    ("axios.get('_ajax/exhibitor/get_exhibitor_data/')",
+     "_ajax/exhibitor/get_exhibitor_data/"),
+    ("fetch('data/companies.json')", "data/companies.json"),
+])
+def test_extract_endpoint_evidence_accepts_relative_literals(snippet, expected):
+    """Document-relative endpoint literals (the HCR case) are now surfaced."""
+    patterns = _analyzer._extract_endpoint_evidence(html="", scripts=[snippet])
+    assert any(expected in p for p in patterns), patterns
+
+
+@pytest.mark.parametrize("snippet", [
+    "axios.get(`/api/${id}`)",          # template interpolation
+    "axios.get('/api/' + companyId)",   # string concatenation
+    "axios.get('config')",              # bare identifier, no path separator
+    "fetch(`/data/${page}.json`)",      # template inside fetch backtick
+])
+def test_extract_endpoint_evidence_rejects_dynamic_or_nonpath(snippet):
+    """Template/concat/non-path call args must not yield a usable endpoint."""
+    patterns = _analyzer._extract_endpoint_evidence(html="", scripts=[snippet])
+    assert patterns == [], patterns
+
+
 def test_analyze_page_includes_detected_patterns_block_in_user_content():
     """Backlog #11: <DETECTED_PATTERNS> block exposes endpoint evidence to LLM
     so framework=Vue/React doesn't mask visible XHR signals."""
@@ -334,3 +358,202 @@ def test_korean_prompt_includes_priority_rule():
     assert "우선순위 규칙" in sys or "엔드포인트 증거는 프레임워크 라벨을 이깁니다" in sys, (
         f"priority rule missing from ko prompt:\n{sys[:600]}"
     )
+
+
+# ---------- C3: analyze_response split (landing shared, no network) ----------
+
+
+def test_analyze_response_classifies_injected_resp_without_network():
+    """analyze_response takes a pre-fetched RawResponse — no fetch/robots patch
+    needed, proving it does zero network I/O (design v2.1 §A)."""
+    llm = _FakeLLM(_good_verdict("static_html"))
+    resp = RawResponse(
+        status=200, headers={"content-type": "text/html"},
+        body=_big_html(), content_type="text/html",
+        final_url="https://example.com/x",
+    )
+    result = _analyzer.analyze_response(
+        resp=resp, url="https://example.com/x", llm_provider=llm
+    )
+    assert result["ok"] is True
+    assert result["verdict"] == "static_html"
+    assert llm.captured_user != ""  # LLM was actually called
+
+
+def test_analyze_response_maps_401_before_llm():
+    """HTTP status mapping moved into analyze_response — 401 still raises
+    LOGIN_REQUIRED before any LLM call."""
+    llm = _FakeLLM(_good_verdict("static_html"))
+    resp = RawResponse(
+        status=401, headers={}, body="Unauthorized",
+        content_type="text/html", final_url="https://example.com/x",
+    )
+    with pytest.raises(MCPError) as ei:
+        _analyzer.analyze_response(
+            resp=resp, url="https://example.com/x", llm_provider=llm
+        )
+    assert ei.value.error_code == ErrorCode.LOGIN_REQUIRED
+    assert llm.captured_user == ""
+
+
+def test_analyze_page_wrapper_still_fetches_and_classifies():
+    """analyze_page remains a working fetch+gate wrapper over analyze_response."""
+    llm = _FakeLLM(_good_verdict("xhr_endpoint"))
+    with _patch_robots(), _patch_fetch():
+        result = analyze_page(url="https://example.com/exhibitors", llm_provider=llm)
+    assert result["ok"] is True
+    assert result["verdict"] == "xhr_endpoint"
+
+
+def test_hints_preserved_regardless_of_verdict():
+    """v2.1 §G / 18T grep P1: the analyzer reports observed endpoints even when
+    the verdict is operator_capture_required (hints are no longer verdict-gated)."""
+    verdict = {
+        "verdict": "operator_capture_required",
+        "confidence": 0.8,
+        "hints": {
+            "candidate_endpoints": [
+                {"url": "https://example.com/api/list", "method": "GET",
+                 "sample_params": {}, "rationale": "seen in bundle"}
+            ],
+            "embedded_json_selectors": [],
+            "operator_action": "scroll and save",
+        },
+        "page_meta": {"has_exhibitor_keywords": True, "detected_framework": "Vue"},
+    }
+    llm = _FakeLLM(verdict)
+    resp = RawResponse(
+        status=200, headers={}, body=_big_html(),
+        content_type="text/html", final_url="https://example.com/x",
+    )
+    result = _analyzer.analyze_response(
+        resp=resp, url="https://example.com/x", llm_provider=llm
+    )
+    assert result["verdict"] == "operator_capture_required"
+    eps = result["hints"]["candidate_endpoints"]
+    assert eps and eps[0]["url"] == "https://example.com/api/list"
+
+
+def test_prompt_no_longer_gates_hints_by_verdict():
+    """v2.1 §G: the verdict-gated empty-hint rules are removed from both prompts."""
+    en = _analyzer._load_prompt("en")
+    assert "Set candidate_endpoints to [] when verdict is not" not in en
+    assert "Set embedded_json_selectors to [] when verdict is not" not in en
+    ko = _analyzer._load_prompt("ko")
+    assert "candidate_endpoints를 []로 설정" not in ko
+    assert "embedded_json_selectors를 []로 설정" not in ko
+    # The operator_action rule is retained in both.
+    assert "operator_action" in en and "operator_action" in ko
+
+
+# ---------- C3: <base href> resolution + external bundle discovery ----------
+
+
+def test_resolve_base_href():
+    # Absolute <base href> wins over page_url.
+    assert _analyzer.resolve_base_href(
+        '<base href="https://h.com/x/">', "https://h.com/page"
+    ) == "https://h.com/x/"
+    # Relative <base href> resolved against page_url.
+    assert _analyzer.resolve_base_href(
+        '<base href="/root/">', "https://h.com/deep/page"
+    ) == "https://h.com/root/"
+    # No <base> → page_url unchanged.
+    assert _analyzer.resolve_base_href(
+        "<html></html>", "https://h.com/p"
+    ) == "https://h.com/p"
+
+
+def test_extract_script_srcs():
+    html = (
+        '<script src="a.js"></script>'
+        '<script>inline()</script>'
+        '<script src="/b.js"></script>'
+        '<script src="a.js"></script>'  # duplicate dropped
+    )
+    assert _analyzer.extract_script_srcs(html) == ["a.js", "/b.js"]
+
+
+def test_bundle_endpoint_discovery_resolves_against_base():
+    """HCR case: a document-relative axios literal in an external bundle resolves
+    against <base href>, not the page URL."""
+    landing = (
+        '<html><head>'
+        '<base href="https://www.hcr-web.jp/">'
+        '<script src="assets/js/exhibitor_list.js"></script>'
+        '</head><body><div id="app"></div></body></html>'
+    )
+    bundle_body = "axios.get('_ajax/exhibitor/get_exhibitor_data/').then(r => r.data);"
+
+    fetched: list[str] = []
+
+    def fake_fetch(url, *, max_bytes=None, **_):
+        fetched.append(url)
+        return RawResponse(
+            status=200, headers={}, body=bundle_body,
+            content_type="application/javascript", final_url=url,
+        )
+
+    eps = _analyzer.discover_endpoints_from_bundles(
+        html=landing,
+        page_url="https://www.hcr-web.jp/exhibitor/search/",  # deeper than base
+        fetch=fake_fetch,
+    )
+    assert fetched == ["https://www.hcr-web.jp/assets/js/exhibitor_list.js"]
+    urls = [e.url for e in eps]
+    # Resolved against <base> (root), NOT page_url (.../exhibitor/search/).
+    assert "https://www.hcr-web.jp/_ajax/exhibitor/get_exhibitor_data/" in urls
+    assert all(e.rationale.startswith("bundle:") for e in eps)
+
+
+def test_bundle_discovery_blocks_cross_origin():
+    """Cross-origin <script src> is never fetched; cross-origin endpoints inside
+    a bundle are dropped — only same-origin survives."""
+    landing = (
+        '<html><head><base href="https://host.com/">'
+        '<script src="https://cdn.other.com/app.js"></script>'  # cross-origin bundle
+        '<script src="/local/app.js"></script>'                 # same-origin bundle
+        '</head></html>'
+    )
+    bundle_body = "axios.get('https://evil.com/steal'); fetch('/safe/list/');"
+
+    fetched: list[str] = []
+
+    def fake_fetch(url, *, max_bytes=None, **_):
+        fetched.append(url)
+        return RawResponse(
+            status=200, headers={}, body=bundle_body,
+            content_type="text/javascript", final_url=url,
+        )
+
+    eps = _analyzer.discover_endpoints_from_bundles(
+        html=landing, page_url="https://host.com/x", fetch=fake_fetch
+    )
+    # Cross-origin bundle not fetched.
+    assert fetched == ["https://host.com/local/app.js"]
+    urls = [e.url for e in eps]
+    assert all("evil.com" not in u for u in urls)
+    assert "https://host.com/safe/list/" in urls
+
+
+def test_bundle_discovery_passes_byte_cap_and_skips_non_200():
+    """fetch is called with max_bytes; a non-200 bundle yields no endpoints."""
+    landing = (
+        '<html><head><base href="https://host.com/">'
+        '<script src="/app.js"></script></head></html>'
+    )
+    seen_bytes: list[int | None] = []
+
+    def fake_fetch(url, *, max_bytes=None, **_):
+        seen_bytes.append(max_bytes)
+        return RawResponse(
+            status=404, headers={}, body="not found",
+            content_type="text/plain", final_url=url,
+        )
+
+    eps = _analyzer.discover_endpoints_from_bundles(
+        html=landing, page_url="https://host.com/x",
+        fetch=fake_fetch, max_bytes=123456,
+    )
+    assert seen_bytes == [123456]
+    assert eps == []

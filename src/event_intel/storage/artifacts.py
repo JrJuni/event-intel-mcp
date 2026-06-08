@@ -75,6 +75,11 @@ class ManifestModel:
     content_type: str
     status: int
     http_pages: int
+    # C7 ladder provenance — optional so pre-ladder manifests still load (M9).
+    selected_rung: str | None = None
+    winning_request: dict | None = None
+    analysis_fp: str = ""
+    config_fp: str = ""
 
     @classmethod
     def from_dict(cls, d: dict) -> ManifestModel:
@@ -88,6 +93,10 @@ class ManifestModel:
             content_type=d.get("content_type", ""),
             status=int(d.get("status", 0)),
             http_pages=int(d.get("http_pages", 1)),
+            selected_rung=d.get("selected_rung"),
+            winning_request=d.get("winning_request"),
+            analysis_fp=d.get("analysis_fp", ""),
+            config_fp=d.get("config_fp", ""),
         )
 
 
@@ -127,9 +136,18 @@ def make_manifest(
     status: int,
     http_pages: int,
     artifact_path: Path,
+    selected_rung: str | None = None,
+    winning_request: dict | None = None,
+    analysis_fp: str = "",
+    config_fp: str = "",
 ) -> dict[str, Any]:
-    """Build a manifest dict from a freshly-written artifact."""
-    return {
+    """Build a manifest dict from a freshly-written artifact.
+
+    The C7 provenance fields (selected_rung / winning_request / analysis_fp /
+    config_fp) are only emitted when supplied, so a manifest stays minimal when
+    written outside the ladder.
+    """
+    manifest: dict[str, Any] = {
         "verdict": verdict,
         "source_kind": source_kind,
         "source_ref": str(source_ref),
@@ -140,3 +158,12 @@ def make_manifest(
         "status": status,
         "http_pages": http_pages,
     }
+    if selected_rung is not None:
+        manifest["selected_rung"] = selected_rung
+    if winning_request is not None:
+        manifest["winning_request"] = winning_request
+    if analysis_fp:
+        manifest["analysis_fp"] = analysis_fp
+    if config_fp:
+        manifest["config_fp"] = config_fp
+    return manifest

@@ -101,6 +101,23 @@ llm:
   chatgpt_oauth_model: gpt-5.5             # used when provider=chatgpt_oauth (alt: gpt-5.4)
   chatgpt_oauth_reasoning_effort: low      # low | medium | high (Codex Responses reasoning effort)
 
+acquisition:
+  # Agentic acquisition ladder (C7). Caps are enforced, not advisory.
+  max_bytes_per_fetch: 5000000        # per-response streaming byte cap (raw_fetch max_bytes)
+  max_external_bundles: 8             # <script src> bundles probed for endpoints (longest first)
+  max_candidate_endpoints: 5          # candidate endpoints tried per probe (probe.MAX_CANDIDATES)
+  max_http_calls_per_acquire: 20      # total HTTP calls per acquire (landing+bundles+endpoints+pages)
+  rung_timeout_seconds: 20            # per-fetch timeout (raw_fetch default)
+  overall_deadline_seconds: 60        # wall-clock monotonic deadline across the whole acquire
+  bundle_discovery_enabled: true      # rung that scans external bundles for endpoint literals
+  roster_min_repeated_objects: 5      # structural roster validator: min repeated company objects
+  roster_min_unique_names: 5          # structural roster validator: min unique company names
+  cumulative_max_bytes: 20000000      # cumulative byte cap across the whole acquire (vs per-response)
+  per_rung_http_quota: 6              # advisory per-rung HTTP ceiling
+  reserved_calls_bundle_rung: 4       # calls reserved so a wrong prior can't starve the bundle rung
+  roster_max_depth: 4                 # JSON nested-search depth cap
+  roster_max_nodes: 2000              # JSON visited-node cap
+
 paths:
   chroma_dir: ~/.event-intel/chroma
   outputs_dir: outputs
