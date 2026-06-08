@@ -20,6 +20,9 @@
   - **코드 페이즈 종료**: L0–L6 전부 머지. **MCP 도구 9개**(5 core + 3 acquisition + 1 labeling). **658 passed.** 남은 건 **데이터-ops뿐**(실 pair gold 생산 → measure; `docs/commands.md` "Y1 benchmark" 절).
   - **사용자 결정 확정(2026-06-08)**: competitor holdout = **MongoDB × AI Expo Tokyo**(E5). 정식 holdout 절차 전까지 **blind 유지**(메모리 [[y1-competitor-holdout]]). 현 thresholds.json은 불완전 freeze라 정식 게이트 전 `threshold-freeze --gates-file` 재freeze 필요.
   - **기 생산물(로컬, `benchmarks/_local/`)**: GTC(P1) 사람 gold 20 + measure(P@10 0.3, no-enrich), HCR(P4→DEV) AI 라벨 296. 카드 3종 ingest + CS7 receipt(drift=match) 검증 완료.
+  - **라이브 데이터-ops 검증(2026-06-08)**: GTC(DEV)로 멀티벤더 전 파이프라인 라이브 완주 — draft(GPT-OAuth silver 7/flag 13) → cross-vendor(Claude 독립, 합의 13 gold) → 웹서치 refine(7 gold, **검색이 GPT bad_fit 오판을 target으로 교정** — Together/Anyscale/Modal=MongoDB 생태계 파트너) → seal(20 gold) → measure. L0 게이트·독립성 SHA·gold-only 전부 라이브 동작.
+  - **측정-등급 baseline(GTC×MongoDB, Brave enrich, OAuth)**: extraction_coverage 0.88(cap 30) · **P@10 0.4** · competitor/bad_fit leakage 0.0(단 S/A 0개라 자명) · **AUC 0.69→0.81**(enrich가 변별력 개선) · eligibility=**fail**(P@10 게이트). DEV 1 pair, holdout 아님.
+  - **🔬 Y1D 진단(근본 원인, 데이터)**: `capability_fit` RAG 코사인이 **전 라벨 ~0.5로 평평**(target 0.54 ≈ bad_fit 0.50) → 엔진이 penalty로 나쁜 fit 배제는 하나 **target 양성 식별 실패**(target final 4.16 ≈ neutral 3.93) → P@10 약점. **가중치 재조정 무의미(평평한 신호); 처방=retrieval/rerank 품질**(backlog #6 1순위, #1). S/A 0개 → tier 캘리브레이션도 검토. **선빌드 금지 — 별 phase plan 통제 실험으로.**
 
 - **Y1 실데이터 벤치마크 — 코드 페이즈 완료 (2026-06-08, plan `y1-execution-v4.md` / 상위 `snoopy-weaving-robin.md`, branch `feat/y1-benchmark`)**
   - **계기.** 엔진은 빌드·내부정합성 완료지만 **독립 gold label 대비 정확도 미검증**. 현 `eval/harness.py`는 fit/sim/news 주입 + `cards=None`으로 scorer만 돈다. Y1은 실 카드 3종 × 실 이벤트 6종 × 독립 blind 라벨로 그 빈틈을 닫는다. **이 plan의 핵심 = 측정 자체의 타당성** — blind 경계·cohort·재현성을 코드 경계로 강제.
