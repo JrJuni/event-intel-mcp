@@ -87,6 +87,7 @@
 
 ### #1 양방향 fit retrieval (event ↔ product)
 v0는 단방향 (event evidence → product collection). 정확도 검증 후 양방향(product → event도 query) 도입 검토. plan v0.5 Mini-RAG 섹션 참조.
+**Y1D 측정 증거(2026-06-08, GTC×MongoDB measure-grade)**: `capability_fit`(단방향 RAG 코사인)이 전 라벨에서 **~0.5로 평평**(target 0.54 ≈ bad_fit 0.50) → target 양성 식별 실패. 양방향이 이 평탄함을 깰지 #6 rerank와 함께 후보.
 
 ### #2 Provider 교체 구현
 v0는 인터페이스만 두고 default 구현 1개씩 (Anthropic / bge-m3 / Chroma / Brave / httpx). v0.4+에서 OpenAI/Voyage embedding, Tavily search 등 교체 가능하게.
@@ -106,6 +107,7 @@ v0는 per-row resume (enrichment 실패 row만 재시도). v0.4+에서 stage 단
 
 ### #6 Cross-encoder rerank
 bge-m3 only로 시작. 정확도 부족 검증 시 reranker 도입.
+**Y1D 측정이 1순위 fix로 지목(2026-06-08)**: GTC×MongoDB measure-grade에서 `capability_fit` RAG 코사인이 target/non-target을 못 가름(전 라벨 ~0.5). 가중치 재조정은 무의미(평평한 신호). top-K를 exhibitor↔product fit로 cross-encoder/LLM 재랭킹 → target 양성 식별 직접 개선. **단 별 phase plan으로 통제 실험(rerank→DEV 재measure + 9-cell 회귀), 선빌드 금지.**
 
 ### #7 bd-agent bridge
 event-intel-mcp 결과를 bd-coldcall-agent의 `Targets` 테이블로 export. 별도 phase로 분리.
