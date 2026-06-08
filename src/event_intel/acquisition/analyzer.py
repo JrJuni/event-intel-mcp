@@ -22,12 +22,16 @@ import json
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urljoin, urlparse
 
 from pydantic import BaseModel, Field, field_validator
 
 from event_intel.errors import ErrorCode, MCPError, Stage
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from event_intel.acquisition.raw_fetch import RawResponse
     from event_intel.providers.llm import LLMProvider
 
 # ---- pydantic models ----
@@ -185,6 +189,120 @@ def _extract_endpoint_evidence(html: str, scripts: list[str]) -> list[str]:
     return list(seen.keys())
 
 
+# ---- <base href> resolution + external bundle endpoint discovery (C3) ----
+#
+# H.C.R.-class Vue SPAs load the exhibitor roster from an endpoint declared in an
+# *external* <script src> bundle, not inline. The endpoint literal there is often
+# document-relative (`_ajax/exhibitor/get_exhibitor_data/`) and must be resolved
+# against the page's <base href>, not the page URL. analyze_page only ever sees
+# inline scripts, so the acquire ladder (C7) calls these helpers as a dedicated
+# evidence-gated rung. One level only — discovered bundles are NOT recursed into.
+
+_BASE_HREF_RE = re.compile(
+    r"""<base\b[^>]*\bhref\s*=\s*["'](?P<href>[^"']*)["']""", re.IGNORECASE
+)
+_SCRIPT_SRC_RE = re.compile(
+    r"""<script\b[^>]*\bsrc\s*=\s*["'](?P<src>[^"']+)["']""", re.IGNORECASE
+)
+
+_DEFAULT_MAX_BUNDLES = 8
+_DEFAULT_BUNDLE_MAX_BYTES = 5_000_000
+
+
+def resolve_base_href(html: str, page_url: str) -> str:
+    """Return the base URL for resolving relative links on the page.
+
+    Uses the first ``<base href>`` (resolved against ``page_url`` so a relative
+    base like ``/root/`` works), falling back to ``page_url`` when none is
+    present. This is the document-relative resolution miss that made H.C.R.'s
+    endpoint look like a bot-block.
+    """
+    m = _BASE_HREF_RE.search(html or "")
+    if m:
+        href = m.group("href").strip()
+        if href:
+            return urljoin(page_url, href)
+    return page_url
+
+
+def extract_script_srcs(html: str) -> list[str]:
+    """Return the ``src`` of every ``<script src=...>``, in document order (deduped)."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for m in _SCRIPT_SRC_RE.finditer(html or ""):
+        src = m.group("src").strip()
+        if src and src not in seen:
+            seen.add(src)
+            out.append(src)
+    return out
+
+
+def discover_endpoints_from_bundles(
+    *,
+    html: str,
+    page_url: str,
+    fetch: Callable[..., RawResponse],
+    max_bundles: int = _DEFAULT_MAX_BUNDLES,
+    max_bytes: int = _DEFAULT_BUNDLE_MAX_BYTES,
+) -> list[CandidateEndpoint]:
+    """Discover XHR endpoints declared inside same-origin external script bundles.
+
+    ``<base>`` → absolutize each ``<script src>`` → keep same-origin only → fetch
+    the longest ``max_bundles`` (longer path ≈ the app bundle) with a byte cap →
+    regex-scan each for endpoint literals → resolve those against ``<base>`` →
+    same-origin gate again → ``CandidateEndpoint``. One level only (no recursion).
+
+    ``fetch`` is injected (signature ``fetch(url, *, max_bytes=...)``) so this is
+    testable offline and so the ladder can route every byte through its budget.
+    A safety violation (``MCPError`` from url_safety) on a *derived* URL skips
+    that candidate rather than aborting the whole discovery — derived URLs are
+    untrusted, unlike the operator-supplied landing URL.
+    """
+    from event_intel.acquisition.url_safety import host_relation
+
+    base = resolve_base_href(html, page_url)
+    landing_host = urlparse(page_url).hostname or ""
+
+    def _same_origin(candidate_url: str) -> bool:
+        parsed = urlparse(candidate_url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        return host_relation(landing_host, parsed.hostname or "") != "cross"
+
+    # Absolutize each <script src>, keep same-origin, longest path first.
+    bundle_urls: list[str] = []
+    seen_bundles: set[str] = set()
+    for src in extract_script_srcs(html):
+        abs_src = urljoin(base, src)
+        if not _same_origin(abs_src) or abs_src in seen_bundles:
+            continue
+        seen_bundles.add(abs_src)
+        bundle_urls.append(abs_src)
+    bundle_urls.sort(key=len, reverse=True)
+    bundle_urls = bundle_urls[:max_bundles]
+
+    endpoints: list[CandidateEndpoint] = []
+    seen_eps: set[str] = set()
+    for bundle_url in bundle_urls:
+        try:
+            resp = fetch(bundle_url, max_bytes=max_bytes)
+        except MCPError:
+            continue  # derived URL failed safety → skip, keep going
+        if resp.status != 200 or not resp.body:
+            continue
+        for literal in _extract_endpoint_evidence(resp.body, []):
+            abs_ep = urljoin(base, literal)
+            if not _same_origin(abs_ep) or abs_ep in seen_eps:
+                continue
+            seen_eps.add(abs_ep)
+            endpoints.append(
+                CandidateEndpoint(
+                    url=abs_ep, method="GET", rationale=f"bundle:{bundle_url}"
+                )
+            )
+    return endpoints
+
+
 def _extract_scripts(html: str, *, top_n: int = 5, max_each: int = 5120) -> list[str]:
     """Return the top-N longest inline <script> bodies, each capped at max_each chars."""
     bodies = [m.group(1).strip() for m in _SCRIPT_BODY_RE.finditer(html) if m.group(1).strip()]
@@ -262,19 +380,21 @@ def analyze_page(
 ) -> dict[str, Any]:
     """Fetch the page, call Sonnet once, return the analysis envelope dict.
 
-    Safety gates (url_safety + robots) are called here so that every code path
-    (direct call + MCP tool) is independently protected.
+    Thin wrapper: it owns the *landing-level* safety gates (url_safety + robots)
+    and the single landing fetch, then delegates the HTTP-status mapping and the
+    Sonnet call to ``analyze_response``. The acquire ladder bypasses this wrapper
+    and calls ``analyze_response`` directly with a landing response it fetched
+    once and shares across rungs (design v2.1 §A).
 
     Returns a success-envelope dict with keys:
         ok, verdict, confidence, hints, page_meta, usage, url, lang
     Raises MCPError on any failure (caller wraps in envelope_from_exception).
     """
-    from event_intel.acquisition import http_status_map as _status_map
     from event_intel.acquisition import raw_fetch as _raw_fetch
     from event_intel.acquisition import robots as _robots
     from event_intel.acquisition.url_safety import validate_url
 
-    # 1. URL safety + robots
+    # 1. URL safety + robots (landing-level gates — independent per entry path).
     validate_url(url)
     if not _robots.is_allowed(url):
         raise MCPError(
@@ -289,8 +409,34 @@ def analyze_page(
             retryable=False,
         )
 
-    # 2. Fetch
+    # 2. Landing fetch (exactly once), then classify the response.
     resp = _raw_fetch.fetch_raw(url, method="GET")
+    return analyze_response(
+        resp=resp,
+        url=url,
+        lang=lang,
+        llm_provider=llm_provider,
+        max_tokens=max_tokens,
+    )
+
+
+def analyze_response(
+    *,
+    resp: RawResponse,
+    url: str,
+    lang: str = "en",
+    llm_provider: LLMProvider,
+    max_tokens: int = 2048,
+) -> dict[str, Any]:
+    """Classify an already-fetched landing response — no network I/O.
+
+    The caller owns url_safety + robots + the actual fetch; this function maps the
+    HTTP status (raising on a hard outcome), then makes the single Sonnet call.
+    Split out from ``analyze_page`` so the acquire ladder fetches the landing
+    page once and shares the same ``resp`` with the strategy rungs (v2.1 §A).
+    """
+    from event_intel.acquisition import http_status_map as _status_map
+
     should_proceed, err = _status_map.map_http_response(resp, landing_url=url)
     if not should_proceed:
         raise err  # type: ignore[misc]

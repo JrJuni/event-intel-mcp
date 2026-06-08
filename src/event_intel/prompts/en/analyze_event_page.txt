@@ -65,8 +65,11 @@ Output ONLY valid JSON matching this schema (no prose, no markdown fences):
 }
 
 Rules:
-- Set candidate_endpoints to [] when verdict is not xhr_endpoint.
-- Set embedded_json_selectors to [] when verdict is not embedded_json.
+- Always report every XHR/fetch endpoint and embedded-JSON selector you can
+  observe in candidate_endpoints / embedded_json_selectors, regardless of the
+  chosen verdict. They are observations, not verdict-gated — a downstream
+  acquisition step uses them as hints even when the verdict is, for example,
+  operator_capture_required.
 - Set operator_action to null unless verdict is operator_capture_required
   or login_required, in which case give a one-sentence human instruction.
 - Confidence should reflect how certain you are: 0.9+ for clear signals,

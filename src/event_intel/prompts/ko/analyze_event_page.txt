@@ -64,8 +64,10 @@
 }
 
 규칙:
-- verdict가 xhr_endpoint가 아니면 candidate_endpoints를 []로 설정하세요.
-- verdict가 embedded_json이 아니면 embedded_json_selectors를 []로 설정하세요.
+- 관찰 가능한 모든 XHR/fetch 엔드포인트와 내장 JSON 셀렉터를 verdict와
+  무관하게 candidate_endpoints / embedded_json_selectors에 보고하세요.
+  이들은 판정에 종속된 값이 아니라 관찰 결과입니다 — 후속 취득 단계가
+  verdict가 operator_capture_required인 경우에도 이를 힌트로 사용합니다.
 - verdict가 operator_capture_required 또는 login_required가 아니면
   operator_action을 null로 설정하세요.
 - 신뢰도는 증거의 명확성을 반영해야 합니다: 명확한 신호는 0.9 이상,
