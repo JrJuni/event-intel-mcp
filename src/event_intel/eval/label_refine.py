@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from typing import Any
 
 from event_intel.eval.labeling import GRADE_GOLD, LABEL_VALUES
@@ -122,3 +123,37 @@ def apply_refinements(
     if bad:
         raise ValueError(f"invalid refinement labels {bad}; allowed {LABEL_VALUES}")
     return out
+
+
+def label_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Labeling-process meta-metrics (Y1 L4) — "how much can we trust this gold?".
+
+    Reports grade/source/label distributions plus the rates that matter for
+    confidence: gold_rate, cross_agree_rate, flag_rate (still needs_review), and
+    flip_rate (final_label changed the GPT draft — how often refine/agreement
+    corrected the single-vendor guess). All derived from row provenance.
+    """
+    n = len(rows)
+
+    def frac(c: int) -> float:
+        return c / n if n else 0.0
+
+    grades = Counter((r.get("grade") or "ungraded") for r in rows)
+    sources = Counter((r.get("source") or "none") for r in rows)
+    final_labels = Counter(r["final_label"] for r in rows if r.get("final_label"))
+    flipped = sum(
+        1 for r in rows
+        if r.get("final_label") and r.get("suggested_label")
+        and r["final_label"] != r["suggested_label"]
+    )
+    flagged = sum(1 for r in rows if r.get("needs_review"))
+    return {
+        "n": n,
+        "by_grade": dict(grades),
+        "by_source": dict(sources),
+        "by_final_label": dict(final_labels),
+        "gold_rate": frac(grades.get(GRADE_GOLD, 0)),
+        "cross_agree_rate": frac(sources.get("cross_agree", 0)),
+        "flag_rate": frac(flagged),
+        "flip_rate": frac(flipped),
+    }

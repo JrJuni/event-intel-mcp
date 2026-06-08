@@ -107,3 +107,29 @@ def test_refine_provenance_flows_to_sealed():
     sealed = BL.seal_company_labels(pkt, labels, grades=grades, provenance=prov)
     assert sealed.grades["Acme"] == "gold"
     assert sealed.provenance["Acme"]["search_evidence"] == ["https://x"]
+
+
+# ---------- L4 label-stats ----------
+
+def test_label_stats_rates():
+    rows = [
+        {"name": "A", "suggested_label": "target", "final_label": "target",
+         "grade": "silver", "source": "gpt_draft", "needs_review": False},
+        {"name": "B", "suggested_label": "competitor", "final_label": "competitor",
+         "grade": "gold", "source": "cross_agree", "needs_review": False},
+        {"name": "C", "suggested_label": "target", "final_label": "neutral",
+         "grade": "gold", "source": "search_refine", "needs_review": False},  # flipped
+        {"name": "D", "suggested_label": "bad_fit", "final_label": "",
+         "grade": "", "needs_review": True},  # still flagged
+    ]
+    s = RF.label_stats(rows)
+    assert s["n"] == 4
+    assert s["by_grade"]["gold"] == 2 and s["by_grade"]["silver"] == 1 and s["by_grade"]["ungraded"] == 1
+    assert s["gold_rate"] == 0.5 and s["cross_agree_rate"] == 0.25
+    assert s["flag_rate"] == 0.25 and s["flip_rate"] == 0.25  # only C flipped
+    assert s["by_source"]["search_refine"] == 1
+
+
+def test_label_stats_empty():
+    s = RF.label_stats([])
+    assert s["n"] == 0 and s["gold_rate"] == 0.0

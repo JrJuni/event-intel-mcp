@@ -681,6 +681,26 @@ def benchmark_apply_refinements_cmd(
     _print_json({"ok": True, "sheet_path": out, "refined": refined})
 
 
+@benchmark_app.command("label-stats")
+def benchmark_label_stats_cmd(
+    sheet: str = typer.Option(..., "--sheet", help="A drafted/refined sheet JSON."),
+    out: str | None = typer.Option(None, "--out", "-o", help="Write the stats JSON here too."),
+) -> None:
+    """Labeling-process meta-metrics — gold/flag/flip rates ('how trustworthy is
+    this gold?').
+    """
+    from pathlib import Path
+
+    from event_intel.eval import label_refine as _refine
+
+    rows = json.loads(Path(sheet).read_text(encoding="utf-8"))
+    stats = _refine.label_stats(rows)
+    if out:
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
+        Path(out).write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
+    _print_json({"ok": True, **stats})
+
+
 def main() -> None:
     """Module entrypoint for `python -m event_intel.cli`."""
     app()

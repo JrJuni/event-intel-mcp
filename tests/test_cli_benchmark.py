@@ -265,3 +265,14 @@ def test_cli_apply_refinements(tmp_path):
     assert res.exit_code == 0, res.stdout
     by = {r["name"]: r for r in json.loads(out.read_text(encoding="utf-8"))}
     assert by["Globex"]["grade"] == "gold" and by["Globex"]["source"] == "search_refine"
+
+
+def test_cli_label_stats(tmp_path):
+    sheet = _write(tmp_path / "s.json", [
+        {"name": "A", "suggested_label": "target", "final_label": "target", "grade": "silver", "needs_review": False},
+        {"name": "B", "suggested_label": "competitor", "final_label": "competitor", "grade": "gold",
+         "source": "cross_agree", "needs_review": False},
+    ])
+    res = runner.invoke(app, ["benchmark", "label-stats", "--sheet", sheet])
+    assert res.exit_code == 0, res.stdout
+    assert json.loads(res.stdout)["gold_rate"] == 0.5
