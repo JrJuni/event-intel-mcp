@@ -147,6 +147,11 @@ def draft_cards_cmd(
         help="Source file(s) (.md / .txt / .pdf). Repeatable.",
     ),
     text: str = typer.Option("", "--text", help="Inline source text (alternative to --source)."),
+    from_workspace: bool = typer.Option(
+        False,
+        "--from-workspace",
+        help="Draft from the synced source library (product_sources_{ws}); run `sources sync` first.",
+    ),
     lang: str = typer.Option("en", "--lang", help="Output language (en or ko)."),
     out: str | None = typer.Option(
         None, "--out", "-o", help="Output yaml path (default: outputs/{ws}/capability_cards.draft.yaml)."
@@ -155,16 +160,25 @@ def draft_cards_cmd(
     """Draft capability_cards.yaml from product source material."""
     from event_intel.tools.draft_capability_cards import draft_capability_cards
 
-    if source and text:
-        typer.echo("Pick either --source or --text, not both.", err=True)
+    # Exactly one source mode: --from-workspace | --source | --text.
+    modes = [bool(from_workspace), bool(source), bool(text)]
+    if sum(modes) > 1:
+        typer.echo("Pick exactly one of --from-workspace / --source / --text.", err=True)
         raise typer.Exit(code=2)
-    if not source and not text:
-        typer.echo("Provide --source <path> or --text <inline>.", err=True)
+    if not any(modes):
+        typer.echo("Provide --from-workspace, --source <path>, or --text <inline>.", err=True)
         raise typer.Exit(code=2)
+
+    if from_workspace:
+        source_kind = "workspace"
+    elif source:
+        source_kind = "file"
+    else:
+        source_kind = "text"
 
     result = draft_capability_cards(
         workspace_id=workspace,
-        source_kind="file" if source else "text",
+        source_kind=source_kind,
         source_content=text,
         source_paths=list(source) if source else None,
         lang=lang,

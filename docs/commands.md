@@ -115,6 +115,14 @@ The manifest lives at `~/.event-intel/source-index/{ws}/manifest.json` (per-file
 sha + chunk ids + a deterministic content fingerprint). A parse failure is
 reported as `partial` and leaves prior chunks intact.
 
+```bash
+# Draft cards FROM the synced library (instead of --source / --text):
+# retrieves card-shaped queries from product_sources_{ws}, balances across docs,
+# caps at 60k chars, and feeds the grounded context to the drafter.
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli draft-cards \
+    --workspace default --from-workspace --lang en
+```
+
 ---
 
 ## Event tier list pipeline

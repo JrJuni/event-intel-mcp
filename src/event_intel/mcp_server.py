@@ -55,7 +55,12 @@ def draft_capability_cards(
     lang: str = "en",
     out_path: str | None = None,
 ) -> dict:
-    """Draft capability_cards.yaml from source docs/text (S2)."""
+    """Draft capability_cards.yaml from source material (S2 / WSL W3).
+
+    source_kind: "text" (inline) | "file"/"files" (source_paths) | "workspace"
+    (retrieve from the synced product_sources_{workspace_id} library — run
+    sync_product_sources first).
+    """
     from event_intel.tools.draft_capability_cards import (
         draft_capability_cards as _impl,
     )
