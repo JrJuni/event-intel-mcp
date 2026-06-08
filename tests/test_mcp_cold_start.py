@@ -125,6 +125,21 @@ def test_runtime_paths_module_is_cold(fresh_sys_modules):
     assert not leaked, f"runtime.paths leaked heavy ML imports: {leaked}"
 
 
+def test_sources_indexer_module_is_cold(fresh_sys_modules):
+    """W1: sources.indexer parses PDF/MD/TXT/CSV → product_sources_{ws}. pypdf is
+    lazy-loaded in-body; embedding/vectorstore providers are injected. Module
+    import must stay cold (no torch/chromadb/pypdf-pulled heavy deps)."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.sources")
+    importlib.import_module("event_intel.sources.indexer")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, f"sources.indexer leaked heavy ML imports: {leaked}"
+
+
 def test_cards_tools_keep_module_top_cold(fresh_sys_modules):
     """S2: tools/{draft,validate,ingest}_capability_cards must not pull heavy ML
     libs at module import — only on first real call (which still needs them via
