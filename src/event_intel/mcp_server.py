@@ -233,6 +233,19 @@ def prepare_models(force: bool = False) -> dict:
 
 
 @app.tool()
+def login_chatgpt(force: bool = False) -> dict:
+    """Authenticate the ChatGPT subscription (OAuth) LLM path in-app (no terminal).
+    NON-BLOCKING: opens a browser and returns immediately with status 'pending';
+    approve in the browser, then poll check_runtime until the login check reads
+    'logged_in'. Status is 'logged_in' if already authenticated. `force=true`
+    re-authenticates. (#14 in-app setup; ChatGPT OAuth = zero-cost onboarding.)
+    """
+    from event_intel.tools.login_chatgpt import login_chatgpt as _impl
+
+    return _impl(force=force)
+
+
+@app.tool()
 def sync_product_sources(
     workspace_id: str = "default",
     source_dir: str | None = None,

@@ -198,6 +198,23 @@ class ChatGPTOAuthProvider(LLMProvider):
         import time
         return time.time() < tokens.get("expires_at", 0) - 60  # 60s buffer
 
+    def auth_status(self) -> dict:
+        """Public, side-effect-free login state (no network, no browser).
+
+        Used by the `login_chatgpt` tool (skip the browser when already valid) and
+        by `check_runtime` (#14 P1.3). `logged_in` is True when a cached token is
+        present and unexpired; a present refresh_token means a silent refresh is
+        possible even if the access token is stale.
+        """
+        tokens = self._load_tokens()
+        if tokens and self._is_token_valid(tokens):
+            return {"logged_in": True, "token_path": str(self._TOKEN_PATH)}
+        return {
+            "logged_in": False,
+            "token_path": str(self._TOKEN_PATH),
+            "has_refresh_token": bool(tokens and tokens.get("refresh_token")),
+        }
+
     def _refresh(self, refresh_token: str) -> dict | None:
         import time
 
