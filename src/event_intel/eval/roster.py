@@ -120,9 +120,8 @@ def dump_roster(roster: list[RosterEntry]) -> list[dict[str, Any]]:
     ]
 
 
-def load_roster(path: str | Path) -> list[RosterEntry]:
-    """Load a roster-shaped JSON file (list of dump_roster records)."""
-    records = json.loads(Path(path).read_text(encoding="utf-8"))
+def load_roster_records(records: list[dict[str, Any]]) -> list[RosterEntry]:
+    """Build a roster from in-memory dump_roster-shaped records."""
     return [
         RosterEntry(
             roster_id=str(r["roster_id"]),
@@ -132,6 +131,11 @@ def load_roster(path: str | Path) -> list[RosterEntry]:
         )
         for r in records
     ]
+
+
+def load_roster(path: str | Path) -> list[RosterEntry]:
+    """Load a roster-shaped JSON file (list of dump_roster records)."""
+    return load_roster_records(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
 def _ratio(a: str, b: str) -> float:

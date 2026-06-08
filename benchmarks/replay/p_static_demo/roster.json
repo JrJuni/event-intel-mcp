@@ -1,0 +1,30 @@
+[
+  {
+    "roster_id": "r1",
+    "canonical_name": "Acme Robotics",
+    "aliases": [
+      "Acme Robotics Inc."
+    ],
+    "label": "target"
+  },
+  {
+    "roster_id": "r2",
+    "canonical_name": "Globex Corporation",
+    "aliases": [],
+    "label": "target"
+  },
+  {
+    "roster_id": "r3",
+    "canonical_name": "Mobius Sensor",
+    "aliases": [
+      "Mobius Sensor Co., Ltd."
+    ],
+    "label": "competitor"
+  },
+  {
+    "roster_id": "r4",
+    "canonical_name": "RoboWorks",
+    "aliases": [],
+    "label": "bad_fit"
+  }
+]
