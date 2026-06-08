@@ -166,6 +166,7 @@ def test_eval_modules_keep_module_top_cold(fresh_sys_modules):
     importlib.import_module("event_intel.eval")
     importlib.import_module("event_intel.eval.metrics")
     importlib.import_module("event_intel.eval.harness")
+    importlib.import_module("event_intel.eval.roster")
 
     leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
     assert not leaked, (
