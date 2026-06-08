@@ -3,7 +3,7 @@
   "name": "event-intel-mcp",
   "display_name": "Event Intelligence MCP",
   "version": "0.5.0",
-  "description": "Turn exhibitor lists (URL / HTML / CSV / text) into evidence-backed BD target tier lists. 8 MCP tools, local mini-RAG (bge-m3 + Chroma).",
+  "description": "Turn exhibitor lists (URL / HTML / CSV / text) into evidence-backed BD target tier lists. 9 MCP tools, local mini-RAG (bge-m3 + Chroma).",
   "long_description": "event-intel-mcp scores exhibitor companies against a product context (capability cards) using a 7-dimension scoring model with an evidence-floor lifecycle (has_url + has_news ceiling). Two flows: (1) product context lifecycle — draft, validate, ingest capability cards into a local Chroma collection; (2) event pipeline — URL/HTML/CSV → source acquisition → extraction → enrichment (Brave web/news) → fit retrieval (event evidence → product collection) → scoring → tier_list.md + tier_list.yaml. Supports Anthropic Claude or ChatGPT Plus OAuth as LLM backends.",
   "author": {
     "name": "JrJuni",
@@ -25,7 +25,8 @@
     {"name": "build_event_tier_list", "description": "Score exhibitors from an HTML/CSV/text source against the workspace's product context. Writes tier_list.md + tier_list.yaml."},
     {"name": "analyze_event_page", "description": "Classify an exhibition site URL (static_html | xhr_endpoint | embedded_json | operator_capture_required | login_required) and return acquisition hints."},
     {"name": "probe_exhibitor_endpoint", "description": "Probe XHR / embedded-JSON candidate endpoints surfaced by the analyzer and return the winning data source."},
-    {"name": "acquire_exhibitor_source", "description": "End-to-end URL acquisition: analyze → probe → fetch → write artifact + sha256 manifest. Returns (source_kind, source_ref) ready for build_event_tier_list."}
+    {"name": "acquire_exhibitor_source", "description": "End-to-end URL acquisition: analyze → probe → fetch → write artifact + sha256 manifest. Returns (source_kind, source_ref) ready for build_event_tier_list."},
+    {"name": "draft_labels", "description": "Y1 benchmark labeling: GPT-OAuth single-vendor draft (silver) + flag gate-class/low-confidence rows; the host web-search-refines the flagged rows to gold, then seals."}
   ],
   "user_config": {
     "python_path": {

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project north star
 
-**event-intel-mcp** turns exhibitor lists (URL / HTML / CSV / pasted text) into evidence-backed BD target tier lists via a standalone MCP server. Single product surface (Claude Desktop), 8 MCP tools (5 core + 3 acquisition layer), local mini-RAG (bge-m3 + Chroma), zero dependency on the sibling bd-coldcall-agent repo.
+**event-intel-mcp** turns exhibitor lists (URL / HTML / CSV / pasted text) into evidence-backed BD target tier lists via a standalone MCP server. Single product surface (Claude Desktop), 9 MCP tools (5 core + 3 acquisition layer + 1 labeling), local mini-RAG (bge-m3 + Chroma), zero dependency on the sibling bd-coldcall-agent repo.
 
 ## Dev environment
 
@@ -51,13 +51,13 @@ The full catalog (debugging snippets, all flags, MCP config) is in `docs/command
 
 ## Architecture — the big picture
 
-8 MCP tools, single FastMCP process, local mini-RAG:
+9 MCP tools, single FastMCP process, local mini-RAG:
 
 ```
 Claude Desktop (stdio JSON-RPC)
    │
    ▼
-event_intel.mcp_server (FastMCP) — 8 tools
+event_intel.mcp_server (FastMCP) — 9 tools
    │
    ├─ check_runtime              (runtime/preflight.py — bge-m3 cache / Chroma / API keys / product context)
    ├─ draft_capability_cards     (cards/drafter.py — Sonnet chunked draft from source docs)
@@ -66,7 +66,8 @@ event_intel.mcp_server (FastMCP) — 8 tools
    ├─ build_event_tier_list      (events/* + rag/* + scoring/* + report/*)
    ├─ analyze_event_page         (acquisition/analyzer.py — verdict + hints, 1 Sonnet call)
    ├─ probe_exhibitor_endpoint   (acquisition/probe.py — XHR + embedded_json probes)
-   └─ acquire_exhibitor_source   (acquisition/acquire.py — orchestrator → artifact + manifest)
+   ├─ acquire_exhibitor_source   (acquisition/acquire.py — orchestrator → artifact + manifest)
+   └─ draft_labels               (tools/draft_labels.py — Y1 labeling: GPT silver draft + flag → host refines)
 ```
 
 Two-flow model:
@@ -118,7 +119,7 @@ event-intel-mcp/
   .env.example
   config/defaults.yaml
   src/event_intel/
-    mcp_server.py        — FastMCP entry, 8 tool registrations
+    mcp_server.py        — FastMCP entry, 9 tool registrations
     cli.py               — typer thin wrapper (added in S2/S6)
     errors.py            — MCPError + 14 error_code × 7 stage enums
     runtime/             — preflight + models prepare (S1) + user config deep-merge
