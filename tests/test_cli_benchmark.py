@@ -223,3 +223,45 @@ def test_seal_labels_rejects_partial_without_flag(tmp_path):
     res = runner.invoke(app, ["benchmark", "seal-labels", "--sheet", sheet,
                               "--packet", str(packet), "--out", str(tmp_path / "s.json")])
     assert res.exit_code != 0  # unlabeled row → error
+
+
+# ---------- L3 cross-vendor + apply-refinements CLI ----------
+
+def _drafted_sheet(tmp_path):
+    sheet = tmp_path / "drafted.json"
+    rows = [
+        {"index": 0, "name": "Acme", "overview": "db vendor", "url": None, "label": "",
+         "suggested_label": "competitor", "confidence": 0.9, "source": "gpt_draft", "needs_review": False},
+        {"index": 1, "name": "Globex", "overview": "ai startup", "url": None, "label": "",
+         "suggested_label": "target", "confidence": 0.5, "source": "gpt_draft", "needs_review": True},
+    ]
+    _write(sheet, rows)
+    return sheet, rows
+
+
+def test_cli_independent_view_then_cross_vendor(tmp_path):
+    sheet, rows = _drafted_sheet(tmp_path)
+    view_out = tmp_path / "view.json"
+    res = runner.invoke(app, ["benchmark", "independent-view", "--sheet", str(sheet), "--out", str(view_out)])
+    assert res.exit_code == 0, res.stdout
+    sha = json.loads(res.stdout)["input_sha"]
+
+    claude = _write(tmp_path / "claude.json", {"Acme": "competitor", "Globex": "neutral"})
+    cv_out = tmp_path / "cv.json"
+    res2 = runner.invoke(app, ["benchmark", "cross-vendor", "--sheet", str(sheet),
+                               "--claude-labels", claude, "--input-sha", sha, "--out", str(cv_out)])
+    assert res2.exit_code == 0, res2.stdout
+    merged = {r["name"]: r for r in json.loads(cv_out.read_text(encoding="utf-8"))}
+    assert merged["Acme"]["grade"] == "gold"          # agreed
+    assert merged["Globex"]["needs_review"] is True   # disagreed → flagged
+
+
+def test_cli_apply_refinements(tmp_path):
+    sheet, rows = _drafted_sheet(tmp_path)
+    refs = _write(tmp_path / "refs.json", {"Globex": {"final_label": "target", "evidence_urls": ["https://g"]}})
+    out = tmp_path / "refined.json"
+    res = runner.invoke(app, ["benchmark", "apply-refinements", "--sheet", str(sheet),
+                              "--refinements", refs, "--out", str(out)])
+    assert res.exit_code == 0, res.stdout
+    by = {r["name"]: r for r in json.loads(out.read_text(encoding="utf-8"))}
+    assert by["Globex"]["grade"] == "gold" and by["Globex"]["source"] == "search_refine"

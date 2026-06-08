@@ -615,6 +615,72 @@ def benchmark_seal_labels_cmd(
     })
 
 
+@benchmark_app.command("independent-view")
+def benchmark_independent_view_cmd(
+    sheet: str = typer.Option(..., "--sheet", help="GPT-drafted sheet JSON."),
+    out: str = typer.Option(..., "--out", "-o", help="GPT-blind view JSON for the 2nd vendor."),
+) -> None:
+    """Emit the GPT-blind view (name+overview+url only) + its SHA, for an
+    independent 2nd-vendor labeling pass (cross-vendor gold, review R2#5).
+    """
+    from pathlib import Path
+
+    from event_intel.eval import label_refine as _refine
+
+    rows = json.loads(Path(sheet).read_text(encoding="utf-8"))
+    view = _refine.independent_input_view(rows)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(json.dumps(view, ensure_ascii=False, indent=2), encoding="utf-8")
+    _print_json({"ok": True, "view_path": out, "input_sha": _refine.input_sha(view), "rows": len(view)})
+
+
+@benchmark_app.command("cross-vendor")
+def benchmark_cross_vendor_cmd(
+    sheet: str = typer.Option(..., "--sheet", help="GPT-drafted sheet JSON."),
+    claude_labels: str = typer.Option(..., "--claude-labels", help="Independent {name: label} JSON."),
+    input_sha: str = typer.Option(..., "--input-sha", help="SHA of the GPT-blind view the 2nd vendor saw."),
+    prompt_sha: str = typer.Option("", "--prompt-sha"),
+    model_id: str = typer.Option("claude", "--model-id"),
+    out: str = typer.Option(..., "--out", "-o"),
+) -> None:
+    """Promote rows to gold where the GPT draft and the independent Claude label
+    agree (refuses if the input SHA proves the 2nd vendor saw GPT fields).
+    """
+    from pathlib import Path
+
+    from event_intel.eval import label_refine as _refine
+
+    rows = json.loads(Path(sheet).read_text(encoding="utf-8"))
+    labels = json.loads(Path(claude_labels).read_text(encoding="utf-8"))
+    merged = _refine.merge_cross_vendor(
+        rows, labels, independent_input_sha=input_sha, prompt_sha=prompt_sha, model_id=model_id
+    )
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
+    gold = sum(1 for r in merged if r.get("grade") == "gold")
+    _print_json({"ok": True, "sheet_path": out, "gold": gold, "needs_review": len(merged) - gold})
+
+
+@benchmark_app.command("apply-refinements")
+def benchmark_apply_refinements_cmd(
+    sheet: str = typer.Option(..., "--sheet", help="Flagged sheet JSON."),
+    refinements: str = typer.Option(..., "--refinements", help="Host search output {name:{final_label,evidence_urls,note}}."),
+    out: str = typer.Option(..., "--out", "-o"),
+) -> None:
+    """Merge host (Claude+web search) refinements into flagged rows as gold."""
+    from pathlib import Path
+
+    from event_intel.eval import label_refine as _refine
+
+    rows = json.loads(Path(sheet).read_text(encoding="utf-8"))
+    refs = json.loads(Path(refinements).read_text(encoding="utf-8"))
+    merged = _refine.apply_refinements(rows, refs)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
+    refined = sum(1 for r in merged if r.get("source") == "search_refine")
+    _print_json({"ok": True, "sheet_path": out, "refined": refined})
+
+
 def main() -> None:
     """Module entrypoint for `python -m event_intel.cli`."""
     app()
