@@ -150,9 +150,13 @@ def test_ingest_tool_validates_workspace_id():
     assert out["error_code"] == "INVALID_INPUT"
 
 
-def test_ingest_tool_runs_through_when_providers_mocked(repo_root, monkeypatch):
+def test_ingest_tool_runs_through_when_providers_mocked(repo_root, monkeypatch, tmp_path):
     """End-to-end with the cards fixture + fake providers + preflight bypass."""
-    cards_path = repo_root / "tests" / "fixtures" / "cards" / "sample_cards.yaml"
+    # Copy the fixture into tmp so the CS7 ingest_receipt.json lands beside the
+    # tmp copy, not in the committed fixtures dir.
+    src = repo_root / "tests" / "fixtures" / "cards" / "sample_cards.yaml"
+    cards_path = tmp_path / "sample_cards.yaml"
+    cards_path.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
 
     # Preflight will fail without bge-m3 cached + keys set — bypass it.
     monkeypatch.setattr(_preflight, "run_preflight", lambda *a, **kw: {"ok": True, "checks": {}})
@@ -200,3 +204,6 @@ def test_ingest_tool_runs_through_when_providers_mocked(repo_root, monkeypatch):
     assert len(upserts) == 1
     assert upserts[0]["collection"] == "product_default"
     assert len(upserts[0]["ids"]) == result["chunks"]
+    # CS7: a content_fingerprint + receipt land beside the (tmp) cards file.
+    assert result["content_fingerprint"]
+    assert result["receipt_path"] and (tmp_path / "ingest_receipt.json").is_file()

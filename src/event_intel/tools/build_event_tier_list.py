@@ -302,7 +302,18 @@ def build_event_tier_list(
                 "rationale": config["llm"].get("rationale_model", llm_model_extract),
                 "embedding": "bge-m3",
             }
-            cards_fp = _run_summary.sha256_file(_outputs_base() / ws / "capability_cards.yaml")
+            # Prefer the CS7 ingest receipt's content_fingerprint (the Chroma
+            # collection content actually scored against); fall back to the card
+            # file's byte hash when no receipt exists yet (CS1 stand-in).
+            from event_intel.cards import ingest as _ingest
+
+            _receipt = _ingest.read_ingest_receipt(
+                _outputs_base() / ws / _ingest.RECEIPT_FILENAME
+            )
+            cards_fp = (
+                (_receipt or {}).get("content_fingerprint")
+                or _run_summary.sha256_file(_outputs_base() / ws / "capability_cards.yaml")
+            )
             source_sha = _run_summary.sha256_text(capture.text or "")
             cfg_fp = _run_summary.config_hash(config)
             run_fp = _run_summary.compute_run_fingerprint(

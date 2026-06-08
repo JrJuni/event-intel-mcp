@@ -46,6 +46,16 @@ class VectorStoreProvider(ABC):
         """Delete specific chunk ids. Default no-op; persistent providers override."""
         return None
 
+    def set_collection_metadata(self, collection: str, metadata: dict) -> None:
+        """Persist collection-level metadata (e.g. CS7 content_fingerprint).
+        Default no-op; persistent providers override.
+        """
+        return None
+
+    def get_collection_metadata(self, collection: str) -> dict:
+        """Read collection-level metadata. Default empty (no drift detection)."""
+        return {}
+
 
 class ChromaProvider(VectorStoreProvider):
     """Default VectorStoreProvider using Chroma persistent client.
@@ -127,6 +137,18 @@ class ChromaProvider(VectorStoreProvider):
         if not ids:
             return
         self._get_collection(collection).delete(ids=ids)
+
+    def set_collection_metadata(self, collection: str, metadata: dict) -> None:
+        col = self._get_collection(collection)
+        merged = {**(col.metadata or {}), **metadata}
+        col.modify(metadata=merged)
+
+    def get_collection_metadata(self, collection: str) -> dict:
+        try:
+            col = self._get_client().get_collection(name=collection)
+            return dict(col.metadata or {})
+        except Exception:
+            return {}
 
     def collection_info(self, collection: str) -> dict:
         try:
