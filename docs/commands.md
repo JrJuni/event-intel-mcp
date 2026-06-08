@@ -185,6 +185,79 @@ cat outputs/default/sample_expo_2026/run_summary.json | python -m json.tool
 
 ---
 
+## Y1 benchmark — accuracy measurement + multi-vendor gold labeling
+
+The `benchmark` sub-app runs the blind measurement state machine (design v4 §2)
+and the multi-vendor labeling system (plan `snoopy-weaving-robin.md` v3). The
+labeler is a DIFFERENT vendor than the engine (engine = chatgpt_oauth ↔ labeler =
+Claude) so gold stays independent. **silver** = single-vendor auto-accepted draft
+(DEV only); **gold** = cross-vendor agreement / search-refine / human (the
+holdout gate accepts gold only).
+
+```bash
+PY=~/miniconda3/envs/event-intel/python.exe
+
+# (1) Freeze the gate contract BEFORE any label is seen. --gates-file carries the
+#     complete per-pair gate set (required/optional/not_applicable + coverage).
+$PY -m event_intel.cli benchmark threshold-freeze --out benchmarks/gold/thresholds.json \
+  [--universe-file universe.json] [--gates-file gates.json]
+
+# (2) Hidden run (gold-blind): build the tier list, persist an immutable run-result.
+$PY -m event_intel.cli benchmark run --pair p1_mongodb_gtc --runs-root benchmarks/runs \
+  --workspace mongodb --event-name "NVIDIA GTC 2026" --event-slug gtc2026 \
+  --csv-file outputs/mongodb/gtc2026_exhibitors.csv --no-enrich --no-rationale
+
+# (3) Blind company packet (names only; full or top10_decoy cohort)
+$PY -m event_intel.cli benchmark company-packet --pair p1_mongodb_gtc \
+  --roster benchmarks/gold/p1_mongodb_gtc/roster.json --cohort full \
+  --out benchmarks/_local/p1_mongodb_gtc/company_packet.json
+
+# (4) Labeling sheet = packet + NEUTRAL source overviews + product rubric (no engine verdict)
+$PY -m event_intel.cli benchmark labeling-sheet --pair p1_mongodb_gtc \
+  --packet benchmarks/_local/p1_mongodb_gtc/company_packet.json \
+  --source outputs/mongodb/gtc2026_exhibitors.csv --source-format csv \
+  --name-key name --overview-keys description --url-key url \
+  --card outputs/mongodb/capability_cards.yaml \
+  --out-json benchmarks/_local/p1_mongodb_gtc/labeling_sheet.json \
+  --out-md benchmarks/_local/p1_mongodb_gtc/worksheet.md
+
+# (5a) Stage A+B: GPT-OAuth single-vendor draft (silver) + flag gate-class/low-conf
+$PY -m event_intel.cli benchmark draft-labels \
+  --sheet benchmarks/_local/p1_mongodb_gtc/labeling_sheet.json \
+  --card outputs/mongodb/capability_cards.yaml \
+  --out benchmarks/_local/p1_mongodb_gtc/drafted.json --lang en
+
+# (5b) Gold via cross-vendor agreement (Claude, GPT-blind). Prove independence with the view SHA.
+$PY -m event_intel.cli benchmark independent-view --sheet …/drafted.json --out …/view.json   # prints input_sha
+#   → an independent Claude pass labels view.json → claude_labels.json
+$PY -m event_intel.cli benchmark cross-vendor --sheet …/drafted.json \
+  --claude-labels …/claude_labels.json --input-sha <sha> --out …/crossed.json
+
+# (5c) Gold via search refine (host/agent web-searches the flagged rows)
+$PY -m event_intel.cli benchmark apply-refinements --sheet …/crossed.json \
+  --refinements …/refinements.json --out …/refined.json
+
+# (6) Seal labels (grade preserved) → (7) measure
+$PY -m event_intel.cli benchmark seal-labels --sheet …/refined.json \
+  --packet …/company_packet.json --out benchmarks/gold/p1_mongodb_gtc/sealed_labels.json
+$PY -m event_intel.cli benchmark measure --run-dir benchmarks/runs/p1_mongodb_gtc/<run_id> \
+  --roster …/roster.json --sealed-labels …/sealed_labels.json \
+  --thresholds benchmarks/gold/thresholds.json --target-mode customer   # add --waiver <gate> if ineligible
+#   holdout gate: pass --holdout (rejects any non-gold label)
+
+# Labeling-process trust metrics (gold/flag/flip rate)
+$PY -m event_intel.cli benchmark label-stats --sheet …/refined.json
+```
+
+- **Data hygiene**: working sheets/worksheets/drafts live under gitignored
+  `benchmarks/_local/`; only `sealed_labels` / `roster` / `measure_report` /
+  threshold manifests are committable under `benchmarks/gold/`.
+- **Holdout discipline**: a pair whose labels were seen can't be a holdout
+  (re-freeze won't restore it). The competitor holdout (MongoDB × AI Expo Tokyo)
+  stays blind until its one-shot holdout run.
+
+---
+
 ## Notes
 
 - All Chroma data lives at `~/.event-intel/chroma/{workspace_id}/`. Safe to delete and re-ingest.
