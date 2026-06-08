@@ -27,6 +27,7 @@ from event_intel.cards import validator as _validator
 from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_exception
 from event_intel.events import enrichment as _enrichment
 from event_intel.events import extraction as _extraction
+from event_intel.events import run_summary as _run_summary
 from event_intel.events import source_capture as _source_capture
 from event_intel.providers import embedding as _embedding
 from event_intel.providers import llm as _llm
@@ -283,6 +284,89 @@ def build_event_tier_list(
         md_path.write_text(md_text, encoding="utf-8")
         yaml_path.write_text(yaml_text, encoding="utf-8")
 
+        # 9b. Emit run-summary (CS1) — audit/reproducibility record. Auxiliary:
+        #     an emitter failure must never fail an otherwise-successful build.
+        run_summary_path: Path | None = None
+        try:
+            from dataclasses import asdict as _asdict
+
+            ref_ts = context.generated_at.isoformat()
+            caps = {
+                "max_companies": max_companies,
+                "max_chunks_per_event": int(
+                    config.get("extraction", {}).get("max_chunks_per_event", 12)
+                ),
+            }
+            model_ids = {
+                "extract": llm_model_extract,
+                "rationale": config["llm"].get("rationale_model", llm_model_extract),
+                "embedding": "bge-m3",
+            }
+            # Prefer the CS7 ingest receipt's content_fingerprint (the Chroma
+            # collection content actually scored against); fall back to the card
+            # file's byte hash when no receipt exists yet (CS1 stand-in).
+            from event_intel.cards import ingest as _ingest
+
+            _receipt = _ingest.read_ingest_receipt(
+                _outputs_base() / ws / _ingest.RECEIPT_FILENAME
+            )
+            cards_fp = (
+                (_receipt or {}).get("content_fingerprint")
+                or _run_summary.sha256_file(_outputs_base() / ws / "capability_cards.yaml")
+            )
+            source_sha = _run_summary.sha256_text(capture.text or "")
+            cfg_fp = _run_summary.config_hash(config)
+            run_fp = _run_summary.compute_run_fingerprint(
+                git_sha=_run_summary.git_commit_sha(),
+                cards_fingerprint=cards_fp,
+                config_fp=cfg_fp,
+                source_sha256=source_sha,
+                caps=caps,
+                target_mode=resolved_target_mode,
+                model_ids=model_ids,
+            )
+            rs = _run_summary.RunSummary(
+                run_id=_run_summary.new_run_id(slug=slug, now_iso=ref_ts),
+                run_fingerprint=run_fp,
+                git_commit_sha=_run_summary.git_commit_sha(),
+                config_fp=cfg_fp,
+                cards_fingerprint=cards_fp,
+                source_sha256=source_sha,
+                provider=config.get("llm", {}).get("provider", "anthropic"),
+                model_ids=model_ids,
+                reference_timestamp=ref_ts,
+                target_mode=resolved_target_mode,
+                max_companies=max_companies,
+                max_chunks_per_event=caps["max_chunks_per_event"],
+                refresh=refresh,
+                cache_hits=enrich_result.cache_hits,
+                cache_misses=enrich_result.cache_misses,
+                skipped_from_resume=enrich_result.skipped_from_resume,
+                search_calls=enrich_result.cache_hits + enrich_result.cache_misses,
+                extracted=len(extraction.candidates),
+                enriched=len(enriched_rows),
+                scored=len(summary.rows),
+                extraction_coverage=None,  # CS2 fills (roster join)
+                stages=[
+                    _run_summary.StageStatus(s, True)
+                    for s in ("source_capture", "extraction", "enrichment",
+                              "retrieval", "scoring", "report")
+                ],
+                companies=[
+                    _run_summary.CompanyScore(
+                        name=r.name, tier=r.tier, final_score=r.final_score,
+                        evidence_floor=r.evidence_floor,
+                        dimensions=_asdict(r.dimensions),
+                        tier_reasons=list(r.tier_reasons),
+                    )
+                    for r in summary.rows
+                ],
+                warnings=list(extraction.warnings) + list(enrich_result.warnings),
+            )
+            run_summary_path = _run_summary.write_run_summary(rs, out_dir, allow_overwrite=True)
+        except Exception:  # noqa: BLE001 — auxiliary, never fail the build
+            run_summary_path = None
+
         return {
             "ok": True,
             "workspace_id": ws,
@@ -307,6 +391,7 @@ def build_event_tier_list(
             ),
             "tier_list_md_path": str(md_path),
             "tier_list_yaml_path": str(yaml_path),
+            "run_summary_path": str(run_summary_path) if run_summary_path else None,
         }
     except Exception as exc:
         # Stage hint best-effort — if exc is MCPError it carries its own.

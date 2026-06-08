@@ -1,0 +1,3 @@
+[
+  "[{\"name\": \"Acme Robotics\", \"source_snippet\": \"industrial cobots for assembly lines\", \"url\": \"https://acme.example\", \"description\": \"cobots\", \"extraction_confidence\": 0.9}, {\"name\": \"Globex Corporation\", \"source_snippet\": \"warehouse automation and AGVs onsite\", \"url\": null, \"description\": \"automation\", \"extraction_confidence\": 0.85}, {\"name\": \"Mobius Sensor\", \"source_snippet\": \"sensor fusion for mobile robots demo\", \"url\": null, \"description\": \"sensors\", \"extraction_confidence\": 0.8}]"
+]

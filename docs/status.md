@@ -6,7 +6,22 @@
 
 ## 진행 중
 
-- **Agentic Acquisition Ladder — 무개입 source 수집 (2026-06-08, plan `agentic-acquisition-ladder-impl-v1.md`, branch `feat/acquisition-ladder`)**
+- **Y1 실데이터 벤치마크 — 코드 페이즈 완료 (2026-06-08, plan `y1-execution-v4.md` / 상위 `snoopy-weaving-robin.md`, branch `feat/y1-benchmark`)**
+  - **계기.** 엔진은 빌드·내부정합성 완료지만 **독립 gold label 대비 정확도 미검증**. 현 `eval/harness.py`는 fit/sim/news 주입 + `cards=None`으로 scorer만 돈다. Y1은 실 카드 3종 × 실 이벤트 6종 × 독립 blind 라벨로 그 빈틈을 닫는다. **이 plan의 핵심 = 측정 자체의 타당성** — blind 경계·cohort·재현성을 코드 경계로 강제.
+  - **설계.** plan v1→v4 (Codex 3라운드 + Gemini context-starved skeptic, 전부 HEAD 대조 후 수용). 측정 타당성 버그 다수 차단: blind 경계 자기모순, P@10 `/len` 부풀림, leakage 분모 게이밍, partner competitor 게이트 충돌, cap-0 sentinel, holdout 순서 모순, evidence 1건-통과.
+  - ✅ **CS1 run-summary** (`5b0ad12`) — `run_id`(고유·immutability) / `run_fingerprint`(결정적·재현검증) 분리 + build hook + immutable run dir.
+  - ✅ **CS6 metrics** (`777a164`) — `precision_at_k` `/k`(미추출=miss) · 3분리 leakage(end_to_end 진단/conditional 게이트/coverage 게이트) · evidence_precision `min_items` 게이트 + `evidence_yield` · `N/A` vs `insufficient_n`. 기존 9-cell 함수 unchanged.
+  - ✅ **CS2 roster** (`4c2c835`) — `match_norm`(NFKC + 한·일 법인격/punct) · cardinality taxonomy(1:1 / N:1 dedupe / 1:N materialize-only / ambiguous) · `extraction_coverage` vs `mention_coverage` 분리(R3-4).
+  - ✅ **CS3/CS3b blind packet** (`9d39f12`) — pair별 cohort(full / top10+고정 decoy) · packet≠sealed labels(별 파일) · evidence packet은 labels 봉인 *후*만 생성(R2-2 순서 강제) · item 스키마 tier/score 은닉.
+  - ✅ **CS4 run/measure 분리** (`b8f71bf`) — **gold-blind 경계를 코드로**: `run`은 gold 파라미터 없음 + gold-ish 키 거부, `measure`는 `SealedLabels` 아니면 `TypeError`. measure가 roster_id 공간으로 join → CS6 지표 + D6 게이트(N/A·insufficient_n는 실패 아님).
+  - ✅ **CS7 ingest receipt** (`8c6b0a1`) — `content_fingerprint`(정렬 chunk_id+doc_hash+model+collection, **ts 제외**) vs `ingest_receipt.json`(instance, ts) 분리 · Chroma collection metadata에 기록 → `verify_collection_fingerprint`로 measure-time drift 감지 · build hook이 receipt fingerprint를 run_fingerprint에 folding.
+  - ✅ **CS8 benchmark CLI** (`795544e`) — `threshold-freeze`(immutable manifest, step 1) / `run`(gold-blind) / `company-packet`(cohort) / `evidence-packet`(labels 봉인 후만) / `measure`(join→게이트, 실패 시 exit 1). 상태머신 순서를 CLI가 강제.
+  - ✅ **CS5 contract-replay** (`14ce6ab`) — raw는 gitignore(`benchmarks/_raw/`), 커밋 fixture는 **구조보존 synthetic**(길이·줄경계·Unicode script·중복 보존 → 청킹/매칭 경로 실제로 태움, Q4). `FakeReplayLLM` 결정적 재생 + 커밋 corpus `benchmarks/replay/p_static_demo`.
+  - **테스트**: **598 passed**, ruff clean. 신규 eval 모듈(run_summary/roster/blind/benchmark/replay) 전부 cold-import 가드 통과(Q2). 9-cell scoring 회귀 유지.
+  - **gotcha(정정)**: CS7 첫 커밋에서 테스트가 `tests/fixtures/cards/`에 receipt를 써 fixtures 오염 → 테스트를 tmp 복사본으로 고치고 파일 제거 후 커밋 amend(push 전).
+  - **남은 것**: PR→main 후 **데이터/ops(사용자 차단)** — 잔여 5개 이벤트 캡처 → roster → 카드 ingest(`models prepare` 선행) → DEV blind 라벨 → measure → holdout 게이트(threshold freeze 최우선). 약점 발견 시에만 Y1D 조건부 fix.
+
+- **Agentic Acquisition Ladder — 무개입 source 수집 (2026-06-08, plan `agentic-acquisition-ladder-impl-v1.md`, branch `feat/acquisition-ladder` → merged PR #26)**
   - **계기.** Y1A 벤치마크용 H.C.R.(일본 B2G 케어로봇 전시회) 수집이 operator-capture(수동 Ctrl+S)로만 가능하다고 판정됐는데, UX가 나빴다. 실제로는 Vue SPA가 외부 `<script src>` 번들 안에서 `axios.get('_ajax/exhibitor/get_exhibitor_data/')`로 296사 JSON을 부르는 깨끗한 엔드포인트가 있었음 — `<base href>` 해석 누락 + analyzer가 inline script만 스캔 + regex가 document-relative URL을 거부해서 놓쳤던 것. → "AI 판단은 prior로만 쓰고, 결정적 ladder가 여러 전략을 예산 안에서 시도"하는 구조로 재설계.
   - **설계.** design v1→v2→v2.1(blind review 2라운드 + 18T-conflict grep), impl plan C1–C7 슬라이스. LangGraph는 명시적으로 기각(재현성 — 제어흐름은 결정적, AI는 판단만).
   - ✅ **C1 streaming byte cap** (`cf537f0`) — `raw_fetch`가 `client.stream()`+`iter_bytes()`로 진짜 대역폭 cap(사후 길이검사 아님). `RawResponse.truncated/byte_count`.

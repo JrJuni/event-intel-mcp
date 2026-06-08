@@ -196,6 +196,44 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 ## Blind Review 판정 누적
 
+### Y1 실행 plan 라운드 1+2 (v1→v2) — 2026-06-08
+
+외부 AI: Codex. 측정 인프라 plan이라 "성능이 안 좋아져도 게이트가 통과하는" silent-validity 결함에 집중 요청.
+
+| # | 카테고리 | 판정 | 사유(HEAD 대조) |
+|---|---|---|---|
+| R1-1 | architecture | accepted | CS4가 gold 받아 즉시 join → blind 경계 위반. `run/measure` 파일·프로세스 분리 |
+| R1-2 | architecture | accepted | run-result packet은 추출 회사만 → 미추출 분모 불가. 상태머신 9단계로 |
+| R1-3 | corner-case | accepted | `precision_at_10`이 `/len(ranked)`(metrics.py:58) → 추출실패가 precision↑. `/10`으로 |
+| R1-4 | corner-case | **refined** | full-roster 분모 유지 + 3분리 명명. 원안(scored 분모 축소)은 reject(선택-누락 누수 은닉) |
+| R1-5 | corner-case | accepted | P6=partner인데 D6가 competitor 게이트(metrics.py:71 partner=neutral, defaults:60 factor 0.0). **계약 버그** → P6 N/A |
+| R1-6 | architecture | accepted | SHA freeze≠재현(LLM/Brave/Chroma 미저장). one-shot 명명 + replay corpus 슬라이스 신규 |
+| R1-7 | corner-case | accepted | universe cap `0`: extraction 0=빈추출(extraction.py:351) / enrichment 0=30(enrichment.py:534) **불일치**. 0 금지 |
+| R1-8 | corner-case | accepted | 날짜 dir 덮어쓰기 + cards SHA≠collection. run_id/fingerprint 분리 + Chroma receipt |
+| R2-결정2 | corner-case | accepted | **내 Step6 자기모순 적발**: "full-roster 분모 유지" + "미추출 100건 비희석" 테스트는 모순. 3지표 분리(end_to_end/conditional/coverage)로 해소 |
+| R2-1~5 | architecture/corner-case | accepted | 상태머신(packet≠sealed labels) · evidence packet은 company labels 봉인 후 · holdout 순서(freeze→packet→seal→reveal) · run_id(고유)/fingerprint(결정적) · Chroma receipt(런타임 re-hash 대신 ingest 시) |
+
+**메타**: Codex가 실제 코드 file:line 정확 인용(8/8 Factual 최상). **corner-case·architecture 발견 최상, nit/style 0.** R2는 내 제안의 자기모순까지 잡음(높은 novelty). echo chamber 아님.
+**판정**: 라운드 1+2 모두 강한 신호 → v2 재합성. **계약 수정 동반**(D6 competitor 게이트 P5만 + README universe 0 금지).
+
+**Step 7.5 Skeptic (다른 벤더 Gemini, context-starved — 라운드 히스토리/판정 제외)**:
+- 시작 라인: **"다음 점에서 다릅니다"**(3분리 메트릭·상태머신·SHA 봉인 정확 식별) → echo 신호 없음.
+- 발견 3건: **SK-1 accepted·신규**(1:1 강제가 정당한 1:N 부스를 miss 처리 — Codex 2라운드가 못 봄, match cardinality taxonomy로) / **SK-2 refined**(evidence packet 내용 미정의 → item 스키마 명시; "cross-rank 합성" 프레이밍은 evidence_precision 오해) / **SK-3 rejected**(replay를 live Brave로 오독 — contract-replay는 고정 fixture 재생).
+- 판정: 🔁 **종료 보류 + 반영** → v3. skeptic이 값 함(신규 corner-case 1건). 다음 phase는 mutual blind spot 대비 페어 로테이션 권장.
+
+**라운드 3 (Codex, v3 대상)**: 6건 전부 valid(5 P1 + 1 P2) — **수정의 2차 버그**. R3-1 holdout 순서 자기모순(evidence packet이 run·labels보다 먼저 — **내가 v3에 직접 쓴 모순**) → hidden run 도입 / R3-2 manual match가 labels보다 먼저면 extracted 노출 → match를 봉인 후로 / R3-3 full roster packet vs "P5/P6만 완전라벨" 충돌 → pair별 cohort(top-10+decoy) / R3-4 1:N covered가 scoring entity 없는 회사까지 부풀림(SK-1이 과관대) → materialize만 covered / R3-5 evidence 1건 1.0 통과 → min_items+yield / R3-6 receipt ts가 자기 테스트와 모순 → instance/fingerprint 분리. Open Q 전부 정교화(Q3: **P1 GTC는 18U 튜닝 오염 → blind holdout 불가**, 내가 packet에 self-flag한 빈틈을 독립 확인). 결정 A=P4 zone 층화 competitor holdout.
+
+### 라운드 추이 — Y1 실행 plan
+| 라운드 | 벤더 | Plan | 신규성 | 종료 판정 |
+|---|---|---|---|---|
+| 1 | Codex | v1→v2 | (N/A) 8/8 valid | 정상 다음 |
+| 2 | Codex | v2 | 높음(내 자기모순 적발) | 정상 다음 |
+| Skeptic | Gemini | v2→v3 | 신규 1(SK-1 1:N) | 반영 후 속행 |
+| 3 | Codex | v3→v4 | 높음(수정의 2차 버그 6) | ✅ **루프 종료** |
+**진단**: 3라운드+skeptic 모두 silent-validity 결함에 수렴, nit/style 0 — 건강한 리뷰. 패턴: **각 라운드가 직전 수정의 edge를 잡음**(R2가 내 모순, skeptic이 1:N, R3가 holdout 순서·SK-1 과관대·receipt 모순) — 정교한 측정 프로토콜 설계의 자연스러운 수렴. **2회나 내 자기모순을 외부가 잡음 → 측정 인프라는 외부 리뷰 가치 큼.** skeptic(다른 벤더)이 같은 벤더 2라운드가 못 본 1:N을 잡아 페어 로테이션 가치 실증. v4에서 bounded edge만 남아 종료, 잔여는 구현 adversarial 테스트로.
+
+**산출**: `~/.claude/plans/y1-execution-v4.md`(리뷰 종료, 구현 진입본. 인라인 마커 + Considered/Rejected + Changes v1→v2→v3→v4). v1/v2/v3 audit trail 보존.
+
 ### Agentic Acquisition Ladder impl plan 라운드 1 (design v2→v2.1) — 2026-06-08
 
 | # | 카테고리 | 판정 | 사유 |

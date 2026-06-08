@@ -9,9 +9,13 @@ Module-reference imports for monkeypatch safety. Cold-start safe at module top.
 """
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from pathlib import Path
+
 from event_intel.cards import ingest as _ingest
 from event_intel.cards import validator as _validator
 from event_intel.errors import Stage, envelope_from_exception
+from event_intel.events import run_summary as _run_summary
 from event_intel.providers import embedding as _embedding
 from event_intel.providers import vectorstore as _vectorstore
 from event_intel.runtime import preflight as _preflight
@@ -48,6 +52,26 @@ def ingest_product_context(
             embedding_provider=_embedding.BgeM3Provider(),
             vectorstore_provider=_vectorstore.ChromaProvider(),
         )
+
+        # CS7: write the ingest receipt next to the cards it describes, so a later
+        # build/measure can fold its content_fingerprint into run_fingerprint and
+        # detect collection drift. Auxiliary — a receipt failure must not fail the
+        # ingest, whose authoritative output is the (already-written) collection.
+        try:
+            receipt = _ingest.build_ingest_receipt(
+                content_fingerprint=result.get("content_fingerprint", ""),
+                cards_sha256=_run_summary.sha256_file(cards_path),
+                collection=result["collection"],
+                chunk_count=result.get("chunks", 0),
+                embedding_model_id=result.get("embedding_model_id", "bge-m3"),
+                now_iso=datetime.now(UTC).isoformat(),
+            )
+            receipt_path = Path(cards_path).expanduser().parent / _ingest.RECEIPT_FILENAME
+            _ingest.write_ingest_receipt(receipt, receipt_path)
+            result["receipt_path"] = str(receipt_path)
+        except Exception:  # noqa: BLE001 — auxiliary, never fail the ingest
+            result["receipt_path"] = None
+
         return result
     except Exception as exc:
         return envelope_from_exception(exc, stage=Stage.INGEST)
