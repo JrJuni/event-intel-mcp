@@ -221,6 +221,18 @@ def draft_labels(
 
 
 @app.tool()
+def prepare_models(force: bool = False) -> dict:
+    """Download the bge-m3 embedding model (~1.3 GB) for this workspace, in-app
+    (no terminal needed). NON-BLOCKING: returns immediately with status
+    'downloading'; poll check_runtime until the model check reads 'ready'. Status
+    is 'ready' if already cached. `force=true` re-downloads. (#14 in-app setup)
+    """
+    from event_intel.tools.prepare_models import prepare_models as _impl
+
+    return _impl(force=force)
+
+
+@app.tool()
 def sync_product_sources(
     workspace_id: str = "default",
     source_dir: str | None = None,
