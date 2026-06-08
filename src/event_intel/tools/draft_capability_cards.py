@@ -14,9 +14,12 @@ import yaml
 
 from event_intel.cards import drafter as _drafter
 from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_exception
+from event_intel.providers import embedding as _embedding
 from event_intel.providers import llm as _llm
+from event_intel.providers import vectorstore as _vectorstore
 from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
+from event_intel.sources import retrieval as _retrieval
 
 
 def _resolve_output_path(
@@ -46,6 +49,13 @@ def draft_capability_cards(
 ) -> dict:
     """Draft capability_cards.yaml from source material and write it to disk.
 
+    `source_kind`:
+      - "text"          — draft from inline `source_content`.
+      - "file"/"files"  — draft from `source_paths` (md/txt/pdf).
+      - "workspace"     — retrieve from the workspace source library
+                          (product_sources_{ws}, populated by `sources sync`)
+                          and draft from that grounded context (WSL W3).
+
     Returns:
         Success envelope with `draft_path` + `warnings` + `usage`.
         Failure envelope from `envelope_from_exception`.
@@ -68,10 +78,31 @@ def draft_capability_cards(
                 retryable=False,
             )
 
+        # Workspace drafting: pull grounded context from product_sources_{ws} and
+        # feed it to the drafter as plain text. The text/file/files paths are
+        # unchanged. Needs bge-m3 + Chroma → run the lightweight preflight first.
+        drafter_kind, drafter_content, drafter_paths = (
+            source_kind,
+            source_content,
+            source_paths,
+        )
+        source_retrieval = None
+        if source_kind == "workspace":
+            _preflight.run_preflight(
+                workspace_id, require_product_context=False, config=config
+            )
+            drafter_content, source_retrieval = _retrieval.gather_workspace_source_text(
+                workspace_id=workspace_id,
+                embedding_provider=_embedding.BgeM3Provider(),
+                vectorstore_provider=_vectorstore.ChromaProvider(config=config),
+                lang=lang,
+            )
+            drafter_kind, drafter_paths = "text", None
+
         result = _drafter.draft_cards(
-            source_kind=source_kind,
-            source_content=source_content,
-            source_paths=source_paths,
+            source_kind=drafter_kind,
+            source_content=drafter_content,
+            source_paths=drafter_paths,
             lang=lang,
             llm_provider=llm_provider,
             max_tokens=max_tokens,
@@ -96,7 +127,7 @@ def draft_capability_cards(
         draft_path.parent.mkdir(parents=True, exist_ok=True)
         draft_path.write_text(result.yaml_text, encoding="utf-8")
 
-        return {
+        response = {
             "ok": True,
             "draft_path": str(draft_path),
             "warnings": result.warnings,
@@ -104,5 +135,8 @@ def draft_capability_cards(
             "usage": result.usage,
             "lang": lang,
         }
+        if source_retrieval is not None:
+            response["source_retrieval"] = source_retrieval
+        return response
     except Exception as exc:
         return envelope_from_exception(exc, stage=Stage.INGEST)
