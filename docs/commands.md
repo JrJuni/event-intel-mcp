@@ -89,6 +89,11 @@ cd /c/Users/JuniBecky/Downloads/event-intel-mcp
 ~/miniconda3/envs/event-intel/python.exe -m event_intel.cli ingest \
     --cards outputs/default/capability_cards.yaml \
     --workspace default
+# Opt-in: also (re)index the source library first (WSL W4). A partial source
+# sync aborts before the card collection is touched. --force-source-sync forces
+# a full source re-index.
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli ingest \
+    --cards outputs/default/capability_cards.yaml --workspace default --sync-sources
 
 # Optional: export JSON schema (for external tooling / IDE hints)
 ~/miniconda3/envs/event-intel/python.exe -m event_intel.cli export-schema --format json

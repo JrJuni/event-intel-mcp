@@ -18,7 +18,9 @@ from event_intel.errors import Stage, envelope_from_exception
 from event_intel.events import run_summary as _run_summary
 from event_intel.providers import embedding as _embedding
 from event_intel.providers import vectorstore as _vectorstore
+from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
+from event_intel.sources import indexer as _src_indexer
 
 
 def ingest_product_context(
@@ -26,11 +28,20 @@ def ingest_product_context(
     workspace_id: str = "default",
     cards_path: str = "",
     extra_source_paths: list[str] | None = None,  # reserved for v0.4+ whitepapers
+    sync_sources: bool = False,
+    force_source_sync: bool = False,
 ) -> dict:
     """Validate + embed + upsert capability_cards.yaml into product_{workspace_id}.
 
     Preflight runs with `require_product_context=False` — the whole point of
     this call is to create that collection, so requiring it would deadlock.
+
+    `sync_sources` (opt-in, default False = unchanged behavior): also index the
+    workspace source library into product_sources_{ws} (WSL W4). Order is
+    validate cards → sync sources → ingest cards, and a PARTIAL source sync
+    aborts before the card collection is touched (the card collection is never
+    left half-updated by a source-side failure). `force_source_sync` forces a
+    full source re-index.
     """
     try:
         _preflight._validate_workspace_id_minimal(workspace_id)
@@ -50,7 +61,31 @@ def ingest_product_context(
             config=config,
         )
 
+        # Validate the cards FIRST — fail fast on bad cards before any sync work.
         cards = _validator.load_and_validate(cards_path)
+
+        # Opt-in source sync, BEFORE the card upsert. A partial source sync leaves
+        # the card collection untouched (degraded-but-safe), so the two RAG stores
+        # never drift into a half-updated pair from one failed call.
+        source_sync = None
+        if sync_sources:
+            rp = _paths.resolve_paths(config)
+            source_sync = _src_indexer.sync_sources(
+                sources_dir=rp.sources_root(workspace_id),
+                workspace_id=workspace_id,
+                embedding_provider=_embedding.BgeM3Provider(),
+                vectorstore_provider=_vectorstore.ChromaProvider(config=config),
+                manifest_path=rp.source_index_manifest(workspace_id),
+                now_iso=datetime.now(UTC).isoformat(),
+                force=force_source_sync,
+            )
+            if source_sync.get("partial"):
+                return {
+                    "ok": True,
+                    "card_ingested": False,
+                    "reason": "source sync was partial — card collection left unchanged",
+                    "source_sync": source_sync,
+                }
 
         result = _ingest.ingest_cards(
             cards=cards,
@@ -58,6 +93,9 @@ def ingest_product_context(
             embedding_provider=_embedding.BgeM3Provider(),
             vectorstore_provider=_vectorstore.ChromaProvider(config=config),
         )
+        if source_sync is not None:
+            result["source_sync"] = source_sync
+            result["card_ingested"] = True
 
         # CS7: write the ingest receipt next to the cards it describes, so a later
         # build/measure can fold its content_fingerprint into run_fingerprint and

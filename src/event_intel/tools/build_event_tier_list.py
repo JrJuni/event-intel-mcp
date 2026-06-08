@@ -38,6 +38,8 @@ from event_intel.report import tier_list_yaml as _tier_list_yaml
 from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
 from event_intel.scoring import compute as _scoring
+from event_intel.sources import indexer as _src_indexer
+from event_intel.sources import retrieval as _src_retrieval
 from event_intel.storage.identifiers import sanitize_slug
 
 if TYPE_CHECKING:
@@ -243,6 +245,35 @@ def build_event_tier_list(
             target_mode=resolved_target_mode,
         )
 
+        # 7b. Source-library grounding for S/A rows (WSL W4). RATIONALE-ONLY: it
+        #     is computed AFTER scoring, reads the SEPARATE product_sources_{ws}
+        #     collection, and is written only to the report's source_provenance
+        #     field — there is no path from it back to any score/tier. Best-effort:
+        #     an empty/missing library or any error → {} (card-based rationale).
+        source_provenance: dict[str, list[dict]] = {}
+        try:
+            sa_items = [
+                (
+                    s.row.name,
+                    f"{s.row.name}. {s.row.description or ''} "
+                    f"{s.row.source_snippet or ''}".strip(),
+                )
+                for s in summary.rows
+                if s.tier in ("S", "A")
+            ]
+            if sa_items:
+                _src_vs = _vectorstore.ChromaProvider(config=config)
+                _src_collection = _src_indexer.source_collection_name(ws)
+                if _src_vs.collection_info(_src_collection).get("count", 0) > 0:
+                    source_provenance = _src_retrieval.gather_exhibitor_provenance(
+                        items=sa_items,
+                        workspace_id=ws,
+                        embedding_provider=_embedding.BgeM3Provider(),
+                        vectorstore_provider=_src_vs,
+                    )
+        except Exception:  # noqa: BLE001 — grounding is auxiliary, never fail a build
+            source_provenance = {}
+
         # 8. Reports — md + yaml (S5).
         context = _tier_list_md.ReportContext(
             workspace_id=ws, event_name=event_name, event_slug=slug,
@@ -266,9 +297,11 @@ def build_event_tier_list(
         ]
         md_text = _tier_list_md.render_tier_list_md(
             summary=summary, needs_review=needs_review_rows, context=context,
+            source_provenance=source_provenance,
         )
         yaml_payload = _tier_list_yaml.build_tier_list_payload(
             summary=summary, needs_review=needs_review_rows, context=context,
+            source_provenance=source_provenance,
         )
         yaml_text = _tier_list_yaml.dump_tier_list_yaml(yaml_payload)
 
@@ -310,6 +343,11 @@ def build_event_tier_list(
                 (_receipt or {}).get("content_fingerprint")
                 or _run_summary.sha256_file(_outputs_base() / ws / "capability_cards.yaml")
             )
+            # WSL W4: record which product_sources state was available (if any).
+            _src_manifest = _src_indexer.read_manifest(
+                _paths.resolve_paths(config).source_index_manifest(ws)
+            )
+            source_index_fp = (_src_manifest or {}).get("content_fingerprint")
             source_sha = _run_summary.sha256_text(capture.text or "")
             cfg_fp = _run_summary.config_hash(config)
             run_fp = _run_summary.compute_run_fingerprint(
@@ -358,6 +396,7 @@ def build_event_tier_list(
                     for r in summary.rows
                 ],
                 warnings=list(extraction.warnings) + list(enrich_result.warnings),
+                source_index_fingerprint=source_index_fp,
             )
             run_summary_path = _run_summary.write_run_summary(rs, out_dir, allow_overwrite=True)
         except Exception:  # noqa: BLE001 — auxiliary, never fail the build

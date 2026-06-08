@@ -75,7 +75,9 @@ def _evidence_chips(row: EnrichedExhibitor) -> str:
     return " ".join(chips)
 
 
-def _render_row(scored: ScoredExhibitor, *, lang: str) -> str:
+def _render_row(
+    scored: ScoredExhibitor, *, lang: str, provenance: list[dict] | None = None
+) -> str:
     row = scored.row
     lines: list[str] = []
     lines.append(f"### {row.name} — **{scored.tier}** · score {scored.final_score:.2f}/10")
@@ -105,6 +107,13 @@ def _render_row(scored: ScoredExhibitor, *, lang: str) -> str:
         breakdown = ", ".join(f"{name} ({n})" for name, n in top)
         prefix = "capability hits" if lang != "ko" else "역량 매칭"
         lines.append(f"- {prefix}: {breakdown}")
+    if provenance:
+        prefix = "출처 근거 (제품 자료)" if lang == "ko" else "source grounding"
+        lines.append(f"- **{prefix}**:")
+        for p in provenance[:3]:
+            loc = p.get("locator") or p.get("source_path", "?")
+            snip = " ".join((p.get("snippet") or "").split())
+            lines.append(f"  - `{loc}` — “{snip}”")
     return "\n".join(lines)
 
 
@@ -154,13 +163,17 @@ def render_tier_list_md(
     summary: ScoringSummary,
     needs_review: list[EnrichedExhibitor] | None = None,
     context: ReportContext,
+    source_provenance: dict[str, list[dict]] | None = None,
 ) -> str:
     """Render the 6-section Markdown report.
 
     `needs_review` is the bucket of low-confidence rows from extraction +
     enrichment that scoring skipped. Rendered in its own section so the human
-    can decide whether to promote / drop.
+    can decide whether to promote / drop. `source_provenance` (WSL W4) maps
+    exhibitor name → raw-source grounding chunks, rendered as a sub-list on the
+    matching rows; it never affects scoring or tier placement.
     """
+    prov = source_provenance or {}
     _assert_floor_invariant(summary, context.tier_rules)
     generated_at = context.generated_at or datetime.now(UTC)
     lang = context.lang
@@ -205,7 +218,9 @@ def render_tier_list_md(
         else:
             for scored in rows:
                 out.append("")
-                out.append(_render_row(scored, lang=lang))
+                out.append(
+                    _render_row(scored, lang=lang, provenance=prov.get(scored.row.name))
+                )
         out.append("")
 
     review_heading = "## 검토 필요 (Needs Review)" if lang == "ko" else "## Needs Review"

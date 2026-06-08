@@ -194,6 +194,20 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 ---
 
+## [2026-06-08] CliRunner `--help` substring 단언은 터미널 폭(CI 80 col)에서 깨진다
+
+**Tried**: WSL W3에서 `draft-cards --from-workspace` 플래그가 help에 나오는지 `assert "--from-workspace" in res.output`로 단언. 로컬(넓은 터미널)에선 통과.
+
+**Result**: 실패 — CI(pytest job)에서 빨강. rich가 옵션명을 **80 col 경계에서 줄바꿈**하고 ANSI 코드를 끼워넣어, 렌더된 출력에서 `--from-workspace`가 연속 substring이 아니게 됨(`\x1b[...]`로 토막). 로컬은 폭이 넓어 한 줄이라 통과 → 환경 의존 green. 1 CI 라운드 소모.
+
+**Lesson**:
+- **CLI `--help` 렌더 텍스트를 substring으로 단언하지 마라.** rich/Click 출력은 터미널 폭·색상에 의존한다. 정 필요하면 `CliRunner().invoke(app, [...], env={"COLUMNS":"200"})`로 폭을 넓히고 `re.sub(r"\x1b\[[0-9;]*m","",out)`로 ANSI를 벗긴 뒤 단언.
+- **플래그 존재는 동작으로 증명하는 게 더 견고**: 상호배타 위반→exit 2 같은 behavior 테스트가 "플래그가 파싱된다"를 폭 무관하게 증명한다. help 텍스트 단언은 보조일 뿐.
+
+**Related**: `tests/test_workspace_draft.py::test_cli_draft_help_lists_from_workspace`(COLUMNS=200 + ANSI strip). PR #42 (commit 5b31cef).
+
+---
+
 ## Blind Review 판정 누적
 
 ### WSL plan v0.2 + 로드맵 라운드 1 (Codex) — 2026-06-08

@@ -23,6 +23,8 @@ tier_list is a *report* not a long-lived artifact):
         angle: str | null
         capability_fit: float
         capability_fit_breakdown: {capability_name: hit_count}
+        source_provenance: [{source_path, locator, snippet}]   # v4 (WSL W4): raw
+            # source library grounding for S/A rows. Rationale-only — never scored.
     needs_review:
       - name: str
         source_snippet: str
@@ -45,10 +47,12 @@ if TYPE_CHECKING:
     from event_intel.scoring.compute import ScoringSummary
 
 
-REPORT_SCHEMA_VERSION = 3   # v2: typed `evidence` per exhibitor; v3: top-level `target_mode` (18V item 2)
+# v2: typed `evidence` per exhibitor; v3: top-level `target_mode` (18V item 2);
+# v4: per-exhibitor `source_provenance` from the raw source library (WSL W4).
+REPORT_SCHEMA_VERSION = 4
 
 
-def _exhibitor_to_dict(scored: object) -> dict:
+def _exhibitor_to_dict(scored: object, provenance: list[dict] | None = None) -> dict:
     row = scored.row
     fit = scored.fit
     return {
@@ -68,6 +72,9 @@ def _exhibitor_to_dict(scored: object) -> dict:
         "angle": scored.angle,
         "capability_fit": round(float(fit.capability_fit), 4) if fit else 0.0,
         "capability_fit_breakdown": dict(fit.capability_fit_breakdown) if fit else {},
+        # WSL W4: raw-source grounding (rationale-only; never affects the score
+        # fields above). Empty list when no source library was synced.
+        "source_provenance": list(provenance or []),
     }
 
 
@@ -84,10 +91,16 @@ def build_tier_list_payload(
     summary: ScoringSummary,
     needs_review: list[EnrichedExhibitor] | None,
     context: ReportContext,
+    source_provenance: dict[str, list[dict]] | None = None,
 ) -> dict:
+    """`source_provenance` maps exhibitor name → its raw-source grounding chunks
+    (WSL W4). Absent / None → every exhibitor gets an empty list. It is added to
+    the report ONLY — the scoring fields are untouched by it.
+    """
     generated_at = context.generated_at or datetime.now(UTC)
     counts = dict(summary.tier_counts)
     counts["needs_review"] = len(needs_review or [])
+    prov = source_provenance or {}
     return {
         "schema_version": REPORT_SCHEMA_VERSION,
         "workspace_id": context.workspace_id,
@@ -97,7 +110,9 @@ def build_tier_list_payload(
         "target_mode": getattr(context, "target_mode", "customer"),
         "generated_at": generated_at.isoformat(),
         "tier_counts": counts,
-        "exhibitors": [_exhibitor_to_dict(s) for s in summary.rows],
+        "exhibitors": [
+            _exhibitor_to_dict(s, prov.get(s.row.name)) for s in summary.rows
+        ],
         "needs_review": [_needs_review_to_dict(r) for r in (needs_review or [])],
     }
 
