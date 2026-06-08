@@ -37,6 +37,12 @@ app = typer.Typer(
 models_app = typer.Typer(no_args_is_help=True, help="Manage local model weights.")
 app.add_typer(models_app, name="models")
 
+sources_app = typer.Typer(
+    no_args_is_help=True,
+    help="Manage the raw source library (RAG for card drafting + rationale).",
+)
+app.add_typer(sources_app, name="sources")
+
 
 def _print_json(payload: dict) -> None:
     typer.echo(json.dumps(payload, indent=2, ensure_ascii=False))
@@ -189,6 +195,26 @@ def ingest_cmd(
     from event_intel.tools.ingest_capability_cards import ingest_product_context
 
     result = ingest_product_context(workspace_id=workspace, cards_path=cards)
+    _print_json(result)
+    raise typer.Exit(code=0 if result.get("ok") else 1)
+
+
+@sources_app.command("sync")
+def sources_sync_cmd(
+    workspace: str = typer.Option("default", "--workspace", "-w", help="Workspace ID."),
+    kind: str = typer.Option(
+        "all", "--kind", help="Which subtree to index: all | product | company."
+    ),
+    source_dir: str | None = typer.Option(
+        None, "--source-dir", help="Override the sources directory (absolute path)."
+    ),
+) -> None:
+    """Incrementally index the source library into product_sources_{workspace}."""
+    from event_intel.tools.sync_product_sources import sync_product_sources
+
+    result = sync_product_sources(
+        workspace_id=workspace, source_dir=source_dir, kind=kind
+    )
     _print_json(result)
     raise typer.Exit(code=0 if result.get("ok") else 1)
 

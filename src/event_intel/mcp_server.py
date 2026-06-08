@@ -206,6 +206,22 @@ def draft_labels(
     )
 
 
+@app.tool()
+def sync_product_sources(
+    workspace_id: str = "default",
+    source_dir: str | None = None,
+    kind: str = "all",
+) -> dict:
+    """Index the workspace raw source library (PDF/MD/TXT/CSV) into
+    product_sources_{workspace_id} for better card drafting + S/A rationale
+    provenance (WSL). Incremental + safe: re-running only re-embeds changed
+    files. `kind` = all | product | company; `source_dir` overrides the location.
+    """
+    from event_intel.tools.sync_product_sources import sync_product_sources as _impl
+
+    return _impl(workspace_id=workspace_id, source_dir=source_dir, kind=kind)
+
+
 def _preimport_heavy_deps() -> None:
     """Import heavy native deps on the MAIN thread before serving.
 

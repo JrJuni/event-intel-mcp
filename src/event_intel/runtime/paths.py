@@ -160,6 +160,12 @@ class ResolvedPaths:
         """
         return self.workspace_root / workspace_id
 
+    def sources_root(self, workspace_id: str) -> Path:
+        """Raw source library root for a workspace (parent of the kind subdirs).
+        Indexing this covers both ``sources/product`` and ``sources/company``.
+        """
+        return self.workspace_root / workspace_id / "sources"
+
     def sources_dir(self, workspace_id: str, kind: str = "product") -> Path:
         """Raw source library for a workspace. ``kind`` ∈ {product, company}."""
         return self.workspace_root / workspace_id / "sources" / kind
