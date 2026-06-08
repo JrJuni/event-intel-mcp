@@ -109,20 +109,22 @@ _ENDPOINT_PATTERNS = [
     re.compile(r"""\bremote-proxy[^\s"'<>)]*""", re.IGNORECASE),
     # Generic API paths (must contain at least one extra segment after /api/)
     re.compile(r"""/api/[a-zA-Z0-9_\-/.]+""", re.IGNORECASE),
-    # fetch("..."), fetch('...'), fetch(`...`) — relative or absolute URL inside the literal
+    # fetch("..."), fetch('...'), fetch(`...`) — abs or document-relative literal.
+    # Relative literals (e.g. _ajax/exhibitor/...) are accepted here and filtered
+    # by _is_static_url_literal (must contain '/', no '${', no whitespace).
     re.compile(
-        r"""\bfetch\s*\(\s*[`"'](?P<url>(?:https?://[^`"']+|/[^`"']+))[`"']"""
+        r"""\bfetch\s*\(\s*[`"'](?P<url>(?:https?://|/|[A-Za-z0-9_])[^`"'\s]*)[`"']"""
     ),
     # jQuery $.ajax({url: "..."}), $.get("..."), $.post("...")
     re.compile(
         r"""\$\.(?:ajax|get|post|getJSON)\s*\(\s*\{?\s*url\s*:\s*["'](?P<url>[^"']+)["']"""
     ),
     re.compile(
-        r"""\$\.(?:get|post|getJSON)\s*\(\s*["'](?P<url>(?:https?://|/)[^"']+)["']"""
+        r"""\$\.(?:get|post|getJSON)\s*\(\s*["'](?P<url>(?:https?://|/|[A-Za-z0-9_])[^"'\s]*)["']"""
     ),
-    # axios.get("..."), axios.post("..."), axios({url: "..."})
+    # axios.get("..."), axios.post("..."), axios({url: "..."}) — abs or relative.
     re.compile(
-        r"""\baxios(?:\.(?:get|post|put|delete|patch))?\s*\(\s*(?:\{[^}]*?url\s*:\s*)?["'](?P<url>(?:https?://|/)[^"']+)["']"""
+        r"""\baxios(?:\.(?:get|post|put|delete|patch))?\s*\(\s*(?:\{[^}]*?url\s*:\s*)?["'](?P<url>(?:https?://|/|[A-Za-z0-9_])[^"'\s]*)["']"""
     ),
     # XMLHttpRequest .open("GET", "...")
     re.compile(
@@ -133,6 +135,19 @@ _ENDPOINT_PATTERNS = [
 
 _MAX_PATTERNS = 20
 _MAX_PATTERN_LEN = 240
+
+
+def _is_static_url_literal(s: str) -> bool:
+    """True if `s` is a safe, static endpoint literal worth probing.
+
+    Accepts absolute (`https://…`, `/path`) and document-relative (`foo/bar/`)
+    literals, but requires at least one '/' so bare identifiers like `config` are
+    rejected, and drops template/interpolated URLs (containing `${`) or any with
+    whitespace. Pairs with the per-call regexes that now allow relative literals.
+    """
+    if not s or "${" in s or any(c.isspace() for c in s):
+        return False
+    return "/" in s
 
 
 def _extract_endpoint_evidence(html: str, scripts: list[str]) -> list[str]:
@@ -151,10 +166,15 @@ def _extract_endpoint_evidence(html: str, scripts: list[str]) -> list[str]:
         for pat in _ENDPOINT_PATTERNS:
             for m in pat.finditer(body):
                 if m.lastindex and "url" in m.groupdict() and m.group("url"):
-                    needle = m.group("url")
+                    needle = m.group("url").strip()
+                    # JS-call captures: enforce static-literal rules + reject
+                    # string concatenation like 'path/' + id (dynamic URL).
+                    if not _is_static_url_literal(needle):
+                        continue
+                    if body[m.end():m.end() + 4].lstrip().startswith("+"):
+                        continue
                 else:
-                    needle = m.group(0)
-                needle = needle.strip()
+                    needle = m.group(0).strip()
                 if not needle:
                     continue
                 needle = needle[:_MAX_PATTERN_LEN]

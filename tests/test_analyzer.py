@@ -269,6 +269,30 @@ def test_extract_endpoint_evidence_returns_empty_when_no_patterns():
     assert patterns == []
 
 
+@pytest.mark.parametrize("snippet,expected", [
+    # HCR-shaped: document-relative axios literal (no leading slash) — now found.
+    ("axios.get('_ajax/exhibitor/get_exhibitor_data/')",
+     "_ajax/exhibitor/get_exhibitor_data/"),
+    ("fetch('data/companies.json')", "data/companies.json"),
+])
+def test_extract_endpoint_evidence_accepts_relative_literals(snippet, expected):
+    """Document-relative endpoint literals (the HCR case) are now surfaced."""
+    patterns = _analyzer._extract_endpoint_evidence(html="", scripts=[snippet])
+    assert any(expected in p for p in patterns), patterns
+
+
+@pytest.mark.parametrize("snippet", [
+    "axios.get(`/api/${id}`)",          # template interpolation
+    "axios.get('/api/' + companyId)",   # string concatenation
+    "axios.get('config')",              # bare identifier, no path separator
+    "fetch(`/data/${page}.json`)",      # template inside fetch backtick
+])
+def test_extract_endpoint_evidence_rejects_dynamic_or_nonpath(snippet):
+    """Template/concat/non-path call args must not yield a usable endpoint."""
+    patterns = _analyzer._extract_endpoint_evidence(html="", scripts=[snippet])
+    assert patterns == [], patterns
+
+
 def test_analyze_page_includes_detected_patterns_block_in_user_content():
     """Backlog #11: <DETECTED_PATTERNS> block exposes endpoint evidence to LLM
     so framework=Vue/React doesn't mask visible XHR signals."""
