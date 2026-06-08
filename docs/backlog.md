@@ -27,6 +27,18 @@
 
 ## P1 — v0 진입 후 가장 먼저 검토
 
+### #14 인앱 셋업 패리티 — models prepare + ChatGPT 로그인을 CLI 아닌 앱에서 (P1)
+
+**배경**: 타깃 사용자는 비개발자인데, 첫 실행 셋업 2단계가 CLI-only라 진입 장벽 ([[inapp-setup-parity]] 메모리). north star("Claude Desktop 단일 surface")와 모순.
+
+**사용자 패턴(2026-06-08 확정)**: **ChatGPT OAuth가 디폴트 온보딩이 될 것** — 무료로 OAuth로 체험 → 본격 사용 시 Anthropic API 키. 따라서 `login_chatgpt` 인앱은 *선택*이 아니라 **무료 체험 퍼널의 메인 경로**. (OAuth 사용자도 bge-m3는 LLM provider와 무관하게 ingest/build에 필요 → `models prepare`도 동일하게 필수.)
+
+- **`prepare_models` MCP 도구** — bge-m3(~1.3GB) 최초 다운로드를 앱에서 트리거. 기존 비동기 워밍업 패턴(`runtime/warmup.py` 상태기계, 18T.1) 재사용: start→즉시 리턴(`downloading`)→`check_runtime`로 `downloading/ready/failed`+경과초 폴링. 동기 tool 금지(앱 타임아웃). 현재 `warm_up`은 받아둔 모델만 로드 → "없으면 다운로드" 분기만 추가.
+- **`login_chatgpt` MCP 도구** — `webbrowser.open(auth_url)` + 백그라운드 localhost 콜백 리스너 → 즉시 리턴("브라우저에서 승인하세요") → 콜백이 토큰 교환·저장 → `check_runtime`가 logged-in 반영. 기존 `ChatGPTOAuthProvider.login()`(터미널 blocking)을 백그라운드 리스너로 전환. 데스크톱 앱 전제라 브라우저 open 가능.
+- **유지(CLI로 OK, 사용자 동의)**: `eval-matrix`(측정), `export-schema`(dev 유틸) — 비개발자 경로 아님.
+
+**진입**: Y1 후 별도 소규모 plan(plan→blind review→슬라이스 커밋). 새 아키텍처 아님(워밍업 패턴 확장).
+
 ### ~~#11 analyze_event_page prompt 튜닝 — Vue/React 감지 시에도 endpoint 패턴 우선~~ ✅ 완료 (2026-05-29, commit pending)
 
 **증거**: Phase 18T Done When #4 smoke (2026-05-29) 중 tbse26.mapyourshow.com / directory.conexpoconagg.com 페이지가 본문에 `/ajax/remote-proxy.cfm?action=...` 엔드포인트 + `fetch(url, {X-Requested-With: XMLHttpRequest})` JS 코드 + `{{searchresults}}` placeholder + "No exhibitors could be found" fallback이 모두 명시되어 있음에도 analyzer가 `detected_framework=Vue` 기준으로 `operator_capture_required` (confidence 0.66~0.72) 권고하던 문제.

@@ -1,0 +1,11 @@
+# Y1A benchmark — raw captured exhibitor sources may contain PII
+# (officer names / contact info alongside company names). Never commit them.
+sources/
+# raw LLM/Brave responses + intermediate run artifacts (copyright/PII) — CS5.
+# committed CI fixtures are structure-preserving synthetic, kept elsewhere.
+_raw/
+# keep gold labels (company names + labels only, no PII) and run summaries.
+!gold/
+!runs/
+!README.md
+!.gitignore
