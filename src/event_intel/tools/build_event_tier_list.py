@@ -18,7 +18,6 @@ retriever / scoring.compute / report.* / providers.* / preflight.
 """
 from __future__ import annotations
 
-import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -36,6 +35,7 @@ from event_intel.providers import vectorstore as _vectorstore
 from event_intel.rag import retriever as _retriever
 from event_intel.report import tier_list_md as _tier_list_md
 from event_intel.report import tier_list_yaml as _tier_list_yaml
+from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
 from event_intel.scoring import compute as _scoring
 from event_intel.storage.identifiers import sanitize_slug
@@ -48,19 +48,15 @@ _DEFAULT_TOP_K = 5
 
 
 def _outputs_base() -> Path:
-    """Base dir for tier-list outputs — cwd-INDEPENDENT.
+    """Base dir (workspace root) for tier-list outputs — cwd-INDEPENDENT.
 
     The MCP server is spawned by Claude Desktop with an arbitrary cwd (e.g.
     Program Files) where a relative ``outputs`` is unwritable → PermissionError
-    (WinError 5). Derive ``<repo>/outputs`` from the package location instead
-    (same cwd-independence fix as event_intel._env for .env). EVENT_INTEL_OUTPUT_DIR
-    overrides for users who want outputs elsewhere.
+    (WinError 5). Delegated to ``runtime.paths`` so draft / build / migrate all
+    agree on one root: EVENT_INTEL_OUTPUT_DIR (legacy) / EVENT_INTEL_WORKSPACE_DIR
+    win, else ~/EventIntel with a back-compat fallback to <repo>/outputs.
     """
-    base_env = os.environ.get("EVENT_INTEL_OUTPUT_DIR")
-    if base_env:
-        return Path(base_env).expanduser()
-    # <repo>/src/event_intel/tools/build_event_tier_list.py → parents[3] == <repo>
-    return Path(__file__).resolve().parents[3] / "outputs"
+    return _paths.resolve_paths().workspace_root
 
 
 def _resolve_output_dir(workspace_id: str, event_slug: str) -> Path:
@@ -220,7 +216,7 @@ def build_event_tier_list(
                 exhibitors=enriched_rows,
                 workspace_id=ws,
                 embedding_provider=_embedding.BgeM3Provider(),
-                vectorstore_provider=_vectorstore.ChromaProvider(),
+                vectorstore_provider=_vectorstore.ChromaProvider(config=config),
                 top_k=int(_retrieval_cfg.get("top_k", _DEFAULT_TOP_K)),
                 capability_top_k=int(_retrieval_cfg.get("capability_top_k", _DEFAULT_TOP_K)),
                 capability_aggregate_top_n=int(_retrieval_cfg.get("capability_aggregate_top_n", 3)),

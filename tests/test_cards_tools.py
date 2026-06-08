@@ -176,7 +176,7 @@ def test_ingest_tool_runs_through_when_providers_mocked(repo_root, monkeypatch, 
             return {"status": "ready"}
 
     class _FakeVS:
-        def __init__(self):
+        def __init__(self, **_):  # tolerate config= kwarg (W0)
             pass
 
         def upsert(self, **kwargs):

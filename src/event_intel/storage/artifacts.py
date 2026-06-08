@@ -25,12 +25,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from event_intel.runtime import paths as _paths
+
 
 def _base_dir() -> Path:
-    env = os.environ.get("EVENT_INTEL_ARTIFACTS_DIR")
-    if env:
-        return Path(env).expanduser()
-    return Path.home() / ".event-intel" / "artifacts"
+    """Artifacts root — delegated to the central resolver (see runtime.paths).
+
+    EVENT_INTEL_ARTIFACTS_DIR (env) wins, then config.paths.artifacts_dir, then
+    ~/.event-intel/artifacts. (config is not loaded here — the artifact store is
+    config-free; an env override or the default is sufficient.)
+    """
+    return _paths.resolve_paths().artifacts_root
 
 
 def artifact_dir(*, workspace_id: str, event_slug: str) -> Path:

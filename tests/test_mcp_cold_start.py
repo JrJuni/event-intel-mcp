@@ -111,6 +111,20 @@ def test_storage_identifiers_module_is_cold(fresh_sys_modules):
     assert not leaked, f"storage.identifiers leaked heavy ML imports: {leaked}"
 
 
+def test_runtime_paths_module_is_cold(fresh_sys_modules):
+    """W0: runtime.paths is the central path resolver, imported by
+    providers.vectorstore + storage.artifacts (both on cold paths). It is
+    stdlib-only and must never pull heavy ML deps at import."""
+    _purge("event_intel")
+    for heavy in FORBIDDEN_HEAVY:
+        _purge(heavy)
+
+    importlib.import_module("event_intel.runtime.paths")
+
+    leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
+    assert not leaked, f"runtime.paths leaked heavy ML imports: {leaked}"
+
+
 def test_cards_tools_keep_module_top_cold(fresh_sys_modules):
     """S2: tools/{draft,validate,ingest}_capability_cards must not pull heavy ML
     libs at module import — only on first real call (which still needs them via

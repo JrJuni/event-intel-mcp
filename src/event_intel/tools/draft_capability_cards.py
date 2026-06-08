@@ -15,13 +15,23 @@ import yaml
 from event_intel.cards import drafter as _drafter
 from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_exception
 from event_intel.providers import llm as _llm
+from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
 
 
-def _resolve_output_path(workspace_id: str, out_path: str | None) -> Path:
+def _resolve_output_path(
+    workspace_id: str, out_path: str | None, config: dict | None = None
+) -> Path:
     if out_path:
         return Path(out_path).expanduser()
-    return Path("outputs") / workspace_id / "capability_cards.draft.yaml"
+    # Bug-(a) fix: previously this returned a cwd-relative ``outputs/<ws>/...`` —
+    # the MCP server runs with an arbitrary cwd (Program Files) → unwritable, and
+    # it disagreed with where build_event reads cards from. Route through the
+    # central resolver so draft writes exactly where build looks.
+    return (
+        _paths.resolve_paths(config).workspace_dir(workspace_id)
+        / "capability_cards.draft.yaml"
+    )
 
 
 def draft_capability_cards(
@@ -82,7 +92,7 @@ def draft_capability_cards(
                 retryable=True,
             ) from exc
 
-        draft_path = _resolve_output_path(workspace_id, out_path)
+        draft_path = _resolve_output_path(workspace_id, out_path, config)
         draft_path.parent.mkdir(parents=True, exist_ok=True)
         draft_path.write_text(result.yaml_text, encoding="utf-8")
 

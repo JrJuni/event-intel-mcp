@@ -254,7 +254,7 @@ def run_preflight(
     if embedding_provider is None:
         embedding_provider = _embedding.BgeM3Provider()
     if vectorstore_provider is None:
-        vectorstore_provider = _vectorstore.ChromaProvider()
+        vectorstore_provider = _vectorstore.ChromaProvider(config=config)
     if llm_provider is None:
         llm_provider = _llm.make_llm_provider(config, model=config["llm"]["draft_cards_model"])
     if search_provider is None:
