@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project north star
 
-**event-intel-mcp** turns exhibitor lists (URL / HTML / CSV / pasted text) into evidence-backed BD target tier lists via a standalone MCP server. Single product surface (Claude Desktop), 10 MCP tools (5 core + 3 acquisition layer + 1 labeling + 1 source library), local mini-RAG (bge-m3 + Chroma), zero dependency on the sibling bd-coldcall-agent repo.
+**event-intel-mcp** turns exhibitor lists (URL / HTML / CSV / pasted text) into evidence-backed BD target tier lists via a standalone MCP server. Single product surface (Claude Desktop), 12 MCP tools (5 core + 3 acquisition layer + 1 labeling + 1 source library + 2 in-app setup), local mini-RAG (bge-m3 + Chroma), zero dependency on the sibling bd-coldcall-agent repo.
 
 ## Dev environment
 
@@ -51,15 +51,17 @@ The full catalog (debugging snippets, all flags, MCP config) is in `docs/command
 
 ## Architecture — the big picture
 
-10 MCP tools, single FastMCP process, local mini-RAG:
+12 MCP tools, single FastMCP process, local mini-RAG:
 
 ```
 Claude Desktop (stdio JSON-RPC)
    │
    ▼
-event_intel.mcp_server (FastMCP) — 10 tools
+event_intel.mcp_server (FastMCP) — 12 tools
    │
-   ├─ check_runtime              (runtime/preflight.py — bge-m3 cache / Chroma / API keys / product context)
+   ├─ check_runtime              (runtime/preflight.py — bge-m3 cache / Chroma / API keys / product context + paths + setup status)
+   ├─ prepare_models             (tools/prepare_models.py — in-app bge-m3 download, non-blocking async job)
+   ├─ login_chatgpt              (tools/login_chatgpt.py — in-app ChatGPT OAuth, non-blocking async job)
    ├─ draft_capability_cards     (cards/drafter.py — Sonnet chunked draft from source docs)
    ├─ validate_capability_cards  (cards/validator.py — pydantic schema v1)
    ├─ ingest_product_context     (cards/ingest.py — bge-m3 → Chroma upsert)
@@ -120,7 +122,7 @@ event-intel-mcp/
   .env.example
   config/defaults.yaml
   src/event_intel/
-    mcp_server.py        — FastMCP entry, 10 tool registrations
+    mcp_server.py        — FastMCP entry, 12 tool registrations
     cli.py               — typer thin wrapper (added in S2/S6)
     errors.py            — MCPError + 14 error_code × 7 stage enums
     runtime/             — preflight + models prepare (S1) + user config deep-merge
@@ -132,7 +134,8 @@ event-intel-mcp/
     rag/                 — store + retriever + chunker
     scoring/             — dimensions + rules + compute (S4)
     report/              — tier_list_md + tier_list_yaml + brief_export (S5)
-    tools/               — MCP tool handlers (one file per tool, 10 total)
+    tools/               — MCP tool handlers (one file per tool, 12 total)
+    runtime/async_job.py — generic non-blocking background-job manager (prepare_models / login_chatgpt)
     storage/             — workspaces + artifacts (atomic + sha256 manifest) + identifiers (sanitize_slug)
     prompts/{en,ko}/     — LLM prompt templates
   outputs/               — per-workspace per-event artifacts (gitignored except .gitkeep)

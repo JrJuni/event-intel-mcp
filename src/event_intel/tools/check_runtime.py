@@ -63,6 +63,35 @@ def _resolve_paths_block(workspace_id: str) -> dict:
         return {"error": f"path resolution failed: {exc}"}
 
 
+def _setup_status_block() -> dict:
+    """In-app setup state (#14): bge-m3 download + ChatGPT OAuth login, so a
+    non-developer can see what still needs doing and poll the async tools.
+    Best-effort, never raises; attached to every check_runtime envelope.
+    """
+    out: dict = {}
+    try:  # model download (prepare_models async job + cache snapshot)
+        from event_intel.providers import embedding as _embedding
+        from event_intel.tools import prepare_models as _pm
+
+        cached = _embedding.BgeM3Provider().is_ready().get("status") == "ready"
+        out["model_prep"] = {"model_cached": cached, **_pm._download_job.status()}
+    except Exception as exc:  # noqa: BLE001
+        out["model_prep"] = {"error": f"{type(exc).__name__}: {exc}"}
+    try:  # ChatGPT OAuth login (auth_status + login_chatgpt async job)
+        from event_intel.providers import llm as _llm
+        from event_intel.tools import login_chatgpt as _lc
+
+        auth = _llm.ChatGPTOAuthProvider().auth_status()
+        out["chatgpt_login"] = {
+            "logged_in": auth.get("logged_in"),
+            "token_path": auth.get("token_path"),
+            "job": _lc._login_job.status(),
+        }
+    except Exception as exc:  # noqa: BLE001
+        out["chatgpt_login"] = {"error": f"{type(exc).__name__}: {exc}"}
+    return out
+
+
 def check_runtime(
     workspace_id: str = "default",
     warm_up: bool = False,
@@ -77,11 +106,13 @@ def check_runtime(
     ``warm_up_block`` (terminal CLI only) loads inline and waits.
 
     The response always carries a ``paths`` block (resolved storage locations +
-    writability), attached to BOTH the success and failure envelopes so a user
-    whose model/keys aren't ready yet can still confirm where data will live
-    (WSL W5).
+    writability, WSL W5) and a ``setup`` block (bge-m3 download + ChatGPT login
+    state, #14), attached to BOTH the success and failure envelopes so a user
+    whose model/keys aren't ready yet can still see where data lives and what
+    setup remains.
     """
     paths_block = _resolve_paths_block(workspace_id)
+    setup_block = _setup_status_block()
     try:
         result = _preflight.run_preflight(
             workspace_id,
@@ -91,8 +122,10 @@ def check_runtime(
         )
         if isinstance(result, dict):
             result.setdefault("paths", paths_block)
+            result.setdefault("setup", setup_block)
         return result
     except Exception as exc:
         envelope = envelope_from_exception(exc, stage=Stage.PREFLIGHT)
         envelope["paths"] = paths_block
+        envelope["setup"] = setup_block
         return envelope
