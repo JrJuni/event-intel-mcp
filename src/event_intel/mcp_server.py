@@ -193,6 +193,32 @@ def acquire_exhibitor_source(
     )
 
 
+@app.tool()
+def draft_labels(
+    workspace_id: str = "default",
+    sheet_path: str = "",
+    card_path: str | None = None,
+    out_path: str | None = None,
+    lang: str = "ko",
+    batch_size: int = 30,
+    min_confidence: float = 0.7,
+) -> dict:
+    """Draft (GPT-OAuth, silver) + flag a labeling sheet; the host web-search-
+    refines the flagged rows to gold, then seals (Y1 L6 / multi-vendor labeling).
+    """
+    from event_intel.tools.draft_labels import draft_labels as _impl
+
+    return _impl(
+        workspace_id=workspace_id,
+        sheet_path=sheet_path,
+        card_path=card_path,
+        out_path=out_path,
+        lang=lang,
+        batch_size=batch_size,
+        min_confidence=min_confidence,
+    )
+
+
 def _preimport_heavy_deps() -> None:
     """Import heavy native deps on the MAIN thread before serving.
 

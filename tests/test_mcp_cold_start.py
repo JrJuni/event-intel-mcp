@@ -122,6 +122,7 @@ def test_cards_tools_keep_module_top_cold(fresh_sys_modules):
     importlib.import_module("event_intel.tools.draft_capability_cards")
     importlib.import_module("event_intel.tools.validate_capability_cards")
     importlib.import_module("event_intel.tools.ingest_capability_cards")
+    importlib.import_module("event_intel.tools.draft_labels")  # L6 labeling tool
     importlib.import_module("event_intel.cards.schema")
     importlib.import_module("event_intel.cards.validator")
     importlib.import_module("event_intel.cards.drafter")
