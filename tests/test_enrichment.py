@@ -315,15 +315,26 @@ def test_news_drops_non_article_pages_and_carries_published_at(tmp_path):
     assert row.news_signals[0].published_at == "2026-06-01T00:00:00+00:00"
 
 
-def test_cache_key_includes_version(monkeypatch):
+def test_cache_key_includes_version(monkeypatch, tmp_path):
     """A ENRICH_CACHE_VERSION bump changes the cache key so stale entries
     (e.g. v1's empty news) are never reused."""
     import event_intel.events.enrichment as enr
 
-    k1 = enr._SearchCache._key("Acme AI", "news", "en")
+    c = enr._SearchCache(tmp_path)
+    k1 = c._key("Acme AI", "news", "en")
     monkeypatch.setattr(enr, "ENRICH_CACHE_VERSION", ENRICH_CACHE_VERSION + 1)
-    k2 = enr._SearchCache._key("Acme AI", "news", "en")
+    k2 = c._key("Acme AI", "news", "en")
     assert k1 != k2
+
+
+def test_cache_key_includes_provider_signature(tmp_path):
+    """Blind review R1#1: the provider signature is part of the key, so a
+    brave-cached result is never served to a different backend."""
+    from event_intel.events.enrichment import _SearchCache
+
+    brave = _SearchCache(tmp_path, provider_sig="brave/v1")
+    ddgs = _SearchCache(tmp_path, provider_sig="ddgs/9.9.0")
+    assert brave._key("acme", "news", "en") != ddgs._key("acme", "news", "en")
 
 
 def test_typed_evidence_populated_and_deduped(tmp_path):
@@ -477,10 +488,11 @@ def test_search_cache_key_includes_count_and_days(tmp_path):
     must not be served a cached 180-day payload, nor a count=5 a count=20 one."""
     from event_intel.events.enrichment import _SearchCache
 
-    k_base = _SearchCache._key("acme", "news", "en", 5, 180)
-    assert k_base != _SearchCache._key("acme", "news", "en", 5, 30)
-    assert k_base != _SearchCache._key("acme", "news", "en", 20, 180)
-    assert k_base == _SearchCache._key("acme", "news", "en", 5, 180)
+    c = _SearchCache(tmp_path)
+    k_base = c._key("acme", "news", "en", 5, 180)
+    assert k_base != c._key("acme", "news", "en", 5, 30)
+    assert k_base != c._key("acme", "news", "en", 20, 180)
+    assert k_base == c._key("acme", "news", "en", 5, 180)
 
 
 def test_news_gate_drops_offtopic_from_floor_evidence(tmp_path):

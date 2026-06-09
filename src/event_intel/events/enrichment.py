@@ -48,7 +48,11 @@ if TYPE_CHECKING:
 #   v4 → cache payload wrapped with `cached_at` (TTL freshness) + resume rows carry
 #        `enriched_at` + `input_fp` so changed name/url/snippet/confidence/config
 #        re-enrich instead of being skipped forever (Phase 18W P2-1).
-ENRICH_CACHE_VERSION = 4
+#   v5 → search-provider awareness (zero-config plan): the active provider's
+#        cache_signature is folded into the cache key + config fingerprint, so
+#        switching backend (e.g. brave→ddgs) never reuses another engine's results
+#        for the same query/kind/count/days (blind review R1#1).
+ENRICH_CACHE_VERSION = 5
 
 
 def _is_fresh(timestamp_raw: str | None, *, now: datetime, ttl_days: int | None) -> bool:
@@ -76,12 +80,14 @@ def _is_fresh(timestamp_raw: str | None, *, now: datetime, ttl_days: int | None)
     return age_days <= ttl_days
 
 
-def _config_fingerprint(enrichment_cfg: dict) -> str:
+def _config_fingerprint(enrichment_cfg: dict, *, provider_sig: str = "") -> str:
     """Hash ONLY the enrichment-affecting config fields (review r2 #3). A scoring
-    weight change must NOT invalidate cached Brave enrichment — only fields that
-    change what we fetch/keep belong here.
+    weight change must NOT invalidate cached enrichment — only fields that change
+    what we fetch/keep belong here. ``provider_sig`` is included so a search-backend
+    switch re-enriches instead of reusing another engine's rows (blind review R1#1).
     """
     relevant = {
+        "provider": provider_sig,
         "max_companies": enrichment_cfg.get("max_companies"),
         "brave_count_web": enrichment_cfg.get("brave_count_web"),
         "brave_count_news": enrichment_cfg.get("brave_count_news"),
@@ -166,17 +172,22 @@ class _SearchCache:
     later silently misses everything published since (review r2 #2).
     """
 
-    def __init__(self, root: Path, *, ttl_days: int | None = None) -> None:
+    def __init__(
+        self, root: Path, *, ttl_days: int | None = None, provider_sig: str = ""
+    ) -> None:
         self.root = root
         self.ttl_days = ttl_days
+        # Active search backend's cache_signature — part of the key so a
+        # brave-cached result is never served to a ddgs run (blind review R1#1).
+        self.provider_sig = provider_sig
         self.root.mkdir(parents=True, exist_ok=True)
 
-    @staticmethod
-    def _key(query: str, kind: str, lang: str, count: int = 0, days: int | None = None) -> str:
+    def _key(self, query: str, kind: str, lang: str, count: int = 0, days: int | None = None) -> str:
         # Version prefix → a parser/semantics bump (ENRICH_CACHE_VERSION) yields
         # new keys, so stale entries (e.g. v1's empty news) are never reused.
+        # provider_sig → cross-backend isolation (R1#1).
         h = hashlib.sha1(
-            f"v{ENRICH_CACHE_VERSION}|{kind}|{lang}|c{count}|d{days}|{query}".encode()
+            f"v{ENRICH_CACHE_VERSION}|p{self.provider_sig}|{kind}|{lang}|c{count}|d{days}|{query}".encode()
         ).hexdigest()
         return h
 
@@ -521,11 +532,14 @@ def enrich_exhibitors(
             ]},
         ) from exc
 
-    config_fp = _config_fingerprint(enrichment_cfg)
+    # Active search backend signature → cache/resume isolation across providers
+    # (blind review R1#1). Fakes without the attribute fall back to "" (no-op).
+    provider_sig = getattr(search_provider, "cache_signature", "")
+    config_fp = _config_fingerprint(enrichment_cfg, provider_sig=provider_sig)
     home = Path.home() / ".event-intel"
     cache_root = cache_dir or (home / "cache" / "search" / workspace_id)
     resume_file = resume_path or (home / "resume" / f"{workspace_id}.jsonl")
-    cache = _SearchCache(cache_root, ttl_days=cache_ttl_days)
+    cache = _SearchCache(cache_root, ttl_days=cache_ttl_days, provider_sig=provider_sig)
     resume = _ResumeStore(resume_file)
 
     # refresh bypasses resume entirely; otherwise reuse is gated per-candidate

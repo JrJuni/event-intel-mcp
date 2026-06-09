@@ -9,6 +9,10 @@ extraction:
   source_snippet_min_chars: 20     # Below this, candidate is dropped (review R2-#2)
   extraction_confidence_min: 0.6   # Below this, candidate flagged needs_review
 
+search:
+  provider: brave                  # ddgs | searxng | brave  (zero-config plan; ddgs becomes default in a later slice)
+  searxng_url: ""                  # required when provider=searxng (configured in a later slice)
+
 enrichment:
   max_companies: 30                # Per-event cap on enriched exhibitors
   brave_count_web: 5

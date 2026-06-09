@@ -210,7 +210,7 @@ def build_event_tier_list(
 
         # 5. Enrichment (S4) — optional.
         if enrichment_enabled and extraction.candidates:
-            search_provider = _search.BraveSearchProvider()
+            search_provider = _search.make_search_provider(config)
             # Resume is scoped per EVENT, not per workspace (review #4): the
             # default workspace-global resume let a later event silently reuse an
             # earlier event's rows (keyed by company name). The per-query search

@@ -6,6 +6,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
 
+from event_intel.errors import ErrorCode, MCPError, Stage
+
+# Search backends selectable via `search.provider` (zero-config plan). ddgs/searxng
+# land in later slices; the factory only constructs brave for now.
+_VALID_SEARCH_PROVIDERS: tuple[str, ...] = ("ddgs", "searxng", "brave")
+
 
 @dataclass
 class SearchResult:
@@ -32,6 +38,15 @@ class SearchProvider(ABC):
     @abstractmethod
     def ping(self) -> dict: ...
 
+    @property
+    def cache_signature(self) -> str:
+        """Stable string distinguishing this backend's result space, used in the
+        enrichment cache key + resume fingerprint. Include anything that changes
+        WHAT results come back (provider, package version, region/recency mapping)
+        so switching providers never reuses another backend's cached answers.
+        """
+        return self.__class__.__name__
+
 
 class BraveSearchProvider(SearchProvider):
     """Default SearchProvider using Brave Search API.
@@ -44,6 +59,10 @@ class BraveSearchProvider(SearchProvider):
     def __init__(self, *, api_key: str | None = None, timeout: float = 15.0) -> None:
         self._api_key = api_key or os.environ.get("BRAVE_API_KEY")
         self.timeout = timeout
+
+    @property
+    def cache_signature(self) -> str:
+        return "brave/v1"
 
     def search(
         self,
@@ -145,3 +164,36 @@ class BraveSearchProvider(SearchProvider):
                 return {"status": "ok", "remaining_quota": quota}
         except Exception as e:
             return {"status": "error", "remaining_quota": None, "error": str(e)}
+
+
+def make_search_provider(config: dict) -> SearchProvider:
+    """Factory: select the search backend from ``search.provider`` (default brave).
+
+    Mirrors ``providers.llm.make_llm_provider``. ddgs (zero-config default) and
+    searxng land in later slices; this slice constructs only brave and rejects the
+    other valid names with a clear CONFIG_ERROR. Invalid names also fail loud.
+    """
+    provider = (config or {}).get("search", {}).get("provider", "brave")
+    if provider == "brave":
+        return BraveSearchProvider()
+    if provider in _VALID_SEARCH_PROVIDERS:
+        raise MCPError(
+            error_code=ErrorCode.CONFIG_ERROR,
+            stage=Stage.PREFLIGHT,
+            message=f"search provider {provider!r} is not available yet",
+            hint={
+                "fix": "Set search.provider: brave for now (ddgs/searxng land in later slices)",
+                "valid": list(_VALID_SEARCH_PROVIDERS),
+            },
+            retryable=False,
+        )
+    raise MCPError(
+        error_code=ErrorCode.CONFIG_ERROR,
+        stage=Stage.PREFLIGHT,
+        message=f"invalid search.provider: {provider!r}",
+        hint={
+            "allowed": list(_VALID_SEARCH_PROVIDERS),
+            "fix": "Set search.provider to one of: ddgs, searxng, brave",
+        },
+        retryable=False,
+    )
