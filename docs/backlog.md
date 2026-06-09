@@ -31,7 +31,9 @@
 
 ## P1 — v0 진입 후 가장 먼저 검토
 
-### #14 인앱 셋업 패리티 — models prepare + ChatGPT 로그인을 CLI 아닌 앱에서 (P1)
+### ~~#14 인앱 셋업 패리티 — models prepare + ChatGPT 로그인을 CLI 아닌 앱에서 (P1)~~ ✅ 완료 (2026-06-09, PR #46/#47/#48)
+
+**완료**: `prepare_models`(11th)·`login_chatgpt`(12th) MCP 도구 + 범용 비동기 매니저 `runtime/async_job.py`로 둘 다 start→poll 비동기화(앱 타임아웃 회피). `check_runtime`에 `setup` 블록(model_prep/chatgpt_login 상태) 부착. surface 12 tools. 검증된 `warmup.py`·`_pkce_login`·`login()`은 무수정 보존. 상세 `status.md` #14 + 메모리 [[inapp-setup-parity]]. **770 passed.** 아래는 완료 시점 설계 기록(참고용).
 
 **배경**: 타깃 사용자는 비개발자인데, 첫 실행 셋업 2단계가 CLI-only라 진입 장벽 ([[inapp-setup-parity]] 메모리). north star("Claude Desktop 단일 surface")와 모순.
 
