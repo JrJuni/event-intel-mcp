@@ -77,7 +77,7 @@ event_intel.mcp_server (FastMCP) — 13 tools
 Two-flow model:
 
 1. **Product Context lifecycle** (one-time per product): draft → human edit → validate → ingest → Chroma `product_{workspace_id}` collection.
-2. **Event Tier List pipeline** (per exhibitor list): source_capture → extraction (chunked, snippet-anchored) → enrichment (Brave web/news + fetch + cache) → fit retrieval (event → product, single direction) → scoring (7 dimensions + tier rules + evidence floor) → report (`tier_list.md` + `tier_list.yaml`).
+2. **Event Tier List pipeline** (per exhibitor list): source_capture → extraction (chunked, snippet-anchored) → enrichment (web/news search via the configured `search.provider` — `ddgs` keyless default | `searxng` | `brave` — + cache) → fit retrieval (event → product, single direction) → scoring (7 dimensions + tier rules + evidence floor) → report (`tier_list.md` + `tier_list.yaml`).
 
 Full pipeline diagram + evidence floor lifecycle: `docs/architecture.md`.
 
@@ -95,8 +95,8 @@ Full pipeline diagram + evidence floor lifecycle: `docs/architecture.md`.
 
 ### Config is 3-tier — do not collapse
 
-- **`.env`** → secrets only (`ANTHROPIC_API_KEY` or none for OAuth path, `BRAVE_API_KEY`). Gitignored. `.env.example` is the committed template. Auto-loaded via `python-dotenv` at `cli.py` + `mcp_server.py` module top.
-- **`config/defaults.yaml`** → shipped non-secret defaults (extraction caps, scoring weights, tier rules, model names, `llm.provider: anthropic`). Committed.
+- **`.env`** → secrets only (`ANTHROPIC_API_KEY` or none for OAuth path; `BRAVE_API_KEY` only when `search.provider: brave`). Gitignored. `.env.example` is the committed template. Auto-loaded via `python-dotenv` at `cli.py` + `mcp_server.py` module top.
+- **`config/defaults.yaml`** → shipped non-secret defaults (extraction caps, scoring weights, tier rules, model names, `llm.provider: anthropic`, `search.provider: ddgs`). Committed.
 - **`~/.event-intel/config.yaml`** (optional, active) → per-workspace user overrides, deep-merged over defaults. Most common use: `llm.provider: chatgpt_oauth` for cost-free experimentation. Not committed. See `docs/playbook.md#14`.
 
 ## Project docs convention

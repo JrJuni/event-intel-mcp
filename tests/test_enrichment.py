@@ -58,8 +58,8 @@ def _config(**overrides):
     cfg = {
         "enrichment": {
             "max_companies": 30,
-            "brave_count_web": 5,
-            "brave_count_news": 5,
+            "count_web": 5,
+            "count_news": 5,
             "news_days_back": 180,
             "cache_enabled": True,
             "official_url_levenshtein_threshold": 0.4,  # loose enough for fakes
@@ -289,6 +289,22 @@ def test_official_url_threshold_filters_low_score_hits(tmp_path):
     ).rows[0]
     assert row.official_url is None
     assert any("official-site" in w for w in row.enrichment_warnings), row.enrichment_warnings
+
+
+def test_legacy_brave_count_keys_still_work_and_warn(tmp_path):
+    """R1#7 back-compat: legacy brave_count_* keys are honored (alias) but emit a
+    rename deprecation warning."""
+    cfg = {"enrichment": {
+        "max_companies": 30, "brave_count_web": 5, "brave_count_news": 5,
+        "news_days_back": 180, "official_url_levenshtein_threshold": 0.4,
+    }}
+    cands = [ExhibitorCandidate(name="Acme AI", source_snippet="x" * 30)]
+    result = enrich_exhibitors(
+        candidates=cands, workspace_id="tlegacy", lang="en", config=cfg,
+        search_provider=FakeSearch(),
+        cache_dir=tmp_path / "cache", resume_path=tmp_path / "r.jsonl",
+    )
+    assert any("legacy" in w and "count_web" in w for w in result.warnings), result.warnings
 
 
 def test_degraded_search_surfaces_run_warning(tmp_path):

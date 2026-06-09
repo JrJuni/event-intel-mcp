@@ -27,6 +27,16 @@ def test_factory_explicit_brave():
     assert isinstance(p, S.BraveSearchProvider)
 
 
+def test_brave_key_present_does_not_force_brave(monkeypatch):
+    """R1#1 migration: a present BRAVE_API_KEY must NOT silently select brave —
+    only an explicit search.provider: brave does. Default stays zero-config ddgs."""
+    monkeypatch.setenv("BRAVE_API_KEY", "sk-brave")
+    assert isinstance(S.make_search_provider({}), S.DdgsSearchProvider)
+    assert isinstance(
+        S.make_search_provider({"search": {"provider": "brave"}}), S.BraveSearchProvider
+    )
+
+
 def test_factory_explicit_ddgs_threads_throttle_config():
     p = S.make_search_provider(
         {"search": {"provider": "ddgs", "min_interval_ms": 500, "max_retries": 7}}
@@ -81,7 +91,7 @@ def test_abc_default_cache_signature_is_class_name():
 
 def test_config_fingerprint_changes_with_provider():
     enr = importlib.import_module("event_intel.events.enrichment")
-    cfg = {"max_companies": 30, "brave_count_web": 5, "brave_count_news": 5,
+    cfg = {"max_companies": 30, "count_web": 5, "count_news": 5,
            "news_days_back": 180, "official_url_levenshtein_threshold": 0.7}
     fp_brave = enr._config_fingerprint(cfg, provider_sig="brave/v1")
     fp_ddgs = enr._config_fingerprint(cfg, provider_sig="ddgs/9.9.0")

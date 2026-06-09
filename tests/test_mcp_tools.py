@@ -46,8 +46,8 @@ _MIN_CONFIG = {
     },
     "enrichment": {
         "max_companies": 30,
-        "brave_count_web": 3,
-        "brave_count_news": 3,
+        "count_web": 3,
+        "count_news": 3,
         "news_days_back": 180,
         "fetch_timeout_seconds": 10,
         "fetch_body_max_chars": 2000,
