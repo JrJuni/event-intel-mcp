@@ -91,13 +91,14 @@ scoring:
       evidence_floor_min: 0
 
 llm:
-  provider: anthropic              # anthropic | chatgpt_oauth
+  provider: anthropic              # anthropic | openai | chatgpt_oauth
   draft_cards_model: claude-sonnet-4-6
   extract_exhibitors_model: claude-sonnet-4-6
   rationale_model: claude-sonnet-4-6
   draft_cards_max_tokens: 4096
   extract_max_tokens: 4096
   rationale_max_tokens: 256
+  openai_model: gpt-4.1                    # used when provider=openai (official key-based API)
   chatgpt_oauth_model: gpt-5.5             # used when provider=chatgpt_oauth (alt: gpt-5.4)
   chatgpt_oauth_reasoning_effort: low      # low | medium | high (Codex Responses reasoning effort)
 

@@ -145,6 +145,113 @@ class AnthropicProvider(LLMProvider):
         return {"status": "ok", "model": self.model}
 
 
+class OpenAIProvider(LLMProvider):
+    """Official OpenAI API (key-based, chat/completions). httpx imported lazily.
+
+    This is the official, key-authenticated provider lane (Y2.2 D5) — distinct
+    from ChatGPTOAuthProvider, which drives the unofficial Codex OAuth path and is
+    personal-local only. Unlike the OAuth path, this accepts max_tokens and
+    temperature normally and is safe for remote/team deploy.
+    """
+
+    _API_URL = "https://api.openai.com/v1/chat/completions"
+
+    def __init__(self, *, model: str = "gpt-4.1", api_key: str | None = None) -> None:
+        self.model = model
+        self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
+
+    def _post(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+    ) -> LLMResponse:
+        import httpx
+
+        if not self._api_key:
+            raise RuntimeError("OPENAI_API_KEY not set")
+        resp = httpx.post(
+            self._API_URL,
+            headers={
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": self.model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            },
+            timeout=120,
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"OpenAI API returned {resp.status_code}: {resp.text[:500]}")
+        data = resp.json()
+        choices = data.get("choices") or []
+        if not choices:
+            raise RuntimeError("OpenAI API returned no choices")
+        choice = choices[0]
+        text = (choice.get("message") or {}).get("content") or ""
+        usage = data.get("usage") or {}
+        return LLMResponse(
+            text=text,
+            usage={
+                "input_tokens": usage.get("prompt_tokens", 0),
+                "output_tokens": usage.get("completion_tokens", 0),
+            },
+            model=data.get("model", self.model),
+            stop_reason=choice.get("finish_reason"),
+        )
+
+    def chat_cached(
+        self,
+        *,
+        system: str,
+        cached_context: str,
+        volatile_context: str,
+        task: str,
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+    ) -> LLMResponse:
+        # chat/completions has no explicit prompt-cache control — concatenate.
+        parts = [p for p in (cached_context, volatile_context, task) if p]
+        return self._post(
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": "\n\n".join(parts)},
+            ],
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+
+    def chat_once(
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+    ) -> LLMResponse:
+        return self._post(
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+
+    def ping(self) -> dict:
+        if not self._api_key:
+            return {
+                "status": "missing_key",
+                "message": "OPENAI_API_KEY not set",
+                "fix": "Set OPENAI_API_KEY in .env (see .env.example)",
+            }
+        return {"status": "ok", "model": self.model}
+
+
 class ChatGPTOAuthProvider(LLMProvider):
     """LLMProvider via ChatGPT Plus/Pro subscription — OAuth 2.0 PKCE flow.
 
@@ -563,5 +670,10 @@ def make_llm_provider(config: dict, *, model: str | None = None) -> LLMProvider:
         # validates the value so a typo in config surfaces immediately.
         effort = config.get("llm", {}).get("chatgpt_oauth_reasoning_effort", "low")
         return ChatGPTOAuthProvider(model=oauth_model, reasoning_effort=effort)
+    if provider_name == "openai":
+        # Official OpenAI API lane (Y2.2 D5). model param (if given) overrides
+        # llm.openai_model, mirroring the anthropic branch.
+        openai_model = model or config.get("llm", {}).get("openai_model", "gpt-4.1")
+        return OpenAIProvider(model=openai_model)
     resolved = model or config.get("llm", {}).get("draft_cards_model", "claude-sonnet-4-6")
     return AnthropicProvider(model=resolved)
