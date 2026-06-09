@@ -17,7 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "mcp[cli]>=1.0.0",
+    "mcp[cli]>=1.0.0,<2.0.0",  # Y2.2: cap the major — streamable-http/auth APIs are 1.x-stable (dev on 1.27)
     "anthropic>=0.40.0",
     "sentence-transformers>=3.0",
     "chromadb>=0.5",
