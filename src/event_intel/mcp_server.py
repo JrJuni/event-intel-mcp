@@ -137,6 +137,8 @@ def build_event_tier_list(
     event_slug: str = "",
     source_kind: str = "html_file",
     source_ref: str = "",
+    source_content: str | None = None,
+    source_artifact_id: str | None = None,
     lang: str = "en",
     max_companies: int | None = None,
     refresh: bool = False,
@@ -147,6 +149,9 @@ def build_event_tier_list(
 ) -> dict:
     """Build a tiered exhibitor list from an event source (S3+S4+S5).
 
+    Source via exactly one of source_ref (server-local path, or inline text for
+    html_text/text kinds) / source_content / source_artifact_id (Y2.1b-2; the
+    latter two are for file kinds html_file/csv_file/text_file).
     `target_mode` (customer | partner | ecosystem) controls competitor handling;
     None resolves via user config → card default → "customer" (Phase 18V item 2).
     """
@@ -158,6 +163,8 @@ def build_event_tier_list(
         event_slug=event_slug,
         source_kind=source_kind,
         source_ref=source_ref,
+        source_content=source_content,
+        source_artifact_id=source_artifact_id,
         lang=lang,
         max_companies=max_companies,
         enrichment_enabled=enrichment_enabled,

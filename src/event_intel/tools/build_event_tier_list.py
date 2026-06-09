@@ -35,6 +35,7 @@ from event_intel.providers import vectorstore as _vectorstore
 from event_intel.rag import retriever as _retriever
 from event_intel.report import tier_list_md as _tier_list_md
 from event_intel.report import tier_list_yaml as _tier_list_yaml
+from event_intel.runtime import io_contract as _io
 from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
 from event_intel.scoring import compute as _scoring
@@ -121,6 +122,8 @@ def build_event_tier_list(
     event_slug: str = "",
     source_kind: str = "html_file",
     source_ref: str = "",
+    source_content: str | None = None,
+    source_artifact_id: str | None = None,
     lang: str = "en",
     max_companies: int | None = None,
     enrichment_enabled: bool = True,
@@ -142,12 +145,32 @@ def build_event_tier_list(
                 message="event_name is required",
                 hint={"field": "event_name"},
             )
-        if not source_ref:
+        # Y2.1b-2: source as source_ref (server-local path, OR inline text for the
+        # html_text/text kinds) | source_content | source_artifact_id — exactly one.
+        # content/artifact carry the bytes for a FILE kind (html_file/csv_file/
+        # text_file); inline kinds (html_text/text) pass their text via source_ref.
+        _file_kinds = ("html_file", "csv_file", "text_file")
+        _src_n = sum(bool(x) for x in (source_ref, source_content, source_artifact_id))
+        if _src_n == 0:
             raise MCPError(
-                error_code=ErrorCode.INVALID_INPUT,
-                stage=Stage.PREFLIGHT,
-                message="source_ref is required",
-                hint={"field": "source_ref", "supported_kinds": list(_source_capture.SUPPORTED_SOURCE_KINDS)},
+                error_code=ErrorCode.INVALID_INPUT, stage=Stage.PREFLIGHT,
+                message="one of source_ref / source_content / source_artifact_id is required",
+                hint={"supported_kinds": list(_source_capture.SUPPORTED_SOURCE_KINDS)},
+            )
+        if _src_n > 1:
+            raise MCPError(
+                error_code=ErrorCode.INVALID_INPUT, stage=Stage.PREFLIGHT,
+                message="provide exactly one of source_ref / source_content / source_artifact_id",
+                hint={"rule": "mutually exclusive"},
+            )
+        if (source_content or source_artifact_id) and source_kind not in _file_kinds:
+            raise MCPError(
+                error_code=ErrorCode.INVALID_INPUT, stage=Stage.PREFLIGHT,
+                message=(
+                    f"source_content/source_artifact_id apply to file kinds {_file_kinds}; "
+                    "for inline kinds (html_text/text) pass the content via source_ref"
+                ),
+                hint={"source_kind": source_kind, "file_kinds": list(_file_kinds)},
             )
 
         # 2. Preflight — must include product_context check (R3-#1).
@@ -161,9 +184,22 @@ def build_event_tier_list(
         resolved_target_mode = _resolve_target_mode(target_mode, config, cards)
 
         # 3. Source capture (S3, raises SOURCE_CAPTURE_FAILED on failure).
-        capture = _source_capture.capture_source(
-            source_kind=source_kind, source_ref=source_ref
-        )
+        if source_content or source_artifact_id:
+            _suffix = {"html_file": ".html", "csv_file": ".csv", "text_file": ".txt"}[source_kind]
+            with _io.materialize_input(
+                workspace_id=ws, field="source", content=source_content,
+                artifact_id=source_artifact_id, path=None, suffix=_suffix,
+                config=config, stage=Stage.PREFLIGHT,
+            ) as _src_file:
+                # capture_source reads the file fully into memory, so the temp can
+                # be cleaned (on with-exit) right after.
+                capture = _source_capture.capture_source(
+                    source_kind=source_kind, source_ref=str(_src_file)
+                )
+        else:
+            capture = _source_capture.capture_source(
+                source_kind=source_kind, source_ref=source_ref
+            )
 
         # 4. Extraction (S3, raises UPSTREAM_ERROR on LLM failure).
         llm_model_extract = config["llm"]["extract_exhibitors_model"]
