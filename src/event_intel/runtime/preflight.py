@@ -78,6 +78,11 @@ def _deep_merge(base: dict, override: dict) -> dict:
 # LLM providers selectable via env. Mirrors providers.llm.make_llm_provider.
 _VALID_LLM_PROVIDERS: tuple[str, ...] = ("anthropic", "openai", "chatgpt_oauth")
 
+# Deploy mode (Y2.2b). personal-local = current single-user/stdio default, all
+# providers allowed. remote = team/network deploy, where the unofficial ChatGPT
+# OAuth lane is disabled (key-based Anthropic/OpenAI only).
+_VALID_DEPLOY_MODES: tuple[str, ...] = ("personal-local", "remote")
+
 
 def _truthy_env(val: str) -> bool:
     return val.strip().lower() in {"1", "true", "yes", "on"}
@@ -117,6 +122,60 @@ def _apply_llm_provider_env_override(data: dict) -> None:
     use_oauth = os.environ.get("EVENT_INTEL_USE_CHATGPT_OAUTH")
     if use_oauth and _truthy_env(use_oauth):  # opt-in only; falsey/empty = no-op
         data.setdefault("llm", {})["provider"] = "chatgpt_oauth"
+
+
+def resolve_deploy_mode() -> str:
+    """Resolve the deploy mode from ``EVENT_INTEL_DEPLOY_MODE`` (default personal-local).
+
+    Invalid values fail loud as CONFIG_ERROR. Cold-start safe (env + stdlib only).
+    """
+    raw = os.environ.get("EVENT_INTEL_DEPLOY_MODE")
+    if not raw or not raw.strip():
+        return "personal-local"
+    mode = raw.strip()
+    if mode not in _VALID_DEPLOY_MODES:
+        raise MCPError(
+            error_code=ErrorCode.CONFIG_ERROR,
+            stage=Stage.PREFLIGHT,
+            message=f"invalid EVENT_INTEL_DEPLOY_MODE: {mode!r}",
+            hint={
+                "env_var": "EVENT_INTEL_DEPLOY_MODE",
+                "allowed": list(_VALID_DEPLOY_MODES),
+                "fix": "Set EVENT_INTEL_DEPLOY_MODE to one of: personal-local, remote",
+            },
+            retryable=False,
+        )
+    return mode
+
+
+def _enforce_provider_deploy_gate(data: dict) -> None:
+    """Disable the ChatGPT OAuth lane under remote deploy (Y2.2b D5).
+
+    The OAuth path is an unofficial, personal-local Codex flow (browser login,
+    single-user token cache) — unsuitable for a network/team server. Under
+    ``EVENT_INTEL_DEPLOY_MODE=remote`` selecting it fails loud as CONFIG_ERROR
+    so the misconfig surfaces at startup, not at first tool call. personal-local
+    (the default) leaves all providers allowed, preserving the free-trial path.
+    """
+    if resolve_deploy_mode() != "remote":
+        return
+    provider = data.get("llm", {}).get("provider")
+    if provider == "chatgpt_oauth":
+        raise MCPError(
+            error_code=ErrorCode.CONFIG_ERROR,
+            stage=Stage.PREFLIGHT,
+            message="chatgpt_oauth provider is disabled in remote deploy mode",
+            hint={
+                "deploy_mode": "remote",
+                "provider": "chatgpt_oauth",
+                "fix": (
+                    "ChatGPT OAuth is personal-local only. For remote/team deploy use a "
+                    "key-based provider: set llm.provider to 'anthropic' or 'openai' "
+                    "(with ANTHROPIC_API_KEY / OPENAI_API_KEY)."
+                ),
+            },
+            retryable=False,
+        )
 
 
 def _load_yaml_file(path: Path, *, allow_missing: bool = False) -> dict | None:
@@ -209,6 +268,7 @@ def load_config(path: Path | None = None) -> dict:
         data = _deep_merge(data, user_data)
 
     _apply_llm_provider_env_override(data)
+    _enforce_provider_deploy_gate(data)
 
     _check_required_keys(data, defaults_path)
     return data
