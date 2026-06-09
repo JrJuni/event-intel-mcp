@@ -373,7 +373,7 @@ def run_preflight(
     # ddgs→best_effort (keyless, no live ping); searxng→config required. Only the
     # selected provider reaches here (factory builds it above). remaining_quota may
     # be None when Brave omits the header (R3-#4).
-    search_provider_name = (config or {}).get("search", {}).get("provider", "brave")
+    search_provider_name = (config or {}).get("search", {}).get("provider", "ddgs")
     search_status = search_provider.ping()
     if search_status.get("status") in {"missing_key", "missing_config"}:
         raise MCPError(
