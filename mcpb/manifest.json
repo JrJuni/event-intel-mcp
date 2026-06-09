@@ -3,7 +3,7 @@
   "name": "event-intel-mcp",
   "display_name": "Event Intelligence MCP",
   "version": "0.5.0",
-  "description": "Turn exhibitor lists (URL / HTML / CSV / text) into evidence-backed BD target tier lists. 12 MCP tools, local mini-RAG (bge-m3 + Chroma).",
+  "description": "Turn exhibitor lists (URL / HTML / CSV / text) into evidence-backed BD target tier lists. 13 MCP tools, local mini-RAG (bge-m3 + Chroma).",
   "long_description": "event-intel-mcp scores exhibitor companies against a product context (capability cards) using a 7-dimension scoring model with an evidence-floor lifecycle (has_url + has_news ceiling). Two flows: (1) product context lifecycle — draft, validate, ingest capability cards into a local Chroma collection; (2) event pipeline — URL/HTML/CSV → source acquisition → extraction → enrichment (Brave web/news) → fit retrieval (event evidence → product collection) → scoring → tier_list.md + tier_list.yaml. Supports Anthropic Claude or ChatGPT Plus OAuth as LLM backends.",
   "author": {
     "name": "JrJuni",
@@ -29,7 +29,8 @@
     {"name": "draft_labels", "description": "Y1 benchmark labeling: GPT-OAuth single-vendor draft (silver) + flag gate-class/low-confidence rows; the host web-search-refines the flagged rows to gold, then seals."},
     {"name": "sync_product_sources", "description": "Incrementally index a workspace's raw source library (PDF/MD/TXT/CSV) into the product_sources_{workspace_id} collection for better card drafting + S/A rationale provenance. Never feeds a score."},
     {"name": "prepare_models", "description": "Download the bge-m3 embedding model (~1.3 GB) in-app (no terminal). Non-blocking: returns 'downloading' immediately; poll check_runtime until 'ready'."},
-    {"name": "login_chatgpt", "description": "Authenticate the ChatGPT subscription (OAuth) LLM path in-app. Non-blocking: opens a browser, returns 'pending'; approve, then poll check_runtime until 'logged_in'."}
+    {"name": "login_chatgpt", "description": "Authenticate the ChatGPT subscription (OAuth) LLM path in-app. Non-blocking: opens a browser, returns 'pending'; approve, then poll check_runtime until 'logged_in'."},
+    {"name": "get_job", "description": "Poll a background job (Y2.1 remote I/O foundation) by id: status (running/done/failed/interrupted) + result artifact ids when done. Workspace-scoped."}
   ],
   "user_config": {
     "python_path": {
