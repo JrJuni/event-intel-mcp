@@ -325,6 +325,18 @@ def test_build_e2e_runs_full_pipeline_and_writes_artifacts(all_fakes, repo_root,
     rs_doc = _json.loads(rs_path.read_text(encoding="utf-8"))
     assert rs_doc["run_id"] and rs_doc["run_fingerprint"]
     assert rs_doc["target_mode"] == "customer"
+    # Y2.1d: reports also registered as artifacts (path-free remote download).
+    from event_intel.storage import artifact_registry as _reg
+
+    md_aid = out["tier_list_md_artifact_id"]
+    yaml_aid = out["tier_list_yaml_artifact_id"]
+    assert md_aid and yaml_aid
+    # Compare against newline-normalized text (the on-disk file is CRLF on Windows
+    # text-mode write; the artifact stores the in-memory LF content).
+    assert _reg.get_artifact(workspace_id="default", artifact_id=md_aid) == md.encode("utf-8")
+    assert _reg.get_artifact(workspace_id="default", artifact_id=yaml_aid) == yaml_path.read_text(
+        encoding="utf-8"
+    ).encode("utf-8")
     assert rs_doc["scored"] == sum(v for k, v in counts.items() if k != "needs_review")
     assert rs_doc["companies"] and "capability_fit" in rs_doc["companies"][0]["dimensions"]
 

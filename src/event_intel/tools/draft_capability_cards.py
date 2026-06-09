@@ -20,6 +20,7 @@ from event_intel.providers import vectorstore as _vectorstore
 from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
 from event_intel.sources import retrieval as _retrieval
+from event_intel.storage import artifact_registry as _artifact_registry
 
 
 def _resolve_output_path(
@@ -127,9 +128,19 @@ def draft_capability_cards(
         draft_path.parent.mkdir(parents=True, exist_ok=True)
         draft_path.write_text(result.yaml_text, encoding="utf-8")
 
+        # Y2.1d: register the draft as an artifact for path-free remote download.
+        # Additive + best-effort — never fail the draft on a registry error.
+        try:
+            draft_artifact_id = _artifact_registry.put_artifact(
+                workspace_id=workspace_id, content=result.yaml_text, suffix=".yaml"
+            )["artifact_id"]
+        except Exception:  # noqa: BLE001
+            draft_artifact_id = None
+
         response = {
             "ok": True,
             "draft_path": str(draft_path),
+            "draft_artifact_id": draft_artifact_id,
             "warnings": result.warnings,
             "model": result.model,
             "usage": result.usage,

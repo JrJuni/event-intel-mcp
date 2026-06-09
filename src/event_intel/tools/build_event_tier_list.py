@@ -40,6 +40,7 @@ from event_intel.runtime import preflight as _preflight
 from event_intel.scoring import compute as _scoring
 from event_intel.sources import indexer as _src_indexer
 from event_intel.sources import retrieval as _src_retrieval
+from event_intel.storage import artifact_registry as _artifact_registry
 from event_intel.storage.identifiers import sanitize_slug
 
 if TYPE_CHECKING:
@@ -313,6 +314,20 @@ def build_event_tier_list(
         md_path.write_text(md_text, encoding="utf-8")
         yaml_path.write_text(yaml_text, encoding="utf-8")
 
+        # Y2.1d: also register the reports as artifacts so a remote client can
+        # download them by id (path-free). Additive + best-effort — a registry
+        # failure must never fail an otherwise-successful build.
+        def _maybe_artifact(text: str, suffix: str) -> str | None:
+            try:
+                return _artifact_registry.put_artifact(
+                    workspace_id=ws, content=text, suffix=suffix
+                )["artifact_id"]
+            except Exception:  # noqa: BLE001 — output artifact id is additive
+                return None
+
+        md_artifact_id = _maybe_artifact(md_text, ".md")
+        yaml_artifact_id = _maybe_artifact(yaml_text, ".yaml")
+
         # 9b. Emit run-summary (CS1) — audit/reproducibility record. Auxiliary:
         #     an emitter failure must never fail an otherwise-successful build.
         run_summary_path: Path | None = None
@@ -426,6 +441,8 @@ def build_event_tier_list(
             ),
             "tier_list_md_path": str(md_path),
             "tier_list_yaml_path": str(yaml_path),
+            "tier_list_md_artifact_id": md_artifact_id,
+            "tier_list_yaml_artifact_id": yaml_artifact_id,
             "run_summary_path": str(run_summary_path) if run_summary_path else None,
         }
     except Exception as exc:

@@ -211,6 +211,26 @@ def test_text_source_kind_unaffected(wired_draft, monkeypatch):
     assert "source_retrieval" not in res
 
 
+def test_draft_returns_artifact_id(wired_draft, monkeypatch):
+    """Y2.1d: the draft is also registered as an artifact (path-free download)."""
+    drafter_mod = importlib.import_module("event_intel.cards.drafter")
+    yaml_text = "product_name: Z\none_liner: zz\n"
+    monkeypatch.setattr(
+        "event_intel.cards.drafter.draft_cards",
+        lambda **kw: drafter_mod.DraftResult(yaml_text=yaml_text, warnings=[], model="m", usage={}),
+    )
+    draft = importlib.import_module("event_intel.tools.draft_capability_cards")
+    res = draft.draft_capability_cards(
+        workspace_id="default", source_kind="text", source_content="seed"
+    )
+    assert res["ok"] is True, res
+    aid = res["draft_artifact_id"]
+    assert aid
+    from event_intel.storage import artifact_registry as _reg
+
+    assert _reg.get_artifact(workspace_id="default", artifact_id=aid) == yaml_text.encode("utf-8")
+
+
 # --------------------------------------------------------------------------- #
 # CLI flag plumbing
 # --------------------------------------------------------------------------- #
