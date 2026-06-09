@@ -441,6 +441,119 @@ def test_env_override_not_applied_in_explicit_path_branch(repo_root: Path, monke
     assert data["llm"]["provider"] == "anthropic"
 
 
+# ---------- Y2.2b deploy-mode provider gating ----------
+
+
+def _remote_env(monkeypatch):
+    monkeypatch.setenv("EVENT_INTEL_DEPLOY_MODE", "remote")
+    monkeypatch.delenv("EVENT_INTEL_USE_CHATGPT_OAUTH", raising=False)
+    monkeypatch.delenv("EVENT_INTEL_LLM_PROVIDER", raising=False)
+
+
+def test_remote_mode_blocks_chatgpt_oauth_from_config(tmp_path, monkeypatch):
+    user_cfg = tmp_path / "user.yaml"
+    user_cfg.write_text(yaml.safe_dump({"llm": {"provider": "chatgpt_oauth"}}), encoding="utf-8")
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(user_cfg))
+    _remote_env(monkeypatch)
+
+    with pytest.raises(MCPError) as exc:
+        load_config()
+    assert exc.value.error_code == ErrorCode.CONFIG_ERROR
+    assert exc.value.hint["deploy_mode"] == "remote"
+    assert "anthropic" in exc.value.hint["fix"] and "openai" in exc.value.hint["fix"]
+
+
+def test_remote_mode_blocks_chatgpt_oauth_from_env_boolean(tmp_path, monkeypatch):
+    """The boolean sugar still routes through the gate (override runs first)."""
+    missing = tmp_path / "no_such.yaml"
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+    monkeypatch.setenv("EVENT_INTEL_DEPLOY_MODE", "remote")
+    monkeypatch.setenv("EVENT_INTEL_USE_CHATGPT_OAUTH", "true")
+    monkeypatch.delenv("EVENT_INTEL_LLM_PROVIDER", raising=False)
+
+    with pytest.raises(MCPError) as exc:
+        load_config()
+    assert exc.value.error_code == ErrorCode.CONFIG_ERROR
+
+
+def test_remote_mode_allows_anthropic(tmp_path, monkeypatch):
+    missing = tmp_path / "no_such.yaml"  # defaults.yaml → anthropic
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+    _remote_env(monkeypatch)
+
+    data = load_config()
+    assert data["llm"]["provider"] == "anthropic"
+
+
+def test_remote_mode_allows_openai(tmp_path, monkeypatch):
+    missing = tmp_path / "no_such.yaml"
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+    _remote_env(monkeypatch)
+    monkeypatch.setenv("EVENT_INTEL_LLM_PROVIDER", "openai")
+
+    data = load_config()
+    assert data["llm"]["provider"] == "openai"
+
+
+def test_personal_local_default_allows_chatgpt_oauth(tmp_path, monkeypatch):
+    """Default mode (no env) preserves the free-trial OAuth path."""
+    user_cfg = tmp_path / "user.yaml"
+    user_cfg.write_text(yaml.safe_dump({"llm": {"provider": "chatgpt_oauth"}}), encoding="utf-8")
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(user_cfg))
+    monkeypatch.delenv("EVENT_INTEL_DEPLOY_MODE", raising=False)
+    monkeypatch.delenv("EVENT_INTEL_USE_CHATGPT_OAUTH", raising=False)
+    monkeypatch.delenv("EVENT_INTEL_LLM_PROVIDER", raising=False)
+
+    data = load_config()
+    assert data["llm"]["provider"] == "chatgpt_oauth"
+
+
+def test_explicit_personal_local_allows_chatgpt_oauth(tmp_path, monkeypatch):
+    user_cfg = tmp_path / "user.yaml"
+    user_cfg.write_text(yaml.safe_dump({"llm": {"provider": "chatgpt_oauth"}}), encoding="utf-8")
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(user_cfg))
+    monkeypatch.setenv("EVENT_INTEL_DEPLOY_MODE", "personal-local")
+    monkeypatch.delenv("EVENT_INTEL_USE_CHATGPT_OAUTH", raising=False)
+    monkeypatch.delenv("EVENT_INTEL_LLM_PROVIDER", raising=False)
+
+    data = load_config()
+    assert data["llm"]["provider"] == "chatgpt_oauth"
+
+
+def test_invalid_deploy_mode_raises_config_error(tmp_path, monkeypatch):
+    missing = tmp_path / "no_such.yaml"
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+    monkeypatch.setenv("EVENT_INTEL_DEPLOY_MODE", "production")  # not a valid mode
+
+    with pytest.raises(MCPError) as exc:
+        load_config()
+    assert exc.value.error_code == ErrorCode.CONFIG_ERROR
+    assert exc.value.hint["env_var"] == "EVENT_INTEL_DEPLOY_MODE"
+    assert "personal-local" in exc.value.hint["allowed"]
+
+
+def test_explicit_config_path_branch_is_not_gated(repo_root: Path, monkeypatch):
+    """load_config(explicit_path) is the test-compat branch — deploy gate must NOT apply.
+
+    Mirrors the env-override skip: a passed-in path is loaded verbatim.
+    """
+    monkeypatch.setenv("EVENT_INTEL_DEPLOY_MODE", "remote")
+    cfg = repo_root / "config" / "defaults.yaml"
+    data = load_config(cfg)  # defaults says anthropic anyway; just must not raise
+    assert data["llm"]["provider"] == "anthropic"
+
+
+def test_resolve_deploy_mode_helper(monkeypatch):
+    from event_intel.runtime.preflight import resolve_deploy_mode
+
+    monkeypatch.delenv("EVENT_INTEL_DEPLOY_MODE", raising=False)
+    assert resolve_deploy_mode() == "personal-local"
+    monkeypatch.setenv("EVENT_INTEL_DEPLOY_MODE", "")
+    assert resolve_deploy_mode() == "personal-local"
+    monkeypatch.setenv("EVENT_INTEL_DEPLOY_MODE", "remote")
+    assert resolve_deploy_mode() == "remote"
+
+
 # ---------- Tool boundary ----------
 
 
