@@ -210,6 +210,23 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 ## Blind Review 판정 누적
 
+### Y2.0 아키텍처 게이트 초안 라운드 1 (ChatGPT/Codex) — 2026-06-09
+
+리뷰 대상: `~/.claude/plans/y2-architecture-gate.md` v0.1(원격 배포 결정 게이트, 코드 0줄). 사용자가 타깃을 "소규모 팀 + Anthropic API/OpenAI API/OpenAI OAuth"로 확장하며 리뷰 동반. 7건 전부 HEAD 대조 후 수용 → v0.2.
+
+| # | 카테고리 | 판정 | 사유(HEAD 대조) |
+|---|---|---|---|
+| 1 | architecture | accepted | D1 binary(private/shared)→**3-tier**(personal-local/small-team single-tenant/public). 사용자 scope 확장이 중간 단계를 요구 |
+| 2 | architecture | accepted | 3축 분리 명문화(tenancy/client/provider). v0.1이 D2 lean에 provider 새 흘림. OpenAI API provider lane 추가(미구현 — `make_llm_provider`는 Anthropic/OAuth 2개만) |
+| 3 | corner-case(보안) | accepted | OpenAI OAuth≠OpenAI API. **우리 코드 독스트링이 직접 "personal local only, 공유 서버 배포 금지"(llm.py:148)** → 원격 disable. 리뷰가 코드 정확 인용 |
+| 4 | corner-case(보안) | accepted | D8 신규 — 원격 tool surface allowlist(12도구 분류). 미세정정: `storage migrate`는 CLT(도구 아님)라 비대상 |
+| 5 | architecture | accepted | D9 신규 — data governance(source/artifact/Chroma/log owner·retention·delete·export). WSL provenance로 팀 접근권한 부상 |
+| 6 | documentation | accepted | Sources/spec evidence 섹션(OpenAI/MCP/Anthropic 공식 링크 + protocol pin 후보). "코드 0줄" 유지하되 근거 박음 |
+| 7 | architecture | accepted | D10 신규 — billing/quota(server-key vs team BYOK vs per-user + rate/budget/request-id) |
+
+**메타**: architecture/governance 통찰 우수 + **코드 file:line 정확 인용 + 공식 spec 링크** = 근거 최상. nit/style 0. 약점=`storage migrate` 원격 도구 오인(경미). **사용자 scope 확장(소규모 팀+멀티 provider)이 v0.1 전제를 깬 갭을 정확히 포착.**
+**판정**: 라운드 1 — 전부 accepted, 게이트 7→10 결정으로 확장(scope 정당). v0.2 재합성(`Changes v0.1→v0.2` 표 + 인라인 마커). skeptic 미실행(라운드 1·draft). 다음: 원하면 라운드 2(small-team 최소 구현 경계 + 12도구 allowlist 실매핑 집중), 아니면 Y2 착수 세션 입력으로 사용.
+
 ### WSL plan v0.2 + 로드맵 라운드 1 (Codex) — 2026-06-08
 
 리뷰 대상: Workspace & Source Library RAG plan v0.2 + 큰그림 로드맵. 5건 전부 HEAD 대조 후 처리.
