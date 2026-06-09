@@ -121,6 +121,7 @@ def test_runtime_paths_module_is_cold(fresh_sys_modules):
 
     importlib.import_module("event_intel.runtime.paths")
     importlib.import_module("event_intel.storage.migrate")  # W5 migration (stdlib)
+    importlib.import_module("event_intel.storage.artifact_registry")  # Y2.1a (stdlib)
     importlib.import_module("event_intel.runtime.async_job")  # #14 P1.0 (stdlib)
     importlib.import_module("event_intel.runtime.models")  # #14: cold (heavy import in-body)
     importlib.import_module("event_intel.tools.prepare_models")  # #14 P1.1 tool
