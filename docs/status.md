@@ -6,6 +6,13 @@
 
 ## 진행 중
 
+- **Y2.1 — Remote I/O + Job 모델 (진행 중, 2026-06-09, plan `~/.claude/plans/y2.1-remote-io-job.md` v0.2 — Y2.0 게이트 + packet QA 각 2라운드 후)**
+  - **계기.** 원격 배포(Y2)의 근본 차단은 transport가 아니라 **도구가 서버 로컬 경로를 주고받는 것**. Y2.1은 노출 전에 I/O 계약을 경로-비의존(content/artifact-ID + job)으로 바꾼다. **아직 원격 노출 안 함(stdio 유지)** → 인증·access-control floor는 Y2.2. 점수/로컬 동작 불변.
+  - ✅ **Y2.1a** (#51) — `storage/artifact_registry.py`: content↔**opaque random artifact_id**(sha256는 metadata만·capability token 누수 차단)·workspace-scoped·TTL+pin·size cap. cold·12 테스트.
+  - ✅ **Y2.1b** (#52) — `runtime/io_contract.materialize_input`(path|content|artifact_id **정확히 하나**, inline cap, temp 브리지). validate/ingest cards 3-way + preflight보다 먼저 fast-fail. content/artifact ingest receipt는 workspace_dir. 12 테스트.
+  - ⏭️ **다음 세션 재개점 = Y2.1c** (Job model: file-backed `JobStore`(id/status/result_artifact_ids/ttl) + `async_job` 래핑 + `get_job` 도구, **재시작 시 running→interrupted/stale(compute resume OOS)**, **job 참조 artifact는 job TTL까지 pin**). 이후 Y2.1b-2(build source 3-way)·Y2.1d(출력 artifact_id)·Y2.1e(문서+stdio e2e).
+  - 현재 main `cd7fa8d` · 794 passed · MCP 12 tools.
+
 - **인앱 셋업 패리티 (#14) — 비개발자 첫 실행 셋업을 앱 안에서 ✅ 전체 완료 (2026-06-09, plan `snoopy-weaving-robin.md` 상단 v1, P1.0–P1.3 머지 #46/#47/+1)**
   - **계기.** 비개발자 타깃인데 첫 실행 2단계(bge-m3 ~1.3GB 다운로드 · ChatGPT 로그인)가 CLI 전용 → "Claude Desktop 단일 surface" north star 모순([[inapp-setup-parity]]). 둘 다 무겁고(다운로드·OAuth 브라우저 왕복) 동기 tool은 앱 타임아웃 → **비동기 start→poll** 패턴 필요.
   - ✅ **P1.0+P1.1** (#46) — `runtime/async_job.py` 범용 비동기 매니저(`BackgroundJob.start(fn, block=)`/`status()`/`reset()`, 멱등·실패캡처, warmup.py 패턴 일반화하되 stdio-critical warmup.py는 보존). `prepare_models` MCP 도구(11th) — is_ready→ready 단락, 아니면 background 다운로드 start→`downloading` 즉시 리턴, force 재download. CLI `models prepare` blocking 유지.
