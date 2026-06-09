@@ -328,17 +328,36 @@ def _preimport_heavy_deps() -> None:
 
 
 def main() -> None:
-    """Entrypoint for `python -m event_intel.mcp_server`."""
+    """Entrypoint for `python -m event_intel.mcp_server`.
+
+    Default transport is stdio (Claude Desktop / CLI). Y2.2c adds an opt-in
+    streamable-http transport (EVENT_INTEL_TRANSPORT=streamable-http) that binds
+    loopback by default — see runtime/transport.py. Real remote exposure also
+    requires the authorization layer (Y2.2d).
+    """
     # Pre-import heavy native deps on the MAIN thread (chromadb deadlocks if first
     # imported in a FastMCP worker thread). See _preimport_heavy_deps docstring.
     _preimport_heavy_deps()
 
     # Opt-in background warm-up (EVENT_INTEL_WARM_ON_START). No-op unless enabled
     # AND bge-m3 is already cached. Non-blocking — never delays server boot.
+    from event_intel.runtime import transport as _transport
     from event_intel.runtime import warmup as _warmup
 
     _warmup.maybe_warm_on_start()
-    app.run()
+
+    cfg = _transport.resolve_transport_config()
+    if cfg.is_http:
+        _transport.apply_to_app(app, cfg)
+        if cfg.binds_non_loopback:
+            sys.stderr.write(
+                "event-intel: WARNING — streamable-http bound to non-loopback host "
+                f"{cfg.host!r} with no built-in authorization yet (Y2.2d). Put an "
+                "authenticating reverse proxy in front, or bind 127.0.0.1.\n"
+            )
+        app.run(transport="streamable-http")
+    else:
+        app.run()
 
 
 if __name__ == "__main__":
