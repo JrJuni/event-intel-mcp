@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project north star
 
-**event-intel-mcp** turns exhibitor lists (URL / HTML / CSV / pasted text) into evidence-backed BD target tier lists via a standalone MCP server. Single product surface (Claude Desktop), 12 MCP tools (5 core + 3 acquisition layer + 1 labeling + 1 source library + 2 in-app setup), local mini-RAG (bge-m3 + Chroma), zero dependency on the sibling bd-coldcall-agent repo.
+**event-intel-mcp** turns exhibitor lists (URL / HTML / CSV / pasted text) into evidence-backed BD target tier lists via a standalone MCP server. Single product surface (Claude Desktop), 13 MCP tools (5 core + 3 acquisition layer + 1 labeling + 1 source library + 2 in-app setup + 1 job), local mini-RAG (bge-m3 + Chroma), zero dependency on the sibling bd-coldcall-agent repo.
 
 ## Dev environment
 
@@ -51,13 +51,13 @@ The full catalog (debugging snippets, all flags, MCP config) is in `docs/command
 
 ## Architecture — the big picture
 
-12 MCP tools, single FastMCP process, local mini-RAG:
+13 MCP tools, single FastMCP process, local mini-RAG:
 
 ```
 Claude Desktop (stdio JSON-RPC)
    │
    ▼
-event_intel.mcp_server (FastMCP) — 12 tools
+event_intel.mcp_server (FastMCP) — 13 tools
    │
    ├─ check_runtime              (runtime/preflight.py — bge-m3 cache / Chroma / API keys / product context + paths + setup status)
    ├─ prepare_models             (tools/prepare_models.py — in-app bge-m3 download, non-blocking async job)
@@ -70,7 +70,8 @@ event_intel.mcp_server (FastMCP) — 12 tools
    ├─ probe_exhibitor_endpoint   (acquisition/probe.py — XHR + embedded_json probes)
    ├─ acquire_exhibitor_source   (acquisition/acquire.py — orchestrator → artifact + manifest)
    ├─ draft_labels               (tools/draft_labels.py — Y1 labeling: GPT silver draft + flag → host refines)
-   └─ sync_product_sources       (sources/indexer.py — WSL: raw source library → product_sources_{ws}, never scored)
+   ├─ sync_product_sources       (sources/indexer.py — WSL: raw source library → product_sources_{ws}, never scored)
+   └─ get_job                    (runtime/job_store.py — Y2.1: poll background job status/result by id)
 ```
 
 Two-flow model:
@@ -122,7 +123,7 @@ event-intel-mcp/
   .env.example
   config/defaults.yaml
   src/event_intel/
-    mcp_server.py        — FastMCP entry, 12 tool registrations
+    mcp_server.py        — FastMCP entry, 13 tool registrations
     cli.py               — typer thin wrapper (added in S2/S6)
     errors.py            — MCPError + 14 error_code × 7 stage enums
     runtime/             — preflight + models prepare (S1) + user config deep-merge
@@ -134,7 +135,7 @@ event-intel-mcp/
     rag/                 — store + retriever + chunker
     scoring/             — dimensions + rules + compute (S4)
     report/              — tier_list_md + tier_list_yaml + brief_export (S5)
-    tools/               — MCP tool handlers (one file per tool, 12 total)
+    tools/               — MCP tool handlers (one file per tool, 13 total)
     runtime/async_job.py — generic non-blocking background-job manager (prepare_models / login_chatgpt)
     storage/             — workspaces + artifacts (atomic + sha256 manifest) + identifiers (sanitize_slug)
     prompts/{en,ko}/     — LLM prompt templates

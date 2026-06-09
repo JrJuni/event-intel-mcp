@@ -68,20 +68,20 @@ def test_setup_reflects_logged_in_token(monkeypatch, tmp_path):
     assert res["setup"]["chatgpt_login"]["logged_in"] is True
 
 
-def test_manifest_lists_twelve_tools_including_setup(repo_root):
+def test_manifest_lists_thirteen_tools_including_setup_and_job(repo_root):
     m = json.loads((repo_root / "mcpb" / "manifest.json").read_text(encoding="utf-8"))
     names = {t["name"] for t in m["tools"]}
-    assert len(m["tools"]) == 12
-    assert {"prepare_models", "login_chatgpt"} <= names
-    assert "12 MCP tools" in m["description"]
+    assert len(m["tools"]) == 13
+    assert {"prepare_models", "login_chatgpt", "get_job"} <= names
+    assert "13 MCP tools" in m["description"]
 
 
-def test_all_twelve_tools_registered_on_server():
+def test_all_thirteen_tools_registered_on_server():
     server = importlib.import_module("event_intel.mcp_server")
     for name in (
         "check_runtime", "draft_capability_cards", "validate_capability_cards",
         "ingest_product_context", "build_event_tier_list", "analyze_event_page",
         "probe_exhibitor_endpoint", "acquire_exhibitor_source", "draft_labels",
-        "sync_product_sources", "prepare_models", "login_chatgpt",
+        "sync_product_sources", "prepare_models", "login_chatgpt", "get_job",
     ):
         assert callable(getattr(server, name)), f"{name} not registered"

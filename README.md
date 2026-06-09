@@ -208,7 +208,7 @@ Add to `claude_desktop_config.json`:
 
 Include `ANTHROPIC_API_KEY` only for the Anthropic path. Set `EVENT_INTEL_USE_CHATGPT_OAUTH=true` to opt into ChatGPT OAuth (then run `event-intel login-chatgpt` once); omit it otherwise.
 
-### The 12 tools
+### The 13 tools
 
 **In-app setup** — one-time first run (no terminal needed):
 
@@ -237,6 +237,8 @@ Include `ANTHROPIC_API_KEY` only for the Anthropic path. Set `EVENT_INTEL_USE_CH
 | `build_event_tier_list` | Run capture → extraction → enrichment → scoring → `tier_list.md` + `tier_list.yaml` |
 
 **Benchmark labeling** — `draft_labels` (multi-vendor gold-label production for accuracy measurement).
+
+**Remote I/O foundation (Y2.1, in progress)** — `get_job` polls a background job (status + result artifact ids). The card/source/event inputs also accept `*_content` / `*_artifact_id` (not just a server-local path), and reports/drafts return `*_artifact_id` — so the workflow can run path-free. This is the groundwork for remote serving (a later phase); today it still runs over local stdio.
 
 In Claude Desktop you don't invoke these by hand — ask in natural language (e.g. *"analyze this exhibitor page: &lt;url&gt;"*, *"build a tier list from this CSV against my default workspace"*) and Claude calls the tools for you. The CLI commands below are the same code paths for terminal use.
 
