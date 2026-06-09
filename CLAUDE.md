@@ -153,4 +153,15 @@ The lesson-learned + playbook content here was selectively pruned from bd-coldca
 
 ## Planning
 
-Active plan: `~/.claude/plans/tender-mixing-badger.md` (Plan v0.5 final, 3-round blind review history embedded). Resume context for any new session: read `docs/status.md` + the plan file before starting work.
+Resume context for any new session: read `docs/status.md` (single source for "in flight / next") + `docs/backlog.md` first. Detailed phase plans live in `~/.claude/plans/` (currently `y2.1-remote-io-job.md`, `y2-architecture-gate.md`, and the accumulated `snoopy-weaving-robin.md`). Each new phase gets its own plan file; the embedded roadmap in older plan files may be stale — trust status.md/backlog.
+
+## Working method — autonomous slice loop
+
+When the user grants autonomy ("구현해줘" / "just do it" / "반복해서 …"), drive each unit of work as a self-contained slice and only stop for genuine decisions.
+
+**Per slice**: implement → **self-generate an adversarial corner-case + functional-verification set** (verify/skeptic discipline — ask "what could break": edge inputs, concurrency, restart, security/leak, cross-platform, no-regression) → close each item with a test → `ruff` + full `pytest` green → PR → CI (pytest + cjk, both blocking) → **merge when green** + `--delete-branch` → one-line report → next slice.
+
+- The corner-case set is **self-generated**; external `/blind-ai-review` is user-triggered and NOT part of the loop.
+- **Stuck rule — max 3 iterations.** If a fix / CI failure / corner-case won't resolve after 3 attempts, **STOP** and surface to the user: what was tried, the leading hypothesis, and the options. Do not keep flailing past 3.
+- **Stop and ask** only for: a design fork not settled by the active plan; scope ambiguity; anything irreversible / outward-facing; or any change to **scoring logic** (never alter scoring autonomously).
+- Commit/PR cadence, trailers, and the cold-import / MCPError / module-reference rules above still apply on every slice.
