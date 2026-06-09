@@ -6,6 +6,16 @@
 
 ## 진행 중
 
+- **Y2.2 — 원격 transport + 인증 + provider 확장 (진행 중, plan `~/.claude/plans/y2.2-remote-transport-auth.md`; 게이트 D1 small-team single-tenant·D2 Remote Claude Desktop·D5 provider 3-lane 확정)**
+  - **계기.** Y2.1이 경로-비의존 I/O를 깔았고, Y2.2는 그 위에 원격 노출(Streamable HTTP)+표준 인증+provider 확장. **여기서부터 서버가 네트워크-도달 가능**(outward-facing). 두 갈래: provider(자율 루프 가능·로컬 검증) / transport·auth(spec-bound·outward).
+  - ✅ **Y2.2a** (#59) — 공식 `OpenAIProvider`(key 기반 chat/completions, httpx lazy) + `make_llm_provider` `openai` 분기 + preflight `_VALID_LLM_PROVIDERS`. 비공식 Codex OAuth와 별개(max_tokens/temperature 정상 수용, remote-safe).
+  - ✅ **Y2.2b** (#60) — `EVENT_INTEL_DEPLOY_MODE`(personal-local 기본|remote). remote에서 `chatgpt_oauth` 선택 시 CONFIG_ERROR(load_config 게이트). personal-local은 무료 OAuth 보존.
+  - ✅ **Y2.2c** (#61) — opt-in `EVENT_INTEL_TRANSPORT=streamable-http`. **127.0.0.1 루프백 기본 + DNS-rebinding/Origin 보호 ON → 머지로 노출 0.** `runtime/transport.py`(env 검증·apply_to_app). stdio 기본 무변경. 실노출은 host 변경 + d 인증 필요.
+  - ✅ **Y2.2d-1** (#62) — 원격 tool allowlist(default-deny strict). http 표면=per-user BD 11개만, setup/host-bound(prepare_models·login_chatgpt) withhold. 표면 제거 방식이라 새 error_code 불필요. 미분류 도구 자동 withhold(테스트가 분류 강제).
+  - ⏸️ **Y2.2d-2 (OAuth 2.1 resource-server) — 사용자 결정 대기.** 토큰 발급자 topology(self-issued vs 외부 IdP)가 plan에 없는 design fork + MCP Authorization spec 정독 + 실키 테스트 불가(크레딧 없음) → 자율 루프의 설계상 stop 지점. token verifier·audience 검증·Protected Resource Metadata는 topology 확정 후.
+  - ⏳ **Y2.2e** — 버전 핀(mcp 1.27.1 + protocol revision) + 비로컬 smoke + secrets/ops + 문서. d-2 이후.
+  - **결과(현재)**: provider 갈래 완료(3-lane + remote OAuth 게이팅) + transport 토대(loopback opt-in) + 원격 표면 allowlist. **아직 실제 원격 노출 없음**(인증 부재 — d-2 전까지 public host 금지). MCP 13 tools(stdio)/11(remote).
+
 - **Y2.1 — Remote I/O + Job 모델 ✅ 전체 완료 (2026-06-09, plan `~/.claude/plans/y2.1-remote-io-job.md` v0.2 — Y2.0 게이트 + packet QA 각 2라운드 후, 자율 루프로 a~e 머지 #51~#56)**
   - **계기.** 원격 배포(Y2)의 근본 차단은 transport가 아니라 **도구가 서버 로컬 경로를 주고받는 것**. Y2.1은 노출 전에 I/O 계약을 경로-비의존(content/artifact-ID + job)으로 바꿈. **아직 원격 노출 안 함(stdio 유지)** → 인증·access-control floor는 Y2.2. 점수/로컬 동작 불변.
   - ✅ **Y2.1a** (#51) — `storage/artifact_registry.py`: content↔**opaque random artifact_id**(sha256는 metadata만·capability token 누수 차단)·workspace-scoped·TTL+pin·size cap.
