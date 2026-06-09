@@ -341,6 +341,54 @@ def test_build_e2e_runs_full_pipeline_and_writes_artifacts(all_fakes, repo_root,
     assert rs_doc["companies"] and "capability_fit" in rs_doc["companies"][0]["dimensions"]
 
 
+# ---------- Y2.1b-2: build source via content / artifact_id (file kinds) ----------
+def _sample_html(repo_root):
+    return (repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_build_via_source_content(all_fakes, repo_root):
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_c",
+        source_kind="html_file", source_content=_sample_html(repo_root),
+    )
+    assert out["ok"] is True, out
+    assert out["candidates_extracted"] >= 3  # same pipeline as the path path
+
+
+def test_build_via_source_artifact_id(all_fakes, repo_root):
+    from event_intel.storage import artifact_registry as _reg
+
+    aid = _reg.put_artifact(workspace_id="default", content=_sample_html(repo_root))["artifact_id"]
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_a",
+        source_kind="html_file", source_artifact_id=aid,
+    )
+    assert out["ok"] is True, out
+    assert out["candidates_extracted"] >= 3
+
+
+def test_build_source_content_rejected_for_inline_kind(all_fakes, repo_root):
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_x",
+        source_kind="html_text", source_content=_sample_html(repo_root),
+    )
+    assert out["ok"] is False
+    assert out["error_code"] == "INVALID_INPUT"
+    assert "inline kinds" in out["message"]
+
+
+def test_build_two_source_inputs_rejected(all_fakes, repo_root):
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_2",
+        source_kind="html_file", source_ref="x.html", source_content=_sample_html(repo_root),
+    )
+    assert out["ok"] is False
+    assert out["error_code"] == "INVALID_INPUT"
+    assert "exactly one" in out["message"]
+
+
 def test_build_skips_enrichment_when_disabled(all_fakes, repo_root):
     """enrichment_enabled=False → no Brave calls, no news, but pipeline still completes."""
     out = build_tool(
