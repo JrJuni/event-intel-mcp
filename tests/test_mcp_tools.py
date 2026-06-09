@@ -197,6 +197,9 @@ def all_fakes(monkeypatch, tmp_path):
     """Wire fake providers + inline config + isolated outputs dir."""
     monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: dict(_MIN_CONFIG))
     monkeypatch.setattr(_llm, "AnthropicProvider", _FakeLLM)
+    # Inject the fake via the FACTORY (default provider is now ddgs, not brave) so
+    # neither preflight nor build constructs a live network provider.
+    monkeypatch.setattr(_search, "make_search_provider", lambda config=None: _FakeSearch())
     monkeypatch.setattr(_search, "BraveSearchProvider", _FakeSearch)
     monkeypatch.setattr(_embedding, "BgeM3Provider", _FakeEmbedding)
     # FakeVS factory carries product_chunks via a closure so tests can override.

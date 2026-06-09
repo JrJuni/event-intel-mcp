@@ -16,9 +16,10 @@ from event_intel.providers import search as S
 # ---------- make_search_provider ----------
 
 
-def test_factory_default_is_brave_when_no_search_section():
+def test_factory_default_is_ddgs_when_no_search_section():
+    """S2 flips the zero-config default to ddgs (keyless)."""
     p = S.make_search_provider({})
-    assert isinstance(p, S.BraveSearchProvider)
+    assert isinstance(p, S.DdgsSearchProvider)
 
 
 def test_factory_explicit_brave():
@@ -26,13 +27,19 @@ def test_factory_explicit_brave():
     assert isinstance(p, S.BraveSearchProvider)
 
 
-@pytest.mark.parametrize("provider", ["ddgs", "searxng"])
-def test_factory_valid_but_unavailable_raises_config_error(provider):
+def test_factory_explicit_ddgs_threads_throttle_config():
+    p = S.make_search_provider(
+        {"search": {"provider": "ddgs", "min_interval_ms": 500, "max_retries": 7}}
+    )
+    assert isinstance(p, S.DdgsSearchProvider)
+    assert p.min_interval_ms == 500 and p.max_retries == 7
+
+
+def test_factory_searxng_still_unavailable():
     with pytest.raises(MCPError) as exc:
-        S.make_search_provider({"search": {"provider": provider}})
+        S.make_search_provider({"search": {"provider": "searxng"}})
     assert exc.value.error_code == ErrorCode.CONFIG_ERROR
     assert "not available yet" in exc.value.message
-    assert provider in exc.value.hint["valid"]
 
 
 def test_factory_invalid_provider_raises_with_allowed_list():

@@ -10,8 +10,10 @@ extraction:
   extraction_confidence_min: 0.6   # Below this, candidate flagged needs_review
 
 search:
-  provider: brave                  # ddgs | searxng | brave  (zero-config plan; ddgs becomes default in a later slice)
+  provider: ddgs                   # ddgs (keyless zero-config default) | searxng | brave
   searxng_url: ""                  # required when provider=searxng (configured in a later slice)
+  min_interval_ms: 1100            # ddgs: process-wide min gap between requests (DDG rate-limits ~20-30/min)
+  max_retries: 3                   # ddgs: exponential backoff attempts on rate-limit before degrading to empty
 
 enrichment:
   max_companies: 30                # Per-event cap on enriched exhibitors

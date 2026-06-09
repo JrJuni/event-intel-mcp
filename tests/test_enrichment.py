@@ -291,6 +291,23 @@ def test_official_url_threshold_filters_low_score_hits(tmp_path):
     assert any("official-site" in w for w in row.enrichment_warnings), row.enrichment_warnings
 
 
+def test_degraded_search_surfaces_run_warning(tmp_path):
+    """Blind review R1#2: a rate-limited (degraded) backend's empty results are
+    surfaced as a run-level warning, not silently indistinguishable from genuine
+    'no evidence'."""
+    class _DegradedSearch(FakeSearch):
+        degraded = True
+        degraded_queries = 2
+
+    cands = [ExhibitorCandidate(name="Acme AI", source_snippet="x" * 30)]
+    result = enrich_exhibitors(
+        candidates=cands, workspace_id="tdeg", lang="en", config=_config(),
+        search_provider=_DegradedSearch(),
+        cache_dir=tmp_path / "cache", resume_path=tmp_path / "r.jsonl",
+    )
+    assert any("search degraded" in w for w in result.warnings), result.warnings
+
+
 def test_news_drops_non_article_pages_and_carries_published_at(tmp_path):
     """Utility/non-article news pages (login/docs/privacy) are dropped by path;
     real articles keep their published_at (carried from SearchResult)."""

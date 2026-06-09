@@ -749,6 +749,18 @@ def enrich_exhibitors(
             row, input_fp=fp_by_name[cand.name], enriched_at=now.isoformat(),
         ))
 
+    # Surface search degradation (blind review R1#2): a keyless backend that hit
+    # rate limits returned empty results for some queries — make that visible in
+    # the run summary so "no news/url" isn't silently indistinguishable from a
+    # genuine absence of evidence.
+    if getattr(search_provider, "degraded", False):
+        n = getattr(search_provider, "degraded_queries", 0)
+        warnings.append(
+            f"search degraded: {n} query(ies) hit rate limits and returned no "
+            f"results (provider={provider_sig}); affected companies may "
+            "under-report news/official-URL evidence"
+        )
+
     return EnrichmentResult(
         rows=rows,
         cache_hits=cache_hits,

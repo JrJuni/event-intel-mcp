@@ -105,7 +105,7 @@ def _search_status_block() -> dict:
     except Exception:  # noqa: BLE001 — best-effort; default to brave
         config = None
     search_cfg = (config or {}).get("search") or {}
-    provider = search_cfg.get("provider", "brave")
+    provider = search_cfg.get("provider", "ddgs")
     out: dict = {"provider": provider, "warnings": []}
     if provider == "brave":
         has_key = bool(os.environ.get("BRAVE_API_KEY"))
