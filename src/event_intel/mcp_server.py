@@ -264,6 +264,18 @@ def login_chatgpt(force: bool = False) -> dict:
 
 
 @app.tool()
+def get_job(job_id: str = "", workspace_id: str = "default") -> dict:
+    """Poll a background job started by a long-running tool (Y2.1). Returns
+    status (running | done | failed | interrupted) + result_artifact_ids when
+    done. Workspace-scoped; a job interrupted by a server restart reads as
+    'interrupted' (not resumed).
+    """
+    from event_intel.tools.get_job import get_job as _impl
+
+    return _impl(job_id=job_id, workspace_id=workspace_id)
+
+
+@app.tool()
 def sync_product_sources(
     workspace_id: str = "default",
     source_dir: str | None = None,
