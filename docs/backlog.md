@@ -24,6 +24,7 @@
 - **Y2 — 원격 배포 (계획까지)**: **Y2.0** 아키텍처 게이트(single-user-private 우선) → **Y2.1** Remote I/O + file-backed
   job(현 도구는 서버 로컬 경로 I/O라 원격 선결; DB persist는 OOS지만 job manifest는 허용) → **Y2.2** Streamable HTTP +
   표준 MCP 인증(resource-server / Protected Resource Metadata / audience 검증 / SDK·protocol 고정) → **Y2.3** 운영강화 + 비로컬 smoke.
+  - **⏸️ Y2.2 잔여 — OAuth 인증 + 운영강화, 실배포 시점까지 defer (2026-06-10, 사용자 결정)**: Y2.2 a/b/c/d-1(공식 OpenAI provider lane · deploy-mode OAuth 게이팅 · loopback opt-in streamable-http · 원격 tool allowlist)은 완료·머지(#59~#62), mcp 버전 핀(`<2.0.0`)까지 선반영 → **remote-ready 토대 완성, 현재 노출 0**. 남은 **Y2.2d-2(OAuth 2.1 resource-server: token verifier·audience 검증·Protected Resource Metadata)** + **Y2.2e(비로컬 smoke·secrets store·rate-limit backoff·health·구조화 로깅)** 는 (a) 토큰 발급자 topology가 design fork이고 (b) 실키/실토큰 테스트가 크레딧 없이 불가하며 (c) 노출 전엔 불필요 → **실제 원격 배포 의향 시 재개**. 재개 선결: 발급자(외부 IdP vs self-issued) 확정 + MCP Authorization spec 정독. **d-2 전까지 public host 바인딩 금지.**
 - **아래 #1~#10 매핑**: #1 양방향 retrieval·#6 rerank → Y1D · #3 backoff → Y2.3 · #10 multi-tenant → Y2.0(공유 시) ·
   #2 provider swap·#4 brief export·#5 resume·#7 bd-agent bridge·#8 batch·#9 auto-monitoring → 파킹.
 
