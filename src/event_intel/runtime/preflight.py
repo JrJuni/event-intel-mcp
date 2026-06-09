@@ -76,7 +76,7 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 
 # LLM providers selectable via env. Mirrors providers.llm.make_llm_provider.
-_VALID_LLM_PROVIDERS: tuple[str, ...] = ("anthropic", "chatgpt_oauth")
+_VALID_LLM_PROVIDERS: tuple[str, ...] = ("anthropic", "openai", "chatgpt_oauth")
 
 
 def _truthy_env(val: str) -> bool:
@@ -107,7 +107,7 @@ def _apply_llm_provider_env_override(data: dict) -> None:
                 hint={
                     "env_var": "EVENT_INTEL_LLM_PROVIDER",
                     "allowed": list(_VALID_LLM_PROVIDERS),
-                    "fix": "Set EVENT_INTEL_LLM_PROVIDER to one of: anthropic, chatgpt_oauth",
+                    "fix": "Set EVENT_INTEL_LLM_PROVIDER to one of: anthropic, openai, chatgpt_oauth",
                 },
                 retryable=False,
             )

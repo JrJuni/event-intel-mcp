@@ -403,6 +403,19 @@ def test_env_llm_provider_explicit_wins_over_boolean(tmp_path, monkeypatch):
     assert data["llm"]["provider"] == "anthropic"
 
 
+def test_env_llm_provider_openai_is_accepted(tmp_path, monkeypatch):
+    """Y2.2a: 'openai' is a valid explicit provider (official key-based lane)."""
+    missing = tmp_path / "no_such.yaml"
+    monkeypatch.setenv("EVENT_INTEL_CONFIG", str(missing))
+    monkeypatch.setenv("EVENT_INTEL_LLM_PROVIDER", "openai")
+    monkeypatch.delenv("EVENT_INTEL_USE_CHATGPT_OAUTH", raising=False)
+
+    data = load_config()
+    assert data["llm"]["provider"] == "openai"
+    # Sibling llm keys from defaults survive the override
+    assert data["llm"]["openai_model"] == "gpt-4.1"
+
+
 def test_env_llm_provider_invalid_raises_config_error(tmp_path, monkeypatch):
     """An unknown provider in the explicit env var fails loud as CONFIG_ERROR."""
     missing = tmp_path / "no_such.yaml"
