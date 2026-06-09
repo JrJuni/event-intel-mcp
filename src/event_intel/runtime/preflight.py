@@ -318,7 +318,9 @@ def run_preflight(
     if llm_provider is None:
         llm_provider = _llm.make_llm_provider(config, model=config["llm"]["draft_cards_model"])
     if search_provider is None:
-        search_provider = _search.BraveSearchProvider()
+        # Factory selects the backend from search.provider (default brave). An
+        # invalid/unavailable provider raises CONFIG_ERROR here (zero-config plan).
+        search_provider = _search.make_search_provider(config)
 
     start = time.monotonic()
     checks: dict[str, dict] = {}
@@ -367,31 +369,47 @@ def run_preflight(
         )
     checks["llm_api"] = llm_status
 
-    # 4. Brave key. remaining_quota may be None when Brave omits the header (R3-#4).
-    brave_status = search_provider.ping()
-    if brave_status.get("status") == "missing_key":
+    # 4. Search backend. Provider-aware (zero-config plan): brave→key required;
+    # ddgs→best_effort (keyless, no live ping); searxng→config required. Only the
+    # selected provider reaches here (factory builds it above). remaining_quota may
+    # be None when Brave omits the header (R3-#4).
+    search_provider_name = (config or {}).get("search", {}).get("provider", "brave")
+    search_status = search_provider.ping()
+    if search_status.get("status") in {"missing_key", "missing_config"}:
         raise MCPError(
             error_code=ErrorCode.CONFIG_ERROR,
             stage=Stage.PREFLIGHT,
-            message="BRAVE_API_KEY missing",
+            message=search_status.get(
+                "message", f"search provider '{search_provider_name}' is not configured"
+            ),
             hint={
-                "fix": "Set BRAVE_API_KEY in .env (see .env.example)",
-                "detail": brave_status,
+                "fix": search_status.get(
+                    "fix", "Set BRAVE_API_KEY in .env (see .env.example)"
+                ),
+                "provider": search_provider_name,
+                "detail": search_status,
             },
             retryable=False,
         )
-    if brave_status.get("status") not in {"ok", "missing_key"}:
+    if search_status.get("status") not in {"ok", "best_effort"}:
         # ping() returned error — surface as UPSTREAM_ERROR; quota null still ok.
         raise MCPError(
             error_code=ErrorCode.UPSTREAM_ERROR,
             stage=Stage.PREFLIGHT,
-            message=f"Brave search ping failed: {brave_status.get('error', 'unknown')}",
-            hint={"detail": brave_status},
+            message=f"search provider '{search_provider_name}' ping failed: "
+            f"{search_status.get('error', 'unknown')}",
+            hint={"provider": search_provider_name, "detail": search_status},
             retryable=True,
         )
+    # Back-compat check key (renamed provider-neutral in a later slice) + provider.
     checks["brave_api"] = {
-        "status": "ok",
-        "remaining_quota": brave_status.get("remaining_quota"),
+        "status": search_status.get("status", "ok"),
+        "remaining_quota": search_status.get("remaining_quota"),
+    }
+    checks["search"] = {
+        "provider": search_provider_name,
+        "status": search_status.get("status", "ok"),
+        "remaining_quota": search_status.get("remaining_quota"),
     }
 
     # 5. Product context collection (R3-#1)

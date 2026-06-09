@@ -220,7 +220,8 @@ def test_preflight_missing_brave_key_returns_config_error(all_ready, minimal_con
     with pytest.raises(MCPError) as exc:
         run_preflight("default", config=minimal_config, **all_ready)
     assert exc.value.error_code == ErrorCode.CONFIG_ERROR
-    assert "BRAVE_API_KEY" in exc.value.message
+    # message is now provider-neutral; the brave key hint lives in the fix.
+    assert "BRAVE_API_KEY" in str(exc.value.hint)
 
 
 # ---------- R3-#1: product context lifecycle ----------

@@ -92,6 +92,40 @@ def _setup_status_block() -> dict:
     return out
 
 
+def _search_status_block() -> dict:
+    """Active search backend + a cheap config-level status (zero-config plan).
+
+    Derived from config + key/url presence only — NO live query — so it never
+    rate-limits the keyless backends. Shown on every envelope so the user sees
+    which engine is in use and whether it's configured. ddgs is surfaced as
+    ``best_effort`` (keyless, unofficial, rate-limited), never overstated as ok.
+    """
+    try:
+        config = _preflight.load_config()
+    except Exception:  # noqa: BLE001 — best-effort; default to brave
+        config = None
+    search_cfg = (config or {}).get("search") or {}
+    provider = search_cfg.get("provider", "brave")
+    out: dict = {"provider": provider, "warnings": []}
+    if provider == "brave":
+        has_key = bool(os.environ.get("BRAVE_API_KEY"))
+        out["status"] = "ok" if has_key else "missing_key"
+        if not has_key:
+            out["warnings"].append("BRAVE_API_KEY not set (provider=brave)")
+    elif provider == "ddgs":
+        out["status"] = "best_effort"
+        out["warnings"].append("ddgs is keyless best-effort (unofficial, rate-limited)")
+    elif provider == "searxng":
+        url = search_cfg.get("searxng_url") or ""
+        out["status"] = "ok" if url else "missing_config"
+        if not url:
+            out["warnings"].append("search.searxng_url not set (provider=searxng)")
+    else:
+        out["status"] = "invalid"
+        out["warnings"].append(f"invalid search.provider: {provider!r}")
+    return out
+
+
 def check_runtime(
     workspace_id: str = "default",
     warm_up: bool = False,
@@ -113,6 +147,7 @@ def check_runtime(
     """
     paths_block = _resolve_paths_block(workspace_id)
     setup_block = _setup_status_block()
+    search_block = _search_status_block()
     try:
         result = _preflight.run_preflight(
             workspace_id,
@@ -123,9 +158,11 @@ def check_runtime(
         if isinstance(result, dict):
             result.setdefault("paths", paths_block)
             result.setdefault("setup", setup_block)
+            result.setdefault("search", search_block)
         return result
     except Exception as exc:
         envelope = envelope_from_exception(exc, stage=Stage.PREFLIGHT)
         envelope["paths"] = paths_block
         envelope["setup"] = setup_block
+        envelope["search"] = search_block
         return envelope
