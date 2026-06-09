@@ -130,6 +130,7 @@ def test_runtime_paths_module_is_cold(fresh_sys_modules):
     importlib.import_module("event_intel.tools.prepare_models")  # #14 P1.1 tool
     importlib.import_module("event_intel.tools.login_chatgpt")  # #14 P1.2 tool
     importlib.import_module("event_intel.runtime.transport")  # Y2.2c (stdlib + mcp lazy)
+    importlib.import_module("event_intel.runtime.tool_policy")  # Y2.2d-1 (stdlib)
 
     leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
     assert not leaked, f"runtime.paths leaked heavy ML imports: {leaked}"

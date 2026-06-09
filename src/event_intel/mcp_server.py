@@ -349,6 +349,15 @@ def main() -> None:
     cfg = _transport.resolve_transport_config()
     if cfg.is_http:
         _transport.apply_to_app(app, cfg)
+        # Remote surface is default-deny: withhold setup/host-bound tools (Y2.2d-1).
+        from event_intel.runtime import tool_policy as _tool_policy
+
+        withheld = _tool_policy.apply_remote_tool_policy(app)
+        if withheld:
+            sys.stderr.write(
+                "event-intel: remote surface — withholding host-bound tools: "
+                f"{', '.join(withheld)}\n"
+            )
         if cfg.binds_non_loopback:
             sys.stderr.write(
                 "event-intel: WARNING — streamable-http bound to non-loopback host "
