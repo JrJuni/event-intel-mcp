@@ -76,28 +76,44 @@ def draft_capability_cards(
 
 
 @app.tool()
-def validate_capability_cards(cards_path: str) -> dict:
-    """Validate a hand-edited capability_cards.yaml against schema v1 (S2)."""
+def validate_capability_cards(
+    cards_path: str = "",
+    cards_content: str | None = None,
+    cards_artifact_id: str | None = None,
+    workspace_id: str = "default",
+) -> dict:
+    """Validate capability_cards.yaml against schema v1 (S2). Provide exactly one
+    of cards_path (server-local) / cards_content (inline) / cards_artifact_id
+    (uploaded via put_artifact) — Y2.1b remote I/O contract.
+    """
     from event_intel.tools.validate_capability_cards import (
         validate_capability_cards as _impl,
     )
 
-    return _impl(cards_path=cards_path)
+    return _impl(
+        cards_path=cards_path,
+        cards_content=cards_content,
+        cards_artifact_id=cards_artifact_id,
+        workspace_id=workspace_id,
+    )
 
 
 @app.tool()
 def ingest_product_context(
     workspace_id: str = "default",
     cards_path: str = "",
+    cards_content: str | None = None,
+    cards_artifact_id: str | None = None,
     extra_source_paths: list[str] | None = None,
     sync_sources: bool = False,
     force_source_sync: bool = False,
 ) -> dict:
     """Ingest validated capability cards into the Product Context mini-RAG (S2).
 
-    Set sync_sources=true to also index the workspace source library into
-    product_sources_{workspace_id} first (WSL W4); a partial source sync aborts
-    before the card collection is touched.
+    Provide exactly one of cards_path / cards_content / cards_artifact_id (Y2.1b
+    remote I/O). Set sync_sources=true to also index the workspace source library
+    into product_sources_{workspace_id} first (WSL W4); a partial source sync
+    aborts before the card collection is touched.
     """
     from event_intel.tools.ingest_capability_cards import (
         ingest_product_context as _impl,
@@ -106,6 +122,8 @@ def ingest_product_context(
     return _impl(
         workspace_id=workspace_id,
         cards_path=cards_path,
+        cards_content=cards_content,
+        cards_artifact_id=cards_artifact_id,
         extra_source_paths=extra_source_paths,
         sync_sources=sync_sources,
         force_source_sync=force_source_sync,
