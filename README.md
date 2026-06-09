@@ -176,7 +176,7 @@ The repo ships a Claude Desktop extension bundle, so you install through a UI fo
 2. Claude Desktop → **Settings → Extensions** → drag the `.mcpb` onto the pane (or "Install from file").
 3. Fill the form — most fields are pre-filled or optional:
    - **Python interpreter path** — pre-filled with `${HOME}/miniconda3/envs/event-intel/python.exe`; just confirm or adjust. (Must be an interpreter that ran `pip install -e .`; the editable install means no repo path / `PYTHONPATH` is needed.)
-   - **Brave Search API key** — optional; leave blank to use `BRAVE_API_KEY` from the repo's `.env`.
+   - **Brave Search API key** — optional; only used when `search.provider: brave`. The default search backend is `ddgs` (DuckDuckGo, keyless) so enrichment works with no key. Leave blank to use `BRAVE_API_KEY` from the repo's `.env`.
    - **Use ChatGPT Plus/Pro subscription** — check to use ChatGPT OAuth instead of an Anthropic key (then run `event-intel login-chatgpt` once in a terminal); leave unchecked for the Anthropic path.
    - **Anthropic API key** — optional; leave blank to use `ANTHROPIC_API_KEY` from `.env` (or if you checked the ChatGPT box).
    - **Preload model on start** — optional; see "Avoiding first-build latency" above.
@@ -257,8 +257,8 @@ Every tool that fails returns the same envelope shape:
 | `INVALID_INPUT` | A slug violated `^[a-zA-Z0-9_-]{1,64}$`, a required arg was empty, or the URL failed a safety check (private IP, non-http scheme, userinfo) | For slugs: use `hint.suggested_slug`. For URLs: check `hint.reason`. |
 | `MODEL_NOT_READY` | bge-m3 weights not cached locally | Run `event-intel models prepare` once (~1.3 GB download). |
 | `SCHEMA_ERROR` | `capability_cards.yaml` fails pydantic validation | Read `hint.errors[].path` (e.g. `capabilities[0].keywords` needs ≥3 entries). Re-edit yaml, re-run `event-intel validate`. |
-| `RATE_LIMITED` | Brave or Anthropic returned 429 | `retryable=true` — wait per `hint.retry_after` and re-run. |
-| `UPSTREAM_ERROR` | Anthropic / Brave / HTTP call failed for non-rate reasons (timeout, 5xx, DNS, malformed response) | `retryable=true` — re-run. If from a network fetch, the underlying error is in `hint`. |
+| `RATE_LIMITED` | The search backend or Anthropic returned 429 | `retryable=true` — wait per `hint.retry_after` and re-run. (The `ddgs` backend absorbs its own rate limits via throttle/backoff and degrades to empty + a `degraded` warning rather than this code.) |
+| `UPSTREAM_ERROR` | Anthropic / search backend / HTTP call failed for non-rate reasons (timeout, 5xx, DNS, malformed response) | `retryable=true` — re-run. If from a network fetch, the underlying error is in `hint`. |
 | `IO_ERROR` | Filesystem unwritable (Chroma persist dir, output dir) | Check `hint.path` and adjust permissions or `EVENT_INTEL_CHROMA_DIR` / `EVENT_INTEL_OUTPUT_DIR`. |
 | `INTERNAL` | Unexpected exception escaped a tool handler — bug | Capture the full envelope (`message` carries `TypeName: detail`) and file an issue. |
 | `PRODUCT_CONTEXT_MISSING` | `build_event_tier_list` found no chunks in `product_{workspace_id}` | Run `event-intel ingest --cards <path> --workspace <ws>` first. `hint.collection` names the missing collection. |
@@ -276,7 +276,7 @@ Every tool that fails returns the same envelope shape:
 | `acquisition` | URL safety, robots check, analyze/probe/acquire tools |
 | `preflight` | Slug validation, config, model-ready, product-context, API-key checks |
 | `extraction` | Source capture or LLM extraction |
-| `enrichment` | Brave search |
+| `enrichment` | web/news search (ddgs / searxng / brave) |
 | `scoring` | Weighted sum, tier decision, rationale |
 | `report` | Markdown/yaml render |
 | `ingest` | Capability cards lifecycle |

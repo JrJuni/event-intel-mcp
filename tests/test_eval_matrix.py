@@ -245,8 +245,8 @@ def test_pipeline_contract_enrichment_produces_evidence(tmp_path):
     cfg = {
         "enrichment": {
             "max_companies": 30,
-            "brave_count_web": 5,
-            "brave_count_news": 5,
+            "count_web": 5,
+            "count_news": 5,
             "news_days_back": 180,
             "cache_enabled": True,
             "official_url_levenshtein_threshold": 0.4,

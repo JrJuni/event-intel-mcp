@@ -210,6 +210,24 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 ## Blind Review 판정 누적
 
+### Zero-config 검색 provider plan 라운드 1 (Codex) — 2026-06-10
+
+리뷰 대상: `~/.claude/plans/zero-config-search-provider.md` v1 (Brave→플러그블 DDGS 기본, provider swap). 8건 전부 HEAD 대조 후 수용 → v2. **false claim 0.**
+
+| # | 카테고리 | 판정 | 사유(HEAD 대조) |
+|---|---|---|---|
+| 1 | corner-case | accepted | cache `_key`·`_config_fingerprint`·resume `input_fp` 전부 **provider 미포함** → Brave→DDGS 후 stale 재사용. v1의 "cache 키 그대로 OK" 주장이 틀림. cache_signature + version bump 5로 격리(S1) |
+| 2 | corner-case | accepted | `_search_with_cache`가 예외를 `MCPError(UPSTREAM_ERROR)` raise(fail-fast, enrichment.py:779). "graceful empty"는 정책변경 → **rate-limit 한정** + degraded run-warning 표면화(S2) |
+| 3 | corner-case | accepted | Brave `search_lang=en/ko`(search.py:62) vs DDGS region(us-en) → lang→region 매핑(S2) |
+| 4 | architecture | accepted | throttle provider-local이면 build마다 재생성·FastMCP worker thread서 무력 → module-level thread-safe limiter + fake-clock 테스트(S2) |
+| 5 | corner-case | accepted | SearXNG json 미활성 403/instance 편차 → ping missing_config(CONFIG_ERROR) + 관대 파싱(S3) |
+| 6 | corner-case | accepted | DDGS ping 무조건 ok 과장 → best_effort + check_runtime active provider 표면(S1/S2) |
+| 7 | convention | accepted | `brave_count_*` provider-coupled → `count_web/news` rename + legacy alias(S4) |
+| 8 | documentation | refined | check_runtime 표면=core(S1); `.mcpb` 셀렉터=기본 ddgs zero-config라 비차단 → backlog |
+
+**메타**: corner-case·architecture 발견 우수, **코드 file:line 정확 인용**(cache fingerprint·raise 정책·search_lang) = 근거 최상. nit 0. 핵심 가치: #1(cache/resume 무효화)·#2(graceful 정책)·#4(throttle 범위)는 우리가 놓친 진짜 corner-case.
+**판정**: 라운드 1 — 8건 accepted(7)/refined(1). v2 재합성(인라인 마커 + Changes 표). echo chamber 징후 없음, skeptic 미실행(라운드 1). 사용자가 라운드 2 대신 S1부터 자율 루프 선택 → S1~S4로 구현.
+
 ### Y2.0 아키텍처 게이트 초안 라운드 1 (ChatGPT/Codex) — 2026-06-09
 
 리뷰 대상: `~/.claude/plans/y2-architecture-gate.md` v0.1(원격 배포 결정 게이트, 코드 0줄). 사용자가 타깃을 "소규모 팀 + Anthropic API/OpenAI API/OpenAI OAuth"로 확장하며 리뷰 동반. 7건 전부 HEAD 대조 후 수용 → v0.2.

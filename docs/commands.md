@@ -148,6 +148,24 @@ not overwritten). Chroma/artifacts under `~/.event-intel` are NOT moved.
 
 ## Event tier list pipeline
 
+### Search backend (enrichment web/news)
+
+`build_event_tier_list` enrichment resolves the backend from `search.provider`
+(in `~/.event-intel/config.yaml`; default `ddgs`):
+
+| provider | key/infra | reliability | notes |
+|---|---|---|---|
+| `ddgs` (default) | none | best-effort | DuckDuckGo, keyless zero-config. Unofficial + rate-limited → throttle/backoff, degrades to empty + a `degraded` run warning. |
+| `searxng` | self-hosted instance (`search.searxng_url`) | medium | JSON API; the instance must have `formats: [json]` enabled (else 403 → CONFIG_ERROR). |
+| `brave` | `BRAVE_API_KEY` (free tier ~2k/mo) | good | hosted index + news vertical. |
+
+```bash
+# Manual live smoke (NON-CI — hits the live backend; ddgs is rate-limited):
+~/miniconda3/envs/event-intel/python.exe -c "from event_intel.providers.search import make_search_provider; \
+p=make_search_provider({}); print(p.cache_signature); \
+print([(r.title, r.url) for r in p.search('MongoDB', kind='news', count=3, days=30)])"
+```
+
 ```bash
 # From a saved HTML file (operator-assisted capture path — preferred)
 ~/miniconda3/envs/event-intel/python.exe -m event_intel.cli build-event \
@@ -311,6 +329,6 @@ $PY -m event_intel.cli benchmark label-stats --sheet …/refined.json
 ## Notes
 
 - All Chroma data lives at `~/.event-intel/chroma/{workspace_id}/`. Safe to delete and re-ingest.
-- Brave per-call cache at `outputs/{ws}/{event}/cache/brave/{hash}.json`. Delete cache to force re-search.
+- Per-call search cache at `~/.event-intel/cache/search/{ws}/{hash}.json` (provider-keyed — switching `search.provider` never reuses another backend's results). Delete cache to force re-search.
 - For environment setup gotchas (conda env, Windows path quoting, `[dev]` glob expansion), see `docs/lesson-learned.md`.
 - For phase-by-phase progress, see `docs/status.md`.

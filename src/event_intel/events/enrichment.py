@@ -89,8 +89,8 @@ def _config_fingerprint(enrichment_cfg: dict, *, provider_sig: str = "") -> str:
     relevant = {
         "provider": provider_sig,
         "max_companies": enrichment_cfg.get("max_companies"),
-        "brave_count_web": enrichment_cfg.get("brave_count_web"),
-        "brave_count_news": enrichment_cfg.get("brave_count_news"),
+        "count_web": enrichment_cfg.get("count_web", enrichment_cfg.get("brave_count_web")),
+        "count_news": enrichment_cfg.get("count_news", enrichment_cfg.get("brave_count_news")),
         "news_days_back": enrichment_cfg.get("news_days_back"),
         "official_url_levenshtein_threshold": enrichment_cfg.get(
             "official_url_levenshtein_threshold"
@@ -495,8 +495,11 @@ def enrich_exhibitors(
     try:
         enrichment_cfg = config["enrichment"]
         max_default = int(enrichment_cfg["max_companies"])
-        count_web = int(enrichment_cfg["brave_count_web"])
-        count_news = int(enrichment_cfg["brave_count_news"])
+        # Provider-neutral keys (R1#7); legacy brave_count_* still read for
+        # back-compat. .get(new, .get(old)) → None if neither → TypeError → the
+        # except below raises CONFIG_ERROR.
+        count_web = int(enrichment_cfg.get("count_web", enrichment_cfg.get("brave_count_web")))
+        count_news = int(enrichment_cfg.get("count_news", enrichment_cfg.get("brave_count_news")))
         news_days = int(enrichment_cfg["news_days_back"])
         cache_enabled = bool(enrichment_cfg.get("cache_enabled", True))
         url_threshold = float(enrichment_cfg["official_url_levenshtein_threshold"])
@@ -526,8 +529,8 @@ def enrich_exhibitors(
             stage=Stage.ENRICHMENT,
             message=f"missing or invalid enrichment config: {exc}",
             hint={"required": [
-                "enrichment.max_companies", "enrichment.brave_count_web",
-                "enrichment.brave_count_news", "enrichment.news_days_back",
+                "enrichment.max_companies", "enrichment.count_web",
+                "enrichment.count_news", "enrichment.news_days_back",
                 "enrichment.official_url_levenshtein_threshold",
             ]},
         ) from exc
@@ -548,6 +551,11 @@ def enrich_exhibitors(
     cap = max_companies or max_default
     capped = candidates[:cap]
     warnings: list[str] = []
+    if "brave_count_web" in enrichment_cfg or "brave_count_news" in enrichment_cfg:
+        warnings.append(
+            "config uses legacy enrichment.brave_count_* keys — rename to "
+            "count_web / count_news (provider-neutral)"
+        )
     if len(candidates) > cap:
         warnings.append(
             f"capped enrichment at {cap}/{len(candidates)} exhibitors "

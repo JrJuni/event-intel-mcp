@@ -47,7 +47,8 @@
                        │                  (factory: make_llm_provider(config))
                        ├ embedding.py  — bge-m3 (lazy)
                        ├ vectorstore.py— Chroma persistent (lazy)
-                       ├ search.py     — Brave Web/News
+                       ├ search.py     — Ddgs(default) | Searxng | Brave Web/News
+                       │                  (factory: make_search_provider(config))
                        └ fetch.py      — httpx + trafilatura
 ```
 
@@ -143,7 +144,7 @@ extraction (Sonnet, chunked, snippet-anchored, max 12 chunks/event)
    │ snippet ≥ 20 chars enforced. lang-specific name normalization (en / ko).
    ▼
 exhibitor_candidates.yaml  (raw)
-   │ enrichment (Brave web+news per exhibitor, cached, max 30 companies)
+   │ enrichment (web+news search per exhibitor via search.provider, cached, max 30 companies)
    │   ├ deterministic official URL rule (Levenshtein + keyword overlap)
    │   ├ news_snippets (180-day window)
    │   └ fetch body (top 3, 2000 chars cap)
@@ -189,7 +190,7 @@ No separate ML worker (unlike bd-coldcall-agent). The complexity wasn't justifie
       product_{workspace_id}/        # capability cards chunks
       event_{workspace_id}_{slug}/   # per-event evidence chunks
   cache/
-    search/{ws}/{sha1(query+kind+lang)}.json  # per-call Brave response cache
+    search/{ws}/{sha1(provider+query+kind+lang+count+days)}.json  # per-call search response cache (provider-keyed)
   artifacts/
     {workspace_id}/{event_slug}/     # acquisition ladder output
       source.html | source.json      # captured page or extracted/probed JSON roster
@@ -239,7 +240,7 @@ The envelope is snapshot-tested (`tests/test_mcp_error_taxonomy.py`) so callers 
 ## Configuration
 
 3-tier (deep-merged: user overrides defaults, both validated against required-key list):
-- **`.env`** — secrets only. `ANTHROPIC_API_KEY` (Anthropic path) or none (ChatGPT OAuth path) + `BRAVE_API_KEY`. Auto-loaded via `python-dotenv` at `cli.py` + `mcp_server.py` module top. Gitignored.
+- **`.env`** — secrets only. `ANTHROPIC_API_KEY` (Anthropic path) or none (ChatGPT OAuth path); `BRAVE_API_KEY` only when `search.provider: brave` (default `ddgs` is keyless). Auto-loaded via `python-dotenv` at `cli.py` + `mcp_server.py` module top. Gitignored.
 - **`config/defaults.yaml`** — shipped defaults (extraction caps, scoring weights, tier rules, model names, `llm.provider: anthropic`).
 - **`~/.event-intel/config.yaml`** (optional, active) — user overrides per workspace. Deep-merged over defaults. Most common use: `llm.provider: chatgpt_oauth` to swap to subscription-based OAuth path for zero-cost experimentation. See playbook #14.
 
