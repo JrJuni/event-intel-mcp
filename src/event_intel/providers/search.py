@@ -333,12 +333,124 @@ class DdgsSearchProvider(SearchProvider):
         return {"status": "best_effort", "provider": "ddgs", "remaining_quota": None}
 
 
+class SearxngSearchProvider(SearchProvider):
+    """Search via a self-hosted SearXNG instance's JSON API (keyless).
+
+    A reliability lane between brave (hosted, keyed) and ddgs (keyless, fragile).
+    Requires a reachable instance with the JSON output format enabled — when it is
+    NOT, SearXNG answers 403 / non-JSON; ping() surfaces that as a config problem
+    (blind review R1#5) so preflight fails with a clear fix rather than mid-build.
+    Parsing is tolerant of instance-to-instance field variance. httpx is lazy.
+    """
+
+    def __init__(self, *, base_url: str, timeout: float = 15.0) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+
+    @property
+    def cache_signature(self) -> str:
+        return "searxng/v1"
+
+    @staticmethod
+    def _time_range(days: int) -> str:
+        if days <= 1:
+            return "day"
+        if days <= 7:
+            return "week"
+        if days <= 31:
+            return "month"
+        return "year"
+
+    def _params(self, query: str, *, kind: str, days: int | None, lang: str) -> dict:
+        params: dict = {
+            "q": query,
+            "format": "json",
+            "categories": "news" if kind == "news" else "general",
+            "pageno": 1,
+        }
+        if lang:
+            params["language"] = lang
+        if days is not None:
+            params["time_range"] = self._time_range(days)
+        return params
+
+    def search(
+        self,
+        query: str,
+        *,
+        kind: Literal["web", "news"] = "web",
+        count: int = 10,
+        days: int | None = None,
+        lang: str = "en",
+    ) -> list[SearchResult]:
+        import httpx
+
+        params = self._params(query, kind=kind, days=days, lang=lang)
+        with httpx.Client(timeout=self.timeout) as client:
+            resp = client.get(f"{self.base_url}/search", params=params)
+        if resp.status_code == 403:
+            # JSON format disabled on the instance — a config issue, not transient.
+            raise RuntimeError(
+                "SearXNG returned 403 — enable the 'json' output format on the instance"
+            )
+        resp.raise_for_status()
+        try:
+            data = resp.json()
+        except Exception as exc:  # noqa: BLE001 — non-JSON => format not enabled
+            raise RuntimeError(
+                "SearXNG returned non-JSON — is the 'json' output format enabled?"
+            ) from exc
+        results = (data.get("results") or [])[:count]
+        return [self._to_result(item) for item in results]
+
+    @staticmethod
+    def _to_result(item: dict) -> SearchResult:
+        from event_intel.timeutil import parse_iso_utc
+
+        pub = item.get("publishedDate")
+        return SearchResult(
+            title=item.get("title", "") or "",
+            url=item.get("url", "") or "",
+            snippet=item.get("content", "") or "",
+            source=item.get("engine") or None,
+            published_at=parse_iso_utc(pub) if isinstance(pub, str) else None,
+            extra={k: v for k, v in item.items() if k not in {"title", "url"}},
+        )
+
+    def ping(self) -> dict:
+        if not self.base_url:
+            return {
+                "status": "missing_config",
+                "message": "search.searxng_url is not set",
+                "fix": "Set search.searxng_url to your SearXNG instance URL",
+            }
+        try:
+            import httpx
+
+            with httpx.Client(timeout=5.0) as client:
+                resp = client.get(
+                    f"{self.base_url}/search",
+                    params={"q": "ping", "format": "json", "pageno": 1},
+                )
+            if resp.status_code == 403:
+                return {
+                    "status": "missing_config",
+                    "message": "SearXNG json format not enabled (403)",
+                    "fix": "Enable `formats: [json]` in the SearXNG settings.yml",
+                }
+            resp.raise_for_status()
+            resp.json()  # confirm JSON
+            return {"status": "ok", "remaining_quota": None}
+        except Exception as e:  # noqa: BLE001
+            return {"status": "error", "remaining_quota": None, "error": str(e)}
+
+
 def make_search_provider(config: dict) -> SearchProvider:
     """Factory: select the search backend from ``search.provider`` (default ddgs).
 
     Mirrors ``providers.llm.make_llm_provider``. ddgs is the zero-config default
-    (keyless); brave and searxng are opt-in. searxng lands in a later slice and is
-    rejected with a clear CONFIG_ERROR for now. Invalid names also fail loud.
+    (keyless); brave (keyed) and searxng (self-hosted, requires searxng_url) are
+    opt-in. Invalid names / missing required config fail loud with CONFIG_ERROR.
     """
     search_cfg = (config or {}).get("search", {}) or {}
     provider = search_cfg.get("provider", "ddgs")
@@ -350,16 +462,16 @@ def make_search_provider(config: dict) -> SearchProvider:
     if provider == "brave":
         return BraveSearchProvider()
     if provider == "searxng":
-        raise MCPError(
-            error_code=ErrorCode.CONFIG_ERROR,
-            stage=Stage.PREFLIGHT,
-            message="search provider 'searxng' is not available yet",
-            hint={
-                "fix": "Use search.provider: ddgs (default) or brave (searxng lands in a later slice)",
-                "valid": list(_VALID_SEARCH_PROVIDERS),
-            },
-            retryable=False,
-        )
+        url = search_cfg.get("searxng_url") or ""
+        if not url:
+            raise MCPError(
+                error_code=ErrorCode.CONFIG_ERROR,
+                stage=Stage.PREFLIGHT,
+                message="search.searxng_url is required when provider=searxng",
+                hint={"fix": "Set search.searxng_url to your SearXNG instance URL"},
+                retryable=False,
+            )
+        return SearxngSearchProvider(base_url=url)
     raise MCPError(
         error_code=ErrorCode.CONFIG_ERROR,
         stage=Stage.PREFLIGHT,

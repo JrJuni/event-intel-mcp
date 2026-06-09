@@ -35,11 +35,19 @@ def test_factory_explicit_ddgs_threads_throttle_config():
     assert p.min_interval_ms == 500 and p.max_retries == 7
 
 
-def test_factory_searxng_still_unavailable():
+def test_factory_searxng_requires_url():
     with pytest.raises(MCPError) as exc:
-        S.make_search_provider({"search": {"provider": "searxng"}})
+        S.make_search_provider({"search": {"provider": "searxng"}})  # no url
     assert exc.value.error_code == ErrorCode.CONFIG_ERROR
-    assert "not available yet" in exc.value.message
+    assert "searxng_url" in exc.value.message
+
+
+def test_factory_searxng_with_url():
+    p = S.make_search_provider(
+        {"search": {"provider": "searxng", "searxng_url": "http://localhost:8888"}}
+    )
+    assert isinstance(p, S.SearxngSearchProvider)
+    assert p.base_url == "http://localhost:8888"
 
 
 def test_factory_invalid_provider_raises_with_allowed_list():
