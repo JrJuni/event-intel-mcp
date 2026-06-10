@@ -553,6 +553,45 @@ def benchmark_smoke_batch_cmd(
     _print_json(summary)
 
 
+@benchmark_app.command("critique-brief")
+def benchmark_critique_brief_cmd(
+    tier_list: str = typer.Option(..., "--tier-list", help="Collected tier_list.yaml."),
+    card: str = typer.Option(..., "--card", help="capability_cards.yaml for the product rubric header."),
+    pair: str = typer.Option(..., "--pair"),
+    lang: str = typer.Option("en", "--lang"),
+    out_packet: str = typer.Option(..., "--out-packet", help="Write the critique packet JSON here."),
+    out_brief: str = typer.Option(..., "--out-brief", help="Write the host-ready panel brief here."),
+) -> None:
+    """Build a critique packet from a tier list + render the host panel brief
+    (BD critique harness S3). The HOST (Claude) reads the brief, applies the
+    multi-lens panel, and emits critique JSON for `benchmark critique-stats` (S4).
+    """
+    import json as _json
+    from pathlib import Path
+
+    import yaml as _yaml
+
+    from event_intel.eval import critique_packet as _cp
+    from event_intel.eval import critique_panel as _panel
+    from event_intel.eval import labeling as _labeling
+
+    tl = _yaml.safe_load(Path(tier_list).read_text(encoding="utf-8")) or {}
+    card_data = _yaml.safe_load(Path(card).read_text(encoding="utf-8")) or {}
+    header = _labeling.product_header_from_card(card_data, lang=lang)
+    packet = _cp.build_critique_packet(pair=pair, tier_list=tl, product_header=header)
+    brief = _panel.render_critique_brief(packet, lang=lang)
+    Path(out_packet).parent.mkdir(parents=True, exist_ok=True)
+    Path(out_packet).write_text(
+        _json.dumps(packet, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    Path(out_brief).parent.mkdir(parents=True, exist_ok=True)
+    Path(out_brief).write_text(brief, encoding="utf-8")
+    _print_json({
+        "ok": True, "pair": pair, "packet_sha": packet["packet_sha"],
+        "picks": len(packet["picks"]), "packet": out_packet, "brief": out_brief,
+    })
+
+
 @benchmark_app.command("company-packet")
 def benchmark_company_packet_cmd(
     pair: str = typer.Option(..., "--pair"),
