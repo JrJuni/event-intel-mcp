@@ -54,6 +54,46 @@ def test_empty_tier_list_yields_no_picks():
     assert pkt["picks"] == []
 
 
+def test_default_picks_marked_selected_for_tier():
+    pkt = build_critique_packet(pair="p1", tier_list=_TIER_LIST, product_header="H")
+    assert all(p["selected_for"] == ["tier"] for p in pkt["picks"])
+
+
+def test_top_n_includes_high_scoring_non_sa_picks():
+    # top-3 by score = Acme(8.1,S), Beta(6.4,A), Gamma(4.0,B). Gamma(B) only via score.
+    pkt = build_critique_packet(
+        pair="p1", tier_list=_TIER_LIST, product_header="H", top_n_by_score=3
+    )
+    names = [p["name"] for p in pkt["picks"]]
+    assert names == ["Acme", "Beta", "Gamma"]  # sorted by score desc
+    gamma = next(p for p in pkt["picks"] if p["name"] == "Gamma")
+    assert gamma["tier"] == "B" and gamma["selected_for"] == ["top_score"]
+
+
+def test_pick_in_both_tier_and_top_n_marks_both():
+    pkt = build_critique_packet(
+        pair="p1", tier_list=_TIER_LIST, product_header="H", top_n_by_score=2
+    )
+    acme = next(p for p in pkt["picks"] if p["name"] == "Acme")
+    assert acme["selected_for"] == ["tier", "top_score"]
+
+
+def test_picks_sorted_by_score_desc():
+    pkt = build_critique_packet(
+        pair="p1", tier_list=_TIER_LIST, product_header="H",
+        include_tiers=("S", "A", "B", "C"),
+    )
+    scores = [p["final_score"] for p in pkt["picks"]]
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_include_tiers_override():
+    pkt = build_critique_packet(
+        pair="p1", tier_list=_TIER_LIST, product_header="H", include_tiers=("B",)
+    )
+    assert [p["name"] for p in pkt["picks"]] == ["Gamma"]
+
+
 # ---------- parse_critique ----------
 
 

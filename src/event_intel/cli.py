@@ -559,6 +559,8 @@ def benchmark_critique_brief_cmd(
     card: str = typer.Option(..., "--card", help="capability_cards.yaml for the product rubric header."),
     pair: str = typer.Option(..., "--pair"),
     lang: str = typer.Option("en", "--lang"),
+    include_tiers: str = typer.Option("S,A", "--include-tiers", help="Comma tiers to always critique."),
+    top_n: int = typer.Option(0, "--top-n", help="Also critique the N highest-scoring picks of ANY tier (catches high-scoring false positives buried below S/A)."),
     out_packet: str = typer.Option(..., "--out-packet", help="Write the critique packet JSON here."),
     out_brief: str = typer.Option(..., "--out-brief", help="Write the host-ready panel brief here."),
 ) -> None:
@@ -578,7 +580,11 @@ def benchmark_critique_brief_cmd(
     tl = _yaml.safe_load(Path(tier_list).read_text(encoding="utf-8")) or {}
     card_data = _yaml.safe_load(Path(card).read_text(encoding="utf-8")) or {}
     header = _labeling.product_header_from_card(card_data, lang=lang)
-    packet = _cp.build_critique_packet(pair=pair, tier_list=tl, product_header=header)
+    tiers = tuple(t.strip() for t in include_tiers.split(",") if t.strip())
+    packet = _cp.build_critique_packet(
+        pair=pair, tier_list=tl, product_header=header,
+        include_tiers=tiers, top_n_by_score=top_n,
+    )
     brief = _panel.render_critique_brief(packet, lang=lang)
     Path(out_packet).parent.mkdir(parents=True, exist_ok=True)
     Path(out_packet).write_text(

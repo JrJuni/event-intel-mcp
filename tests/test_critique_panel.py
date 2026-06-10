@@ -97,6 +97,31 @@ def test_cli_critique_brief_smoke(tmp_path):
     assert packet["packet_sha"] in out_brief.read_text(encoding="utf-8")
 
 
+def test_cli_critique_brief_top_n_pulls_non_sa_pick(tmp_path):
+    tl = tmp_path / "tier_list.yaml"
+    tl.write_text(yaml.safe_dump({"exhibitors": [
+        {"name": "Acme", "tier": "S", "final_score": 8.0},
+        {"name": "Ramp", "tier": "B", "final_score": 6.0},  # high-scoring non-S/A
+        {"name": "Zeta", "tier": "C", "final_score": 1.0},
+    ]}), encoding="utf-8")
+    card = tmp_path / "card.yaml"
+    card.write_text(yaml.safe_dump({"product_name": "P", "one_liner": "x"}), encoding="utf-8")
+    out_packet = tmp_path / "packet.json"
+    out_brief = tmp_path / "brief.md"
+
+    res = runner.invoke(app, [
+        "benchmark", "critique-brief", "--tier-list", str(tl), "--card", str(card),
+        "--pair", "p1", "--top-n", "2",
+        "--out-packet", str(out_packet), "--out-brief", str(out_brief),
+    ])
+    assert res.exit_code == 0, res.output
+    packet = json.loads(out_packet.read_text(encoding="utf-8"))
+    names = [p["name"] for p in packet["picks"]]
+    assert names == ["Acme", "Ramp"]  # S + top-2 by score; Zeta excluded
+    ramp = next(p for p in packet["picks"] if p["name"] == "Ramp")
+    assert ramp["selected_for"] == ["top_score"]
+
+
 def test_cli_brief_then_parse_round_trip(tmp_path):
     """A critique that echoes the CLI-built packet_sha validates against S2."""
     from event_intel.eval.critique_packet import parse_critique

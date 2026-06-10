@@ -338,9 +338,11 @@ engine↔judge disagreements for a human to spot-check.
 # pairs.yaml: pairs:[{pair, workspace, event_name, event_slug, source_kind, source_ref, lang}]
 
 # 2. Per pair: build a critique packet + host panel brief from a collected tier list
+#    --top-n N also critiques the N highest-scoring picks of ANY tier (catches
+#    high-scoring false positives — bad_fit/competitor — buried just below S/A).
 ~/miniconda3/envs/event-intel/python.exe -m event_intel.cli benchmark critique-brief \
     --tier-list benchmarks/smoke/<batch>/<pair>/tier_list.yaml \
-    --card outputs/<ws>/capability_cards.yaml --pair <pair> \
+    --card outputs/<ws>/capability_cards.yaml --pair <pair> --top-n 10 \
     --out-packet <pair>.packet.json --out-brief <pair>.brief.md
 
 # 3. The HOST (Claude) reads <pair>.brief.md, applies the multi-lens panel

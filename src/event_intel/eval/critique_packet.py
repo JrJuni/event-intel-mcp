@@ -31,35 +31,62 @@ def _packet_sha(packet: dict[str, Any]) -> str:
     return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
 
+def _pick_from_exhibitor(ex: dict[str, Any], selected_for: set[str]) -> dict[str, Any]:
+    return {
+        "name": ex.get("name", ""),
+        "tier": ex.get("tier"),
+        "final_score": ex.get("final_score"),
+        "capability_fit": ex.get("capability_fit"),
+        "rationale": ex.get("rationale"),
+        "evidence": [
+            {"type": e.get("type"), "url": e.get("url")}
+            for e in (ex.get("evidence") or [])
+        ],
+        "selected_for": sorted(selected_for),
+    }
+
+
 def build_critique_packet(
     *,
     pair: str,
     tier_list: dict[str, Any],
     product_header: str,
     lenses: tuple[str, ...] = EXPECTED_LENSES,
+    include_tiers: tuple[str, ...] = SA_TIERS,
+    top_n_by_score: int = 0,
 ) -> dict[str, Any]:
-    """Extract the S/A picks from a tier list into a critique packet.
+    """Select picks from a tier list into a critique packet.
 
-    Only S/A picks are included — those are the engine's confident recommendations
-    and the ones whose BD-defensibility a human most needs spot-checked.
+    By default only S/A picks (the engine's confident recommendations). Set
+    ``top_n_by_score`` to ALSO include the N highest-scoring picks regardless of
+    tier — this catches high-scoring false positives the engine buried just below
+    S/A (e.g. a bad_fit or competitor leaking into B), which a tier-only selection
+    would never surface to the judge. Each pick records ``selected_for`` (tier
+    and/or top_score). Picks are ordered by final_score desc (most actionable first).
     """
-    picks: list[dict[str, Any]] = []
-    for ex in tier_list.get("exhibitors", []) or []:
-        if ex.get("tier") not in SA_TIERS:
-            continue
-        picks.append(
-            {
-                "name": ex.get("name", ""),
-                "tier": ex.get("tier"),
-                "final_score": ex.get("final_score"),
-                "capability_fit": ex.get("capability_fit"),
-                "rationale": ex.get("rationale"),
-                "evidence": [
-                    {"type": e.get("type"), "url": e.get("url")}
-                    for e in (ex.get("evidence") or [])
-                ],
-            }
+    exhibitors = tier_list.get("exhibitors", []) or []
+    selected: dict[str, set[str]] = {}
+    chosen: list[dict[str, Any]] = []
+
+    def _mark(ex: dict[str, Any], why: str) -> None:
+        name = ex.get("name", "")
+        if name not in selected:
+            selected[name] = set()
+            chosen.append(ex)
+        selected[name].add(why)
+
+    for ex in exhibitors:
+        if ex.get("tier") in include_tiers:
+            _mark(ex, "tier")
+    if top_n_by_score > 0:
+        ranked = sorted(
+            exhibitors, key=lambda e: (e.get("final_score") or 0), reverse=True
         )
+        for ex in ranked[:top_n_by_score]:
+            _mark(ex, "top_score")
+
+    picks = [_pick_from_exhibitor(ex, selected[ex.get("name", "")]) for ex in chosen]
+    picks.sort(key=lambda p: (-(p["final_score"] or 0), p["name"]))  # deterministic
     packet = {
         "schema_version": PACKET_SCHEMA_VERSION,
         "pair": pair,
