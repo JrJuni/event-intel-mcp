@@ -514,6 +514,45 @@ def benchmark_run_cmd(
     _print_json({"ok": True, "run_dir": str(run_dir), "run_id": payload["run_id"]})
 
 
+@benchmark_app.command("smoke-batch")
+def benchmark_smoke_batch_cmd(
+    spec: str = typer.Option(
+        ..., "--spec",
+        help="YAML: pairs:[{pair, workspace, event_name, event_slug, source_kind, source_ref, lang, target_mode}].",
+    ),
+    out_root: str = typer.Option("benchmarks/smoke", "--out-root"),
+    batch_id: str | None = typer.Option(None, "--batch-id", help="Defaults to smoke-<timestamp>."),
+    no_enrich: bool = typer.Option(False, "--no-enrich"),
+    no_rationale: bool = typer.Option(False, "--no-rationale"),
+) -> None:
+    """Run many product×event pairs through the engine and collect each tier list
+    + run summary into one batch dir (BD critique harness, silver diagnostics).
+    Partial failures are isolated. NO scoring logic — orthogonal diagnostic lane.
+    """
+    import time
+
+    from event_intel.errors import MCPError
+    from event_intel.eval import smoke_batch as _sb
+    from event_intel.tools.build_event_tier_list import build_event_tier_list
+
+    def _build_fn(s: _sb.PairSpec) -> dict:
+        return build_event_tier_list(
+            workspace_id=s.workspace, event_name=s.event_name, event_slug=s.event_slug,
+            source_kind=s.source_kind, source_ref=s.source_ref, lang=s.lang,
+            enrichment_enabled=not no_enrich, run_rationale=not no_rationale,
+            target_mode=s.target_mode,
+        )
+
+    try:
+        specs = _sb.load_pair_specs(spec)
+    except MCPError as exc:
+        _print_json(exc.to_envelope())
+        raise typer.Exit(code=1) from exc
+    bid = batch_id or time.strftime("smoke-%Y%m%d-%H%M%S")
+    summary = _sb.run_smoke_batch(specs, build_fn=_build_fn, out_root=out_root, batch_id=bid)
+    _print_json(summary)
+
+
 @benchmark_app.command("company-packet")
 def benchmark_company_packet_cmd(
     pair: str = typer.Option(..., "--pair"),
