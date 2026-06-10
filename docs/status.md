@@ -6,14 +6,22 @@
 
 ## 진행 중
 
-- **Zero-config 검색 provider — Brave → 플러그블(DDGS 기본) (진행 중, plan `~/.claude/plans/zero-config-search-provider.md` v2 — blind review R1 8건 전부 반영. S1~S3 머지 #65~#67, S4 진행)**
+- **BD Critique Harness — 호스트-판정 다중렌즈 진단 (진행 중, plan `~/.claude/plans/snoopy-weaving-robin.md` [CURRENT] — 사용자 요청 "BD 페르소나로 스모크 많이 내고 검증")**
+  - **계기.** 정확도가 독립 gold 대비 검증된 적 없음(진짜 빈틈), 정식 gold/holdout은 데이터 블로커로 보류. 그 사이 **"엔진이 BD적으로 말 되나"를 싸게·대량 진단**. **핵심 제약**: silver-grade DEV 자문(엔진↔판정자 불일치 = 사람 spot-check 후보), gold 인증 아님(순환성). scoring **무변경**(직교 레인). 사용자 결정: 다중렌즈 패널 / 티어리스트 직접 비평 / 호스트 Claude 판정(엔진=GPT-OAuth와 다른 벤더·무료·반자동). ddgs+OAuth로 **크레딧 0**.
+  - ✅ **S1** (#69) — `eval/smoke_batch.py` + `benchmark smoke-batch`: N pair 배치 빌드(부분실패 격리) → tier_list+run_summary 수집.
+  - ✅ **S2** (#70) — `eval/critique_packet.py`: tier_list → S/A 픽 비평 패킷(+packet_sha 결속) + 비평 JSON 스키마(dataclass 검증, blind-first+다중렌즈).
+  - ✅ **S3** (#71) — `prompts/{en,ko}/critique_panel.txt`(다중렌즈+independent-first+JSON 계약) + `eval/critique_panel.py`(brief 렌더) + `benchmark critique-brief`.
+  - ⏳ **S4** (진행) — `eval/critique_report.py` + `benchmark critique-stats`: 비평 집계 대시보드(pair별 defensibility + 사람 triage 후보, host_flag∪majority-lens-disagree∪judge-would-not-place). silver 명시.
+  - **결과(예정)**: 크레딧 0으로 N pair 스모크 → 호스트 다중렌즈 비평 → triage 대시보드. 점수 경로 불변. (`.mcpb` 인앱 비평 도구는 backlog.)
+
+- **Zero-config 검색 provider — Brave → 플러그블(DDGS 기본) ✅ 완료 (2026-06-10, plan `~/.claude/plans/zero-config-search-provider.md` v2 — blind review R1 8건 전부 반영. S1~S4 머지 #65~#68)**
   - **계기.** enrichment의 web/news 검색이 Brave API 키 필수라 비개발자 zero-config에 걸림돌. backlog #2(provider swap)로 **키리스 기본(DDGS)** + 플러그블(SearXNG·Brave 선택). **scoring/evidence floor 무변경** — 검색 소스만 교체. (사용자 결정: 플러그블 다중·DDGS 기본 / GitHub·Reddit 범위 밖.)
   - **설계.** Codex blind review R1(8건 전부 HEAD 대조 후 수용): cache/resume provider-aware(같은 query라도 백엔드 다르면 결과 다름) · graceful empty는 rate-limit 한정 + degraded 가시화 · DDGS lang→region 매핑 · throttle process-wide thread-safe · SearXNG json/403 · ping best_effort · provider-neutral config 키.
   - ✅ **S1** (#65) — `make_search_provider` 팩토리 + `search.provider` config + preflight provider-게이팅 + **[R1#1] cache/resume provider 무효화**(`cache_signature` + `ENRICH_CACHE_VERSION` 5) + **[R1#6] check_runtime search 블록**(active provider·status·warnings, live query 없음). 기본 brave 유지(무행동변경).
   - ✅ **S2** (#66) — `DdgsSearchProvider`(키리스, 기본 flip). lang→region · days→timelimit · **[R1#4] module-level thread-safe throttle** · **[R1#2] backoff→rate-limit 한정 graceful empty + degraded run-warning** · ping best_effort. `ddgs>=9.14,<10` 핀.
   - ✅ **S3** (#67) — `SearxngSearchProvider`(self-hosted JSON lane). **[R1#5] 403/비-JSON → ping missing_config(CONFIG_ERROR+fix)** · 관대한 파싱 · time_range 매핑.
-  - ⏳ **S4** (진행) — **[R1#7] config 키 rename**(`brave_count_*`→`count_web/news` + legacy alias+경고) · **[R1#1] Brave 마이그레이션 테스트**(키 있어도 explicit brave만) · 문서(provider 매트릭스·zero-config·live smoke) · close-out. (`.mcpb` provider 셀렉터는 backlog — 기본 ddgs가 zero-config라 비차단.)
-  - **결과(예정)**: 키 없이 enrichment 동작(ddgs 기본), rate-limit는 throttle/backoff/degraded로 흡수, 깨지면 config 한 줄로 SearXNG/Brave 폴백. 점수 불변.
+  - ✅ **S4** (#68) — **[R1#7] config 키 rename**(`brave_count_*`→`count_web/news` + legacy alias+경고) · **[R1#1] Brave 마이그레이션 테스트**(키 있어도 explicit brave만) · 문서(provider 매트릭스·zero-config·live smoke) · close-out. (`.mcpb` provider 셀렉터는 backlog — 기본 ddgs가 zero-config라 비차단.)
+  - **결과**: 키 없이 enrichment 동작(ddgs 기본), rate-limit는 throttle/backoff/degraded로 흡수, 깨지면 config 한 줄로 SearXNG/Brave 폴백. 점수 불변.
 
 - **Y2.2 — 원격 transport + 인증 + provider 확장 (✅ remote-ready 토대 완료 2026-06-10; OAuth 인증·운영강화는 실배포 시점 deferred. plan `~/.claude/plans/y2.2-remote-transport-auth.md`; 게이트 D1 small-team single-tenant·D2 Remote Claude Desktop·D5 provider 3-lane 확정)**
   - **계기.** Y2.1이 경로-비의존 I/O를 깔았고, Y2.2는 그 위에 원격 노출(Streamable HTTP)+표준 인증+provider 확장. **여기서부터 서버가 네트워크-도달 가능**(outward-facing). 두 갈래: provider(자율 루프 가능·로컬 검증) / transport·auth(spec-bound·outward).

@@ -219,6 +219,7 @@ def test_eval_modules_keep_module_top_cold(fresh_sys_modules):
     importlib.import_module("event_intel.eval.smoke_batch")  # BD critique harness S1
     importlib.import_module("event_intel.eval.critique_packet")  # BD critique harness S2
     importlib.import_module("event_intel.eval.critique_panel")  # BD critique harness S3
+    importlib.import_module("event_intel.eval.critique_report")  # BD critique harness S4
 
     leaked = [m for m in FORBIDDEN_HEAVY if m in sys.modules]
     assert not leaked, (
