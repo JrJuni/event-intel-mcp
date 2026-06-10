@@ -45,9 +45,11 @@ def render_critique_brief(packet: dict[str, Any], *, lang: str = "en") -> str:
         ev = "; ".join(
             f"{e.get('type')}:{e.get('url')}" for e in (p.get("evidence") or [])
         ) or "(none)"
+        sel = ", ".join(p.get("selected_for") or []) or "tier"
         lines += [
             f"{i}. {p.get('name', '')} — tier {p.get('tier')}, "
-            f"score {p.get('final_score')}, capability_fit {p.get('capability_fit')}",
+            f"score {p.get('final_score')}, capability_fit {p.get('capability_fit')} "
+            f"[selected: {sel}]",
             f"   rationale: {p.get('rationale') or '(none)'}",
             f"   evidence: {ev}",
         ]
