@@ -168,11 +168,24 @@ def _strip_html(html: str) -> str:
     return cleaned
 
 
+def _csv_value(v: object) -> str:
+    """Coerce a DictReader cell to a stripped string. A ragged row (more columns
+    than headers) collects the extras under the restkey as a LIST — join those
+    rather than crashing on .strip() (an unquoted comma in a field is common user
+    input). None (short rows / restval) → "".
+    """
+    if isinstance(v, list):
+        return " ".join(str(x) for x in v if x).strip()
+    return (v or "").strip()
+
+
 def _capture_csv(path: Path) -> SourceCapture:
     raw = _read_file(path)
     try:
-        reader = csv.DictReader(StringIO(raw))
-        rows = [{(k or "").strip(): (v or "").strip() for k, v in row.items()} for row in reader]
+        # restkey collects overflow from ragged rows under a named key (not None,
+        # whose value would be a list and break the strip); restval fills short rows.
+        reader = csv.DictReader(StringIO(raw), restkey="_overflow", restval="")
+        rows = [{(k or "").strip(): _csv_value(v) for k, v in row.items()} for row in reader]
     except csv.Error as exc:
         _raise_capture(
             f"failed to parse CSV {path}: {exc}",

@@ -68,6 +68,32 @@ def test_csv_file_capture_parses_rows(repo_root):
     assert "Mobius Labs" in cap.text
 
 
+def test_csv_ragged_row_does_not_crash(tmp_path):
+    """An unquoted comma in a field makes a row wider than the header — the extras
+    land under the restkey as a list. Must not crash (was AttributeError on .strip)."""
+    p = tmp_path / "ragged.csv"
+    p.write_text(
+        "company,description\nAcme,Builds X, Y, and Z products\nBeta,Normal desc\n",
+        encoding="utf-8",
+    )
+    cap = capture_source(source_kind="csv_file", source_ref=str(p))
+    assert cap.csv_rows is not None and len(cap.csv_rows) == 2
+    acme = cap.csv_rows[0]
+    assert acme["company"] == "Acme" and "Builds X" in acme["description"]
+    # overflow from the unquoted commas is folded, not lost or crashed.
+    assert "Y" in acme.get("_overflow", "") and "Z" in acme.get("_overflow", "")
+    assert "Acme" in cap.text
+
+
+def test_csv_short_row_fills_missing_with_empty(tmp_path):
+    """A row with fewer columns than the header fills missing cells with '' (restval)."""
+    p = tmp_path / "short.csv"
+    p.write_text("company,description\nAcme\n", encoding="utf-8")
+    cap = capture_source(source_kind="csv_file", source_ref=str(p))
+    assert cap.csv_rows[0]["company"] == "Acme"
+    assert cap.csv_rows[0]["description"] == ""
+
+
 def test_html_text_capture_works_inline():
     html = "<html><body><h2>Acme Co.</h2><p>We sell widgets to fortune 500s.</p></body></html>"
     cap = capture_source(source_kind="html_text", source_ref=html)
