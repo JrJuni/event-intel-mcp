@@ -324,6 +324,34 @@ $PY -m event_intel.cli benchmark label-stats --sheet …/refined.json
   (re-freeze won't restore it). The competitor holdout (MongoDB × AI Expo Tokyo)
   stays blind until its one-shot holdout run.
 
+### BD critique harness (silver DEV diagnostics — NOT a gate)
+
+Cheap, scaled "does the engine make BD sense" triage. The judge is the HOST
+(in-session Claude), so the loop is semi-automated. Credit-free with the
+defaults (ddgs search + ChatGPT OAuth). It NEVER touches scoring — it surfaces
+engine↔judge disagreements for a human to spot-check.
+
+```bash
+# 1. Batch smoke: run many product×event pairs, collect tier lists into one batch
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli benchmark smoke-batch \
+    --spec path/to/pairs.yaml --out-root benchmarks/smoke
+# pairs.yaml: pairs:[{pair, workspace, event_name, event_slug, source_kind, source_ref, lang}]
+
+# 2. Per pair: build a critique packet + host panel brief from a collected tier list
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli benchmark critique-brief \
+    --tier-list benchmarks/smoke/<batch>/<pair>/tier_list.yaml \
+    --card outputs/<ws>/capability_cards.yaml --pair <pair> \
+    --out-packet <pair>.packet.json --out-brief <pair>.brief.md
+
+# 3. The HOST (Claude) reads <pair>.brief.md, applies the multi-lens panel
+#    (independent-first), and writes <pair>.critique.json (echoing pair + packet_sha).
+
+# 4. Aggregate critiques → silver diagnostic dashboard (per-pair defensibility +
+#    human triage list)
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli benchmark critique-stats \
+    --critique p1.critique.json --critique p2.critique.json --out dashboard.json
+```
+
 ---
 
 ## Notes

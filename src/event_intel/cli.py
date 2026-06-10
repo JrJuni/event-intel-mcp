@@ -592,6 +592,37 @@ def benchmark_critique_brief_cmd(
     })
 
 
+@benchmark_app.command("critique-stats")
+def benchmark_critique_stats_cmd(
+    critique: list[str] = typer.Option(
+        ..., "--critique", help="Host critique JSON file(s); repeat --critique for many."
+    ),
+    out: str | None = typer.Option(None, "--out", help="Write the dashboard JSON here."),
+) -> None:
+    """Aggregate host critiques into a silver diagnostic dashboard (BD critique
+    harness S4): per-pair defensibility + the human triage list. Advisory only —
+    NOT a holdout/accuracy gate.
+    """
+    import json as _json
+    from pathlib import Path
+
+    from event_intel.errors import MCPError
+    from event_intel.eval import critique_report as _cr
+
+    crits = [_json.loads(Path(c).read_text(encoding="utf-8")) for c in critique]
+    try:
+        dashboard = _cr.aggregate_critiques(crits)
+    except MCPError as exc:
+        _print_json(exc.to_envelope())
+        raise typer.Exit(code=1) from exc
+    if out:
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
+        Path(out).write_text(
+            _json.dumps(dashboard, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    _print_json(dashboard)
+
+
 @benchmark_app.command("company-packet")
 def benchmark_company_packet_cmd(
     pair: str = typer.Option(..., "--pair"),
