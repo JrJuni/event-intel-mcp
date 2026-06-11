@@ -41,6 +41,7 @@ from event_intel.runtime import llm_ledger as _llm_ledger
 from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
 from event_intel.scoring import compute as _scoring
+from event_intel.scoring import llm_fit as _llm_fit
 from event_intel.sources import indexer as _src_indexer
 from event_intel.sources import retrieval as _src_retrieval
 from event_intel.storage import artifact_registry as _artifact_registry
@@ -276,6 +277,26 @@ def build_event_tier_list(
         else:
             fit_results = []
 
+        # 6b. LLM capability fit (Y1D D1) — the DEFAULT mode replaces the
+        #     dead-flat cosine value per company (target ≈ bad_fit ≈ 0.5
+        #     measured). Any per-company failure keeps that company's cosine
+        #     value; this stage never fails a build. Escape hatch:
+        #     scoring.capability_fit_mode: cosine.
+        llm_fit_warnings: list[str] = []
+        fit_mode = str(
+            config.get("scoring", {}).get("capability_fit_mode", "llm")
+        ).strip().lower()
+        if fit_mode not in ("llm", "cosine"):
+            llm_fit_warnings.append(
+                f"unknown scoring.capability_fit_mode {fit_mode!r} — using 'llm'"
+            )
+            fit_mode = "llm"
+        if fit_mode == "llm" and fit_results:
+            llm_fit_warnings += _llm_fit.apply_llm_capability_fit(
+                rows=enriched_rows, fit_results=fit_results,
+                llm_provider=extract_llm, lang=lang, ledger=usage_ledger,
+            )
+
         # 7. Scoring + tier decision + optional rationale (S4). cards +
         #    resolved_target_mode were loaded/validated early (step 2b).
         rationale_llm = None
@@ -497,7 +518,11 @@ def build_event_tier_list(
                     )
                     for r in summary.rows
                 ],
-                warnings=list(extraction.warnings) + list(enrich_result.warnings),
+                warnings=(
+                    list(extraction.warnings)
+                    + list(enrich_result.warnings)
+                    + llm_fit_warnings
+                ),
                 source_index_fingerprint=source_index_fp,
                 llm_usage=llm_usage_summary,
             )
@@ -525,6 +550,7 @@ def build_event_tier_list(
             "warnings": (
                 list(extraction.warnings)
                 + list(enrich_result.warnings)
+                + llm_fit_warnings
                 + ([cards_warning] if cards_warning else [])
             ),
             "tier_list_md_path": str(md_path),
