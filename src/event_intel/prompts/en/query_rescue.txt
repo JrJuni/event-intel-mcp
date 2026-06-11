@@ -1,0 +1,17 @@
+Web searches for a company returned NOTHING — most likely because the search
+backend was blocked/rate-limited or the listed name is a variant of the real
+one, NOT because the company doesn't exist (it is a confirmed exhibitor).
+
+Company name as listed: {name}
+What we know about it: {snippet}
+
+Propose up to {max_queries} ALTERNATE search queries that could find this
+company's official website or news coverage. Consider:
+- native-language or transliterated spellings of the name
+- legal-entity variants (Inc, GmbH, Co., Ltd., 株式会社, 주식회사)
+- the name combined with distinctive industry/product keywords from the
+  description above
+
+Rules:
+- each query must still identify THIS company (no generic industry queries)
+- reply with ONLY a JSON array of query strings, e.g. ["query one", "query two"]
