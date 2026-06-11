@@ -245,3 +245,43 @@ def test_last_call_degraded_false_by_default_and_after_genuine_results():
     assert p.last_call_degraded is False
     p.search("acme", kind="news")
     assert p.last_call_degraded is False
+
+
+# ---------- R1 failure-pattern events ----------
+
+
+def test_event_ok_first_try_and_drain_clears():
+    p = _provider()
+    p.search("acme", kind="web", lang="en")
+    events = p.drain_events()
+    assert len(events) == 1
+    e = events[0]
+    assert e["outcome"] == "ok" and e["attempts"] == 1 and e["exc_classes"] == []
+    assert e["provider"] == "ddgs" and e["backend"] == "auto"
+    assert e["kind"] == "web" and e["query"] == "acme"
+    assert "ts" in e and "elapsed_s" in e
+    assert p.drain_events() == []  # drained
+
+
+def test_event_recovered_records_attempts_and_exc_classes():
+    _FakeDDGS.text_raises = 2  # fail twice, succeed on the 3rd
+    p = _provider(max_retries=3)
+    p.search("acme", kind="web")
+    e = p.drain_events()[0]
+    assert e["outcome"] == "recovered" and e["attempts"] == 3
+    assert e["exc_classes"] == ["RatelimitException", "RatelimitException"]
+
+
+def test_event_degraded_then_no_results_sequence():
+    from ddgs.exceptions import DDGSException
+
+    p = _provider(max_retries=1)
+    _FakeDDGS.text_raises = 99
+    p.search("acme", kind="web")
+    _FakeDDGS.text_raises = 0
+    _FakeDDGS.error = DDGSException("No results found.")
+    p.search("acme2", kind="web")
+    events = p.drain_events()
+    assert [e["outcome"] for e in events] == ["degraded", "no_results"]
+    assert events[0]["attempts"] == 2  # initial + 1 retry, all failed
+    assert events[1]["attempts"] == 1

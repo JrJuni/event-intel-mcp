@@ -629,6 +629,41 @@ def benchmark_critique_stats_cmd(
     _print_json(dashboard)
 
 
+@benchmark_app.command("retry-stats")
+def benchmark_retry_stats_cmd(
+    diagnostics_dir: str | None = typer.Option(
+        None, "--diagnostics-dir",
+        help="Directory holding R1 failure JSONLs (default: ~/.event-intel/diagnostics).",
+    ),
+    out: str | None = typer.Option(None, "--out", help="Write the stats JSON here."),
+) -> None:
+    """Aggregate R1 failure-pattern events (search/fetch diagnostics) into the
+    retry-policy evidence table: recovery rate vs attempts, per exception class
+    / backend / kind. Silver diagnostics — the input R3 codifies the retry
+    policy from after the R2 smoke campaign (>= 10 zero-config runs).
+    """
+    import json as _json
+    from pathlib import Path
+
+    from event_intel.eval import retry_stats as _rs
+    from event_intel.runtime import paths as _paths
+
+    root = (
+        Path(diagnostics_dir).expanduser()
+        if diagnostics_dir
+        else _paths.resolve_paths().data_root / "diagnostics"
+    )
+    files = _rs.collect_event_files(root)
+    stats = _rs.aggregate(_rs.load_events(files), files_scanned=len(files))
+    stats["diagnostics_dir"] = str(root)
+    if out:
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
+        Path(out).write_text(
+            _json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    _print_json(stats)
+
+
 @benchmark_app.command("company-packet")
 def benchmark_company_packet_cmd(
     pair: str = typer.Option(..., "--pair"),

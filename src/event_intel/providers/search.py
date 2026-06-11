@@ -6,7 +6,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from event_intel.errors import ErrorCode, MCPError, Stage
@@ -262,6 +262,10 @@ class DdgsSearchProvider(SearchProvider):
         self.last_call_degraded = False
         # repr() of the last exception that exhausted retries (diagnostics, R1).
         self.last_error: str | None = None
+        # Failure-pattern events, one per live search() (R1). The enrichment
+        # layer drains these into the diagnostics JSONL via drain_events().
+        self.events: list[dict] = []
+        self._last_meta: dict = {}
 
     @property
     def degraded(self) -> bool:
@@ -312,24 +316,39 @@ class DdgsSearchProvider(SearchProvider):
     def _call_with_retry(self, fn: Callable[[], list]) -> list | None:
         """Throttle + classify + exponential backoff (N2). Returns fn()'s result,
         [] for a genuine no-results answer, or None when retries are exhausted
-        (caller degrades to empty + flags, R1#2/N1).
+        (caller degrades to empty + flags, R1#2/N1). Records attempt metadata in
+        ``self._last_meta`` for the R1 failure-pattern event.
         """
-        attempt = 0
+        excs: list[str] = []
         while True:
             _DDGS_RATE_LIMITER.wait(
                 self.min_interval_ms / 1000.0, clock=self._clock, sleep=self._sleep
             )
             try:
-                return fn()
+                result = fn()
             except Exception as exc:
                 if self._is_no_results(exc):
+                    self._last_meta = {
+                        "attempts": len(excs) + 1, "exc_classes": excs,
+                        "outcome": "no_results",
+                    }
                     return []
-                attempt += 1
-                if attempt > self.max_retries:
+                excs.append(type(exc).__name__)
+                if len(excs) > self.max_retries:
                     self._degraded_queries += 1
                     self.last_error = repr(exc)
+                    self._last_meta = {
+                        "attempts": len(excs), "exc_classes": excs,
+                        "outcome": "degraded",
+                    }
                     return None
-                self._sleep(min(2.0**attempt, 15.0))
+                self._sleep(min(2.0 ** len(excs), 15.0))
+            else:
+                self._last_meta = {
+                    "attempts": len(excs) + 1, "exc_classes": excs,
+                    "outcome": "recovered" if excs else "ok",
+                }
+                return result
 
     def search(
         self,
@@ -358,11 +377,29 @@ class DdgsSearchProvider(SearchProvider):
                 backend=self.backend,
             )
 
+        start = self._clock()
         raw = self._call_with_retry(_do)
+        self.events.append({
+            "ts": datetime.now(UTC).isoformat(),
+            "provider": "ddgs",
+            "backend": self.backend,
+            "kind": kind,
+            "lang": lang,
+            "query": query,
+            "elapsed_s": round(self._clock() - start, 3),
+            **self._last_meta,
+        })
         if raw is None:  # rate-limit graceful empty
             self.last_call_degraded = True
             return []
         return [self._to_result(item, kind) for item in raw]
+
+    def drain_events(self) -> list[dict]:
+        """Return + clear accumulated failure-pattern events (R1). The consumer
+        (enrichment) writes them to the diagnostics JSONL.
+        """
+        events, self.events = self.events, []
+        return events
 
     @staticmethod
     def _to_result(item: dict, kind: str) -> SearchResult:
