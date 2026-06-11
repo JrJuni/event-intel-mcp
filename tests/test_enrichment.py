@@ -257,19 +257,48 @@ def test_max_companies_cap_applies(tmp_path):
     assert any("capped" in w for w in result.warnings), result.warnings
 
 
-def test_upstream_search_failure_surfaces_as_upstream_error(tmp_path):
+def test_upstream_search_failure_degrades_row_not_stage(tmp_path):
+    """N2: a mid-run search exception no longer aborts enrichment — the query
+    degrades to empty, the row is flagged (re-enriches next run), and a run
+    warning surfaces the error."""
     cands = [ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)]
     search = _wire_fake_search()
     # Fail the EXACT web query the enricher will issue.
     search.fail_for.add('"Mobius Labs" official site')
+    result = enrich_exhibitors(
+        candidates=cands, workspace_id="t6", lang="en", config=_config(),
+        search_provider=search,
+        cache_dir=tmp_path / "cache", resume_path=tmp_path / "r.jsonl",
+    )
+    row = result.rows[0]
+    assert row.degraded is True
+    assert row.official_url is None
+    assert len(row.news_signals) == 2  # the healthy news query still ran
+    assert any("search error" in w for w in row.enrichment_warnings)
+    assert any("search errors" in w for w in result.warnings)
+
+
+def test_mcperror_from_provider_still_propagates(tmp_path):
+    """N2: MCPError (e.g. CONFIG_ERROR) stays fatal — only unexpected exceptions
+    degrade. Preflight ping() is the misconfig gate."""
+    cands = [ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)]
+
+    from event_intel.errors import Stage
+
+    class _ConfigBroken(FakeSearch):
+        def search(self, query, *, kind, count, days=None, lang="en"):
+            raise MCPError(
+                error_code=ErrorCode.CONFIG_ERROR, stage=Stage.ENRICHMENT,
+                message="bad search config",
+            )
+
     with pytest.raises(MCPError) as exc_info:
         enrich_exhibitors(
-            candidates=cands, workspace_id="t6", lang="en", config=_config(),
-            search_provider=search,
+            candidates=cands, workspace_id="t6b", lang="en", config=_config(),
+            search_provider=_ConfigBroken(),
             cache_dir=tmp_path / "cache", resume_path=tmp_path / "r.jsonl",
         )
-    assert exc_info.value.error_code == ErrorCode.UPSTREAM_ERROR
-    assert exc_info.value.retryable is True
+    assert exc_info.value.error_code == ErrorCode.CONFIG_ERROR
 
 
 def test_official_url_threshold_filters_low_score_hits(tmp_path):
@@ -702,8 +731,9 @@ def test_round_robin_cap_smaller_than_company_count():
 
 
 def test_resume_durable_when_later_company_fails(tmp_path):
-    """P2-2 keeps per-company resume.append immediate: a later company's API error
-    never loses an already-completed earlier company (review r2 #4)."""
+    """A later company's API error never loses an earlier row (review r2 #4).
+    N2 update: the failing company no longer aborts the stage — its row is
+    persisted too, flagged degraded so the next run retries it."""
     resume_path = tmp_path / "r.jsonl"
     search = FakeSearch()
     search.web_by_name["Mobius Labs"] = [
@@ -714,18 +744,17 @@ def test_resume_durable_when_later_company_fails(tmp_path):
         ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30),
         ExhibitorCandidate(name="NeuroDrive Inc.", source_snippet="y" * 30),
     ]
-    with pytest.raises(MCPError):
-        enrich_exhibitors(
-            candidates=cands, workspace_id="dur", lang="en", config=_config(),
-            search_provider=search, cache_dir=tmp_path / "c", resume_path=resume_path,
-        )
+    enrich_exhibitors(
+        candidates=cands, workspace_id="dur", lang="en", config=_config(),
+        search_provider=search, cache_dir=tmp_path / "c", resume_path=resume_path,
+    )
     lines = [
         json.loads(ln)
         for ln in resume_path.read_text(encoding="utf-8").splitlines() if ln.strip()
     ]
-    names = {r["name"] for r in lines}
-    assert "Mobius Labs" in names           # finished + durably persisted
-    assert "NeuroDrive Inc." not in names   # failed before append
+    by_name = {r["name"]: r for r in lines}
+    assert by_name["Mobius Labs"]["degraded"] is False      # healthy, reusable
+    assert by_name["NeuroDrive Inc."]["degraded"] is True   # persisted but retried next run
 
 
 # ---------- N1: degraded results must not stick (news plan) ----------

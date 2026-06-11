@@ -215,14 +215,27 @@ class BraveSearchProvider(SearchProvider):
 
 
 class DdgsSearchProvider(SearchProvider):
-    """Keyless zero-config search via the ``ddgs`` library (DuckDuckGo backends).
+    """Keyless zero-config search via the ``ddgs`` aggregator (multiple engines).
 
-    Unofficial / best-effort: DuckDuckGo rate-limits aggressively (~20-30 req/min),
-    so a process-wide throttle + exponential backoff guard every call. When the
-    rate limit persists past ``max_retries`` the query degrades to an EMPTY result
-    (recorded via ``degraded``) instead of raising — a build then lowers a
-    company's tier rather than aborting (blind review R1#2). Non-rate-limit errors
-    still propagate. ``ddgs`` is imported lazily (cold-start safe).
+    Unofficial / best-effort. ddgs raises for EVERYTHING — including a query
+    that simply has no results — so failures are classified (N2):
+      - ``DDGSException("No results found.")`` → genuine empty: returned as []
+        immediately, NOT degraded, cacheable.
+      - everything else (rate-limit, timeout, transport) → exponential backoff
+        up to ``max_retries``; past that the query degrades to an EMPTY result
+        (``degraded`` + per-call ``last_call_degraded`` + ``last_error``)
+        instead of raising — a build lowers a company's tier rather than
+        aborting (blind review R1#2 / news plan N2).
+    Note: ``ddgs.exceptions.RatelimitException`` is never raised by ddgs 9.14.x
+    (rate limits surface as generic DDGSException), hence the broad except.
+
+    ``backend`` maps to ddgs' engine selection ("auto" shuffles all engines per
+    call — news lane: duckduckgo/bing/yahoo; a comma-list pins specific ones).
+    A fresh DDGS() client per attempt means each retry re-shuffles engines, so
+    retrying IS backend rotation. Caveat: the "auto" text lane tries
+    wikipedia/grokipedia first (highest priority) which return little for
+    '"{name}" official site' queries — harmless, the aggregator continues.
+    ``ddgs`` is imported lazily (cold-start safe).
     """
 
     # Our lang contract (en/ko/ja/...) → ddgs region. Unknown → worldwide (wt-wt).
@@ -232,18 +245,23 @@ class DdgsSearchProvider(SearchProvider):
         self,
         *,
         min_interval_ms: int = 1100,
-        max_retries: int = 3,
+        max_retries: int = 5,
+        backend: str = "auto",
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.min_interval_ms = int(min_interval_ms)
+        # Provisional ceiling (N2) — to be finalized from R2 smoke failure data (R3).
         self.max_retries = int(max_retries)
+        self.backend = str(backend or "auto")
         self._clock = clock
         self._sleep = sleep
         self._degraded_queries = 0
         # Per-call flag (N1): True iff the LAST search() degraded to empty.
         # Valid only until the next search() on this instance.
         self.last_call_degraded = False
+        # repr() of the last exception that exhausted retries (diagnostics, R1).
+        self.last_error: str | None = None
 
     @property
     def degraded(self) -> bool:
@@ -263,7 +281,10 @@ class DdgsSearchProvider(SearchProvider):
             v = version("ddgs")
         except PackageNotFoundError:
             v = "unknown"
-        return f"ddgs/{v}/region1"
+        # A CONFIGURED backend deterministically changes the result space → part
+        # of the key. auto's per-call shuffle is nondeterministic by design; the
+        # cache stores "an acceptable answer for this query" (N2).
+        return f"ddgs/{v}/region1/b={self.backend}"
 
     @staticmethod
     def _timelimit(days: int) -> str:
@@ -278,13 +299,21 @@ class DdgsSearchProvider(SearchProvider):
     def _region(self, lang: str) -> str:
         return self._REGION.get((lang or "").lower(), "wt-wt")
 
-    def _call_with_retry(self, fn: Callable[[], list]) -> list | None:
-        """Throttle + exponential backoff on rate-limit. Returns fn()'s result, or
-        None when rate-limited past max_retries (caller degrades to empty, R1#2).
-        Non-rate-limit exceptions propagate (fail-fast preserved).
+    @staticmethod
+    def _is_no_results(exc: Exception) -> bool:
+        """A query that genuinely has no results — ddgs raises instead of
+        returning []. String-matches a ddgs-internal message; pyproject pins
+        ``ddgs<10`` and a literal-pin test fails loud if an upgrade changes it.
         """
-        from ddgs.exceptions import RatelimitException
+        from ddgs.exceptions import DDGSException
 
+        return isinstance(exc, DDGSException) and str(exc).startswith("No results found")
+
+    def _call_with_retry(self, fn: Callable[[], list]) -> list | None:
+        """Throttle + classify + exponential backoff (N2). Returns fn()'s result,
+        [] for a genuine no-results answer, or None when retries are exhausted
+        (caller degrades to empty + flags, R1#2/N1).
+        """
         attempt = 0
         while True:
             _DDGS_RATE_LIMITER.wait(
@@ -292,12 +321,15 @@ class DdgsSearchProvider(SearchProvider):
             )
             try:
                 return fn()
-            except RatelimitException:
+            except Exception as exc:
+                if self._is_no_results(exc):
+                    return []
                 attempt += 1
                 if attempt > self.max_retries:
                     self._degraded_queries += 1
+                    self.last_error = repr(exc)
                     return None
-                self._sleep(min(2.0**attempt, 30.0))
+                self._sleep(min(2.0**attempt, 15.0))
 
     def search(
         self,
@@ -318,10 +350,12 @@ class DdgsSearchProvider(SearchProvider):
             client = DDGS()
             if kind == "news":
                 return client.news(
-                    query, region=region, timelimit=timelimit, max_results=count
+                    query, region=region, timelimit=timelimit, max_results=count,
+                    backend=self.backend,
                 )
             return client.text(
-                query, region=region, timelimit=timelimit, max_results=count
+                query, region=region, timelimit=timelimit, max_results=count,
+                backend=self.backend,
             )
 
         raw = self._call_with_retry(_do)
@@ -474,7 +508,8 @@ def make_search_provider(config: dict) -> SearchProvider:
     if provider == "ddgs":
         return DdgsSearchProvider(
             min_interval_ms=int(search_cfg.get("min_interval_ms", 1100)),
-            max_retries=int(search_cfg.get("max_retries", 3)),
+            max_retries=int(search_cfg.get("max_retries", 5)),
+            backend=str(search_cfg.get("ddgs_backend", "auto") or "auto"),
         )
     if provider == "brave":
         return BraveSearchProvider()
