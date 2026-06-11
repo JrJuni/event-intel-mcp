@@ -6,13 +6,27 @@
 
 ## 진행 중
 
-- **BD Critique Harness — 호스트-판정 다중렌즈 진단 (진행 중, plan `~/.claude/plans/snoopy-weaving-robin.md` [CURRENT] — 사용자 요청 "BD 페르소나로 스모크 많이 내고 검증")**
-  - **계기.** 정확도가 독립 gold 대비 검증된 적 없음(진짜 빈틈), 정식 gold/holdout은 데이터 블로커로 보류. 그 사이 **"엔진이 BD적으로 말 되나"를 싸게·대량 진단**. **핵심 제약**: silver-grade DEV 자문(엔진↔판정자 불일치 = 사람 spot-check 후보), gold 인증 아님(순환성). scoring **무변경**(직교 레인). 사용자 결정: 다중렌즈 패널 / 티어리스트 직접 비평 / 호스트 Claude 판정(엔진=GPT-OAuth와 다른 벤더·무료·반자동). ddgs+OAuth로 **크레딧 0**.
+- **ZNC — Zero-config 뉴스 수집(본문 크롤링 포함) 신뢰성 + entity 게이트 + 경험적 retry policy + gold pair 3종 (진행 중, plan `~/.claude/plans/config-zero-mossy-toucan.md` [CURRENT] — 기존 entity-게이트 plan C 통합. 엔진 슬라이스 9/9 완료 #75~#83, 데이터-ops 잔여)**
+  - **계기.** 사용자 최우선: **config zero — 배포 패키지만으로(키 0) 뉴스 서치·크롤링 동작** + "너무 빨리 포기하지 않게". 탐색이 실버그 확인: ① ddgs 결과-0건이 `DDGSException`으로 raise → **enrichment 스테이지 전체 abort**, ② 기존 retry가 잡던 `RatelimitException`은 ddgs 9.14가 **실제로 raise 안 하는 죽은 코드**, ③ rate-limit 빈 결과가 캐시/resume에 7일 고착. **성공 기준 5(사용자 계약)**: ①본문 크롤링 ②제품/솔루션 정보 포함 ③RAG 연관도 산출 가능(이번 phase는 report-only) ④중복 없음 ⑤매출 ≥$10M→뉴스 ≥10건/미만→≥3건(revenue tier는 G-lane 라벨링에서). retry 상수는 **경험적**(실패 계측→스모크 ≥10회→R3 명문화, 최대 ~5회 + 사이트형태 playbook).
+  - ✅ **N1** (#75) — degraded 결과 미고착: per-call `last_call_degraded`, degraded는 캐시 미기록 + resume row `degraded`(재사용 금지→다음 실행 재시도). `ENRICH_CACHE_VERSION` 6. → playbook #15.
+  - ✅ **N2** (#76) — 예외 분류 fix(genuine-empty=`[]`·캐시 / 그 외=재시도→degrade, 메시지 리터럴 핀 테스트) + `search.ddgs_backend: auto`(fresh DDGS/attempt=엔진 회전) + no-stage-abort(MCPError만 fatal) + max_retries 5(잠정—R3 확정). → lesson 2026-06-11.
+  - ✅ **R1** (#77) — 실패 패턴 계측: `runtime/failure_log.py` + provider 이벤트(`drain_events`) → `~/.event-intel/diagnostics/{ws}/*.jsonl` + `benchmark retry-stats`(회복률 vs 시도 횟수, 익명 집계, silver).
+  - ✅ **B1** (#78) — 뉴스 **본문** fetch lane: `events/news_body.py` — robots 게이트(acquisition 헬퍼)→스트리밍 byte cap→trafilatura→min-chars. 실패는 per-item degrade(빌드 무중단)+`fetch_failures` 기록, transient 미캐시(N1 원칙). `NewsSignal.body_sha/chars`. count_news 5→12.
+  - ✅ **B2** (#79) — 본문 content 게이트(wrong-entity 본문=floor 비기여) + 근사중복 제거(8-word shingle Jaccard≥0.7, 통신사 전재) + **본문↔제품 RAG 연관도**(빌드 7c, report-only — `news_relatedness`, REPORT_SCHEMA v5; scoring 필드 불변 단언, W4 패턴).
+  - ✅ **N3** (#80) — **Google News RSS 키리스 폴백**: news 전용, primary degraded일 때만 발화(진짜 빈결과는 폴백 안 탐), `FallbackSearchProvider` 합성 시그니처로 캐시 격리. ddgs만 기본 래핑(`search.news_fallback`).
+  - ✅ **C1** (#81) — entity 게이트 predicate(`name_is_ambiguous`/`context_terms`/`is_relevant_news`) + `events/data/common_words.txt`(Norvig top-50k — chroma ~41k라 50k 컷, plan open item 확정). 행동변경 0.
+  - ✅ **C2** (#82) — 게이트를 floor evidence + B2 본문 게이트 + `score_buying_signal`에 연결(`enrichment.news_entity_gate.enabled`, 기본 on). **점수/티어 의도적 변경(승인 범위)** — Dust/Ramp/Chroma류 거짓양성 차단. 9-cell green(변별적 이름 무변화 — plan 예측 적중).
+  - ✅ **N4** (#83) — LLM query-rescue rung(최후 수단): official 0+news 0+**degraded**인 회사만(진짜 부재 미발동), LLM이 **쿼리만 제안**(현지어/법인격/산업 변형, `prompts/{en,ko}/query_rescue.txt`) → 동일 결정론 lane 재실행(N1·N3·B1·C2 전부 적용). 회수 시 resume 최종화(run2 LLM 0콜). 캡 5사×3쿼리.
+  - ⏳ **남은 것(데이터-ops)**: **G1**(gold pair 3종 캡처: Snowflake×Big Data LDN / Siemens DI×Hannover Messe / 네이버클라우드×AI EXPO KOREA — 라이브 feasibility, holdout 비접촉) → **R2**(zero-config 스모크 ≥10회, 시간대 분산) → **R3**(retry policy 명문화 + `docs/retry-playbook.md` 신설) → **CL**(키 0 라이브 실증 + Pinecone×AIEWF 재빌드로 Dust/Ramp 하락 확인) → **G2–G4**(카드 ingest → L0–L6 gold 라벨링+revenue tier → measure `news_capture` 게이트).
+  - **테스트**: 전 슬라이스 CI green(pytest+cjk), ruff clean. +~100 신규 테스트.
+
+- **BD Critique Harness — 호스트-판정 다중렌즈 진단 ✅ 전체 완료·아카이브 (2026-06-10~11, plan `snoopy-weaving-robin.md` — S1~S4 #69~#72 + 후속 #73/#74, 라이브 e2e 검증)**
+  - **계기.** 정확도가 독립 gold 대비 검증된 적 없음(진짜 빈틈), 정식 gold/holdout은 데이터 블로커로 보류. 그 사이 **"엔진이 BD적으로 말 되나"를 싸게·대량 진단**. **핵심 제약**: silver-grade DEV 자문(엔진↔판정자 불일치 = 사람 spot-check 후보), gold 인증 아님(순환성). scoring **무변경**(직교 레인). ddgs+OAuth로 **크레딧 0**.
   - ✅ **S1** (#69) — `eval/smoke_batch.py` + `benchmark smoke-batch`: N pair 배치 빌드(부분실패 격리) → tier_list+run_summary 수집.
   - ✅ **S2** (#70) — `eval/critique_packet.py`: tier_list → S/A 픽 비평 패킷(+packet_sha 결속) + 비평 JSON 스키마(dataclass 검증, blind-first+다중렌즈).
-  - ✅ **S3** (#71) — `prompts/{en,ko}/critique_panel.txt`(다중렌즈+independent-first+JSON 계약) + `eval/critique_panel.py`(brief 렌더) + `benchmark critique-brief`.
-  - ⏳ **S4** (진행) — `eval/critique_report.py` + `benchmark critique-stats`: 비평 집계 대시보드(pair별 defensibility + 사람 triage 후보, host_flag∪majority-lens-disagree∪judge-would-not-place). silver 명시.
-  - **결과(예정)**: 크레딧 0으로 N pair 스모크 → 호스트 다중렌즈 비평 → triage 대시보드. 점수 경로 불변. (`.mcpb` 인앱 비평 도구는 backlog.)
+  - ✅ **S3** (#71) — `prompts/{en,ko}/critique_panel.txt` + `eval/critique_panel.py`(brief 렌더) + `benchmark critique-brief`.
+  - ✅ **S4** (#72) — `eval/critique_report.py` + `benchmark critique-stats`: 비평 집계 대시보드(pair별 defensibility + 사람 triage 후보). silver 명시. **후속**: ragged CSV crash fix(#73) + 점수 기반 critique selection(고점 non-S/A 거짓양성 포착, #74).
+  - **결과**: 크레딧 0으로 N pair 스모크 → 호스트 다중렌즈 비평 → triage 대시보드, 라이브 e2e 완주. **라이브 비평이 Pinecone×AIEWF의 Dust/Ramp/Chroma 동음이의 거짓양성을 적발 → ZNC entity 게이트(C1/C2)로 직결.** 점수 경로 불변.
 
 - **Zero-config 검색 provider — Brave → 플러그블(DDGS 기본) ✅ 완료 (2026-06-10, plan `~/.claude/plans/zero-config-search-provider.md` v2 — blind review R1 8건 전부 반영. S1~S4 머지 #65~#68)**
   - **계기.** enrichment의 web/news 검색이 Brave API 키 필수라 비개발자 zero-config에 걸림돌. backlog #2(provider swap)로 **키리스 기본(DDGS)** + 플러그블(SearXNG·Brave 선택). **scoring/evidence floor 무변경** — 검색 소스만 교체. (사용자 결정: 플러그블 다중·DDGS 기본 / GitHub·Reddit 범위 밖.)

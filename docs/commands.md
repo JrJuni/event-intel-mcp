@@ -155,15 +155,24 @@ not overwritten). Chroma/artifacts under `~/.event-intel` are NOT moved.
 
 | provider | key/infra | reliability | notes |
 |---|---|---|---|
-| `ddgs` (default) | none | best-effort | DuckDuckGo, keyless zero-config. Unofficial + rate-limited → throttle/backoff, degrades to empty + a `degraded` run warning. |
+| `ddgs` (default) | none | best-effort | Multi-engine aggregator (`search.ddgs_backend: auto` shuffles per call; comma-list pins engines — news lane: duckduckgo/bing/yahoo), keyless zero-config. Classified retries (`search.max_retries`, provisional 5 — finalized from R2 smoke data): genuine no-results = a real answer; rate-limit/transport degrade to empty + `degraded` run warning, never abort the stage, never cached (retried next run). Wrapped by default with a keyless **Google News RSS fallback** (`search.news_fallback: google_news_rss \| none`) that fires only on degraded NEWS queries. |
 | `searxng` | self-hosted instance (`search.searxng_url`) | medium | JSON API; the instance must have `formats: [json]` enabled (else 403 → CONFIG_ERROR). |
-| `brave` | `BRAVE_API_KEY` (free tier ~2k/mo) | good | hosted index + news vertical. |
+| `brave` | `BRAVE_API_KEY` (free tier ~2k/mo) | good | hosted index + news vertical. Never wrapped with the RSS fallback (raises instead of degrading). |
+
+News collection (ZNC plan): gated news additionally get their article **body** fetched (`enrichment.news_body` — robots-gated, byte-capped, cached 14d), pass the homonym **entity gate** (`enrichment.news_entity_gate`), are **near-dup deduped**, and blocked-and-empty companies get an LLM **query-rescue** (`enrichment.query_rescue` — proposes queries only). `count_news` default is 12 (success criterion: ≥10 news for ≥$10M-revenue companies, ≥3 below; measured post-dedup).
 
 ```bash
 # Manual live smoke (NON-CI — hits the live backend; ddgs is rate-limited):
 ~/miniconda3/envs/event-intel/python.exe -c "from event_intel.providers.search import make_search_provider; \
 p=make_search_provider({}); print(p.cache_signature); \
 print([(r.title, r.url) for r in p.search('MongoDB', kind='news', count=3, days=30)])"
+
+# Failure-pattern diagnostics (R1) — every live run appends search/fetch events
+# under ~/.event-intel/diagnostics/{ws}/. Aggregate into retry-policy evidence:
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli benchmark retry-stats
+#   [--diagnostics-dir PATH] [--out stats.json]
+# R3 codifies the final retry policy from this after the R2 smoke campaign
+# (>=10 zero-config runs across site shapes/languages/time-of-day).
 ```
 
 ```bash
