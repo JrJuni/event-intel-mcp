@@ -607,7 +607,22 @@ def enrich_exhibitors(
     cache_hits = 0
     cache_misses = 0
     skipped = 0
+    error_queries = 0
     rows: list[EnrichedExhibitor] = []
+
+    def _tally(hits: dict, row: EnrichedExhibitor) -> None:
+        """Fold one _search_with_cache result into counters + row state (N2)."""
+        nonlocal cache_hits, cache_misses, error_queries
+        if hits["was_hit"]:
+            cache_hits += 1
+        else:
+            cache_misses += 1
+        if hits["degraded"]:
+            row.degraded = True
+            err = hits.get("error")
+            if err:
+                error_queries += 1
+                row.enrichment_warnings.append(f"search error (degraded to empty): {err}")
 
     for cand in capped:
         if cand.name in reusable:
@@ -635,12 +650,7 @@ def enrich_exhibitors(
                 hits_counter=(lambda hit: None),
                 now=now, refresh=refresh,
             )
-            if web_hits["was_hit"]:
-                cache_hits += 1
-            else:
-                cache_misses += 1
-            if web_hits["degraded"]:
-                row.degraded = True
+            _tally(web_hits, row)
             picked = _pick_official_url(cand.name, web_hits["results"], threshold=url_threshold)
             row.official_url = picked
             if picked is None and web_hits["results"]:
@@ -658,12 +668,7 @@ def enrich_exhibitors(
             hits_counter=(lambda hit: None),
             now=now, refresh=refresh,
         )
-        if news_hits["was_hit"]:
-            cache_hits += 1
-        else:
-            cache_misses += 1
-        if news_hits["degraded"]:
-            row.degraded = True
+        _tally(news_hits, row)
         for hit in news_hits["results"]:
             # Drop utility/non-article pages (login/docs/privacy…) — not real
             # buying signals. Filter by path, so newsroom press releases stay.
@@ -745,12 +750,7 @@ def enrich_exhibitors(
                 hits_counter=(lambda hit: None),
                 now=now, refresh=refresh,
             )
-            if ev_hits["was_hit"]:
-                cache_hits += 1
-            else:
-                cache_misses += 1
-            if ev_hits["degraded"]:
-                row.degraded = True
+            _tally(ev_hits, row)
             for hit in ev_hits["results"]:
                 if not _is_article_like(hit.url):
                     continue
@@ -794,6 +794,12 @@ def enrich_exhibitors(
             f"search degraded: {n} query(ies) hit rate limits and returned no "
             f"results (provider={provider_sig}); affected companies may "
             "under-report news/official-URL evidence"
+        )
+    if error_queries:
+        warnings.append(
+            f"search errors: {error_queries} query(ies) raised and degraded to "
+            f"empty (provider={provider_sig}); affected rows will re-enrich on "
+            "the next run"
         )
 
     return EnrichmentResult(
@@ -843,14 +849,20 @@ def _search_with_cache(
         live = search_provider.search(
             query, kind=kind, count=count, days=days, lang=lang
         )
+    except MCPError:
+        # Config errors etc. stay fatal — preflight ping() is the misconfig gate.
+        raise
     except Exception as exc:
-        raise MCPError(
-            error_code=ErrorCode.UPSTREAM_ERROR,
-            stage=Stage.ENRICHMENT,
-            message=f"{kind} search failed for query {query!r}: {exc}",
-            hint={"query": query, "kind": kind},
-            retryable=True,
-        ) from exc
+        # A mid-run search failure degrades THIS query instead of aborting the
+        # whole enrichment stage (N2): the row gets flagged degraded (N1) so the
+        # next run retries it; nothing is cached.
+        return {
+            "results": [],
+            "was_hit": False,
+            "degraded": True,
+            "error": f"{kind} search failed for query {query!r}: "
+                     f"{type(exc).__name__}: {exc}",
+        }
     degraded = bool(getattr(search_provider, "last_call_degraded", False))
     if cache_enabled and not degraded:
         cache.put(

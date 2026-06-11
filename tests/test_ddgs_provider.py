@@ -1,9 +1,10 @@
 """DdgsSearchProvider — ZCS S2 (keyless zero-config search).
 
 Covers web/news mapping, region + days→timelimit mapping, count, the
-process-wide throttle (fake clock/sleep), exponential backoff on rate-limit,
-rate-limit-only graceful empty + degraded flag, non-rate-limit propagation,
-ping best_effort, cache_signature, and lazy ddgs import. No live network.
+process-wide throttle (fake clock/sleep), exception taxonomy (N2: genuine
+no-results vs retry-then-degrade), per-call degraded flag (N1), backend
+forwarding, ping best_effort, cache_signature, and lazy ddgs import. No live
+network.
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ from event_intel.providers.search import DdgsSearchProvider, SearchResult
 
 class _FakeDDGS:
     calls: list = []
+    backends: list = []  # backend kwarg per call (N2)
     text_raises = 0  # number of leading RatelimitException to raise before success
     news_raises = 0
     error = None  # an exception instance to raise instead (non-ratelimit)
@@ -37,13 +39,15 @@ class _FakeDDGS:
             setattr(_FakeDDGS, f"{which}_raises", n - 1)
             raise RatelimitException("429")
 
-    def text(self, query, *, region, timelimit, max_results):
+    def text(self, query, *, region, timelimit, max_results, backend="auto"):
         _FakeDDGS.calls.append(("text", query, region, timelimit, max_results))
+        _FakeDDGS.backends.append(backend)
         self._maybe_raise("text")
         return [{"title": "Acme site", "href": "https://acme.example.com", "body": "home"}]
 
-    def news(self, query, *, region, timelimit, max_results):
+    def news(self, query, *, region, timelimit, max_results, backend="auto"):
         _FakeDDGS.calls.append(("news", query, region, timelimit, max_results))
+        _FakeDDGS.backends.append(backend)
         self._maybe_raise("news")
         return [{
             "title": "Acme raises", "url": "https://news.example.com/acme",
@@ -54,6 +58,7 @@ class _FakeDDGS:
 @pytest.fixture(autouse=True)
 def _reset_fake(monkeypatch):
     _FakeDDGS.calls = []
+    _FakeDDGS.backends = []
     _FakeDDGS.text_raises = 0
     _FakeDDGS.news_raises = 0
     _FakeDDGS.error = None
@@ -147,14 +152,50 @@ def test_rate_limit_exhausted_degrades_to_empty():
     assert p.degraded is True and p.degraded_queries == 1
 
 
-def test_non_ratelimit_error_propagates():
+def test_non_ratelimit_error_retries_then_degrades():
+    """N2: timeouts/transport errors no longer propagate — they retry with
+    backoff and then degrade to empty (flag + last_error), never abort."""
     from ddgs.exceptions import TimeoutException
 
     _FakeDDGS.error = TimeoutException("boom")
-    p = _provider()
-    with pytest.raises(TimeoutException):
-        p.search("acme", kind="web")
-    assert p.degraded is False  # not a rate-limit degrade
+    p = _provider(max_retries=2)
+    r = p.search("acme", kind="web")
+    assert r == []
+    assert p.degraded is True and p.last_call_degraded is True
+    assert "boom" in (p.last_error or "")
+    assert len(_FakeDDGS.calls) == 3  # initial + 2 retries
+
+
+def test_no_results_exception_is_genuine_empty_not_degraded():
+    """N2: ddgs raises DDGSException("No results found.") for a zero-hit query —
+    that's a real answer: [] immediately, no retries, NOT degraded."""
+    from ddgs.exceptions import DDGSException
+
+    _FakeDDGS.error = DDGSException("No results found.")
+    p = _provider(max_retries=5)
+    r = p.search("acme", kind="web")
+    assert r == []
+    assert p.degraded is False and p.last_call_degraded is False
+    assert len(_FakeDDGS.calls) == 1  # answered on the first attempt — no retry
+
+
+def test_ddgs_no_results_message_literal_pin():
+    """_is_no_results string-matches a ddgs-internal message. Pin the literal in
+    the installed package source so a ddgs upgrade that changes it fails loud
+    (pyproject pins ddgs<10)."""
+    import inspect
+
+    import ddgs.ddgs as ddgs_mod
+
+    assert '"No results found."' in inspect.getsource(ddgs_mod)
+
+
+def test_backend_forwarded_and_defaults_to_auto():
+    _provider().search("acme", kind="web")
+    assert _FakeDDGS.backends == ["auto"]
+    _FakeDDGS.backends = []
+    _provider(backend="duckduckgo,bing").search("acme", kind="news")
+    assert _FakeDDGS.backends == ["duckduckgo,bing"]
 
 
 # ---------- ping / signature ----------
@@ -166,9 +207,11 @@ def test_ping_is_best_effort_no_network():
     }
 
 
-def test_cache_signature_includes_ddgs_version():
+def test_cache_signature_includes_ddgs_version_and_backend():
     sig = _provider().cache_signature
-    assert sig.startswith("ddgs/") and sig.endswith("/region1")
+    assert sig.startswith("ddgs/") and sig.endswith("/region1/b=auto")
+    # A configured backend changes the result space → must change the key (N2).
+    assert _provider(backend="bing").cache_signature.endswith("/b=bing")
 
 
 # ---------- lazy import (cold-start) ----------
