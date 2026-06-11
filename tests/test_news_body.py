@@ -155,10 +155,70 @@ def test_raising_fetch_fn_degrades_not_raises(tmp_path):
 
     flog_path = tmp_path / "fetch.jsonl"
     f = NewsBodyFetcher(cfg=_cfg(), cache_dir=tmp_path / "b", now=NOW,
-                        fetch_fn=_boom, failure_log=FailureLog(flog_path))
+                        fetch_fn=_boom, failure_log=FailureLog(flog_path),
+                        sleep=lambda s: None)
     assert f.attach_bodies([_sig()]) == 0  # no raise
     rows = [json.loads(ln) for ln in flog_path.read_text(encoding="utf-8").splitlines()]
     assert rows[0]["outcome"] == "error" and "RuntimeError" in rows[0]["exc_classes"][0]
+    assert rows[0]["attempts"] == 2  # transport = transient → one retry (R3)
+
+
+# ---------- R3 pattern-differentiated retry (retry-playbook §2) ----------
+
+
+def test_4xx_refusal_never_retried(tmp_path):
+    """403/404/405 are deterministic refusals (16/16 observed) — exactly one
+    attempt, no sleep, not cached (next RUN gets one fresh chance)."""
+    calls, slept = [], []
+
+    def _403(url):
+        calls.append(url)
+        return {"status": 403, "text": None, "error": "HTTP 403"}
+
+    flog_path = tmp_path / "fetch.jsonl"
+    f = NewsBodyFetcher(cfg=_cfg(), cache_dir=tmp_path / "b", now=NOW,
+                        fetch_fn=_403, failure_log=FailureLog(flog_path),
+                        sleep=lambda s: slept.append(s))
+    assert f.attach_bodies([_sig()]) == 0
+    assert len(calls) == 1 and slept == []
+    rows = [json.loads(ln) for ln in flog_path.read_text(encoding="utf-8").splitlines()]
+    assert rows[0]["attempts"] == 1
+    assert list((tmp_path / "b").glob("*.json")) == []
+
+
+def test_429_retried_once_then_recovers(tmp_path):
+    """429 is transient (observed) — one retry after retry_pause_s recovers."""
+    calls, slept = [], []
+
+    def _flaky(url):
+        calls.append(url)
+        if len(calls) == 1:
+            return {"status": 429, "text": None, "error": "HTTP 429"}
+        return _ok_fetch(url)
+
+    f = NewsBodyFetcher(cfg=_cfg(), cache_dir=tmp_path / "b", now=NOW,
+                        fetch_fn=_flaky, sleep=lambda s: slept.append(s))
+    sig = _sig()
+    assert f.attach_bodies([sig]) == 1  # recovered on attempt 2
+    assert sig.body_sha is not None
+    assert len(calls) == 2 and slept == [2.0]
+
+
+def test_persistent_transient_degrades_after_max_retries(tmp_path):
+    calls = []
+
+    def _always_503(url):
+        calls.append(url)
+        return {"status": 503, "text": None, "error": "HTTP 503"}
+
+    flog_path = tmp_path / "fetch.jsonl"
+    f = NewsBodyFetcher(cfg=_cfg(), cache_dir=tmp_path / "b", now=NOW,
+                        fetch_fn=_always_503, failure_log=FailureLog(flog_path),
+                        sleep=lambda s: None)
+    assert f.attach_bodies([_sig()]) == 0
+    assert len(calls) == 2  # initial + max_retries(1)
+    rows = [json.loads(ln) for ln in flog_path.read_text(encoding="utf-8").splitlines()]
+    assert rows[0]["attempts"] == 2 and rows[0]["status"] == 503
 
 
 # ---------- live fetch mechanics (MockTransport, no network) ----------

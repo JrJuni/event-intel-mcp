@@ -38,6 +38,10 @@ class NewsBodyConfig:
     timeout_s: float = 10.0
     min_body_chars: int = 400
     cache_ttl_days: int | None = 14
+    # R3 (data-derived, retry-playbook §2): ONE retry for transient shapes
+    # (429/5xx/transport) only; 4xx refusals are deterministic — never retried.
+    max_retries: int = 1
+    retry_pause_s: float = 2.0
 
     @classmethod
     def from_dict(cls, d: dict) -> NewsBodyConfig:
@@ -49,6 +53,8 @@ class NewsBodyConfig:
             timeout_s=float(d.get("timeout_s", 10.0)),
             min_body_chars=int(d.get("min_body_chars", 400)),
             cache_ttl_days=int(ttl) if ttl is not None else None,
+            max_retries=int(d.get("max_retries", 1)),
+            retry_pause_s=float(d.get("retry_pause_s", 2.0)),
         )
 
 
@@ -69,6 +75,7 @@ class NewsBodyFetcher:
         now: datetime,
         fetch_fn: Callable[[str], dict] | None = None,
         transport: object | None = None,
+        sleep: Callable[[float], None] | None = None,
     ) -> None:
         self.cfg = cfg
         self.cache_dir = Path(cache_dir)
@@ -76,6 +83,9 @@ class NewsBodyFetcher:
         self.now = now
         self._fetch_fn = fetch_fn or self._fetch_live
         self._transport = transport  # httpx transport override (tests)
+        import time as _time
+
+        self._sleep = sleep or _time.sleep  # injectable (tests)
 
     # ---------- public API ----------
 
@@ -177,17 +187,30 @@ class NewsBodyFetcher:
             self._log(url, outcome="robots_denied")
             return None
 
-        try:
-            result = self._fetch_fn(url)
-        except Exception as exc:  # injected fetch_fn may raise; live one doesn't
-            result = {"status": None, "text": None, "error": f"{type(exc).__name__}: {exc}"}
-
-        if result.get("error") or not result.get("text"):
-            # Transient (HTTP error / transport / empty) → NOT cached, retried
-            # on the next run (N1 non-stick).
+        # Pattern-differentiated retry (R3, data-derived — see
+        # docs/retry-playbook.md §2): 403/404/405/410 are DETERMINISTIC
+        # refusals (16/16 observed) — retrying the same UA is wasted budget;
+        # 429/5xx/transport are transient (observed) — ONE retry after a short
+        # pause. Either way nothing is cached on failure (N1 non-stick).
+        attempts = 0
+        while True:
+            attempts += 1
+            try:
+                result = self._fetch_fn(url)
+            except Exception as exc:  # injected fetch_fn may raise; live one doesn't
+                result = {"status": None, "text": None, "error": f"{type(exc).__name__}: {exc}"}
+            if not result.get("error") and result.get("text"):
+                break
+            status = result.get("status")
+            transient = status is None or status == 429 or (
+                isinstance(status, int) and 500 <= status < 600
+            )
+            if transient and attempts <= self.cfg.max_retries:
+                self._sleep(self.cfg.retry_pause_s)
+                continue
             self._log(
-                url, outcome="error", status=result.get("status"),
-                exc=result.get("error"),
+                url, outcome="error", status=status,
+                exc=result.get("error"), attempts=attempts,
             )
             return None
 
@@ -272,7 +295,7 @@ class NewsBodyFetcher:
 
     def _log(
         self, url: str, *, outcome: str, status: int | None = None,
-        exc: str | None = None, truncated: bool = False,
+        exc: str | None = None, truncated: bool = False, attempts: int = 1,
     ) -> None:
         if self.failure_log is None:
             return
@@ -286,7 +309,7 @@ class NewsBodyFetcher:
             "url": url,
             "status": status,
             "outcome": outcome,
-            "attempts": 1,
+            "attempts": attempts,
             "exc_classes": [exc] if exc else [],
             "truncated": truncated,
         })

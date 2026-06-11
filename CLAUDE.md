@@ -109,6 +109,7 @@ Full pipeline diagram + evidence floor lifecycle: `docs/architecture.md`.
 - **`lesson-learned.md`** — append-only, **failures only**.
 - **`playbook.md`** — append-only, **successes only**. Patterns that survived a hard problem and are reusable elsewhere. Check first when stuck — grep the keyword index at the top.
 - **`commands.md`** — full operational command catalog.
+- **`retry-playbook.md`** — 수집(검색/본문/acquisition) 실패 형태별 전략 카탈로그. 상수는 근거 데이터와 함께, 미검증은 PROVISIONAL 표기. R2 진단 누적마다 재집계·갱신.
 - **`security-audit.md`** — checklist + audit history.
 - **`notion_db_schemas.md`** — currently a placeholder. v0 doesn't use Notion. Will be populated if backlog #7 (bd-coldcall-agent bridge) lands.
 
