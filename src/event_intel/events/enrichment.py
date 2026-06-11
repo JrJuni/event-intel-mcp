@@ -562,6 +562,7 @@ def enrich_exhibitors(
     max_companies: int | None = None,
     refresh: bool = False,
     now: datetime | None = None,
+    usage_ledger: object | None = None,
 ) -> EnrichmentResult:
     """Enrich a list of extracted candidates with official URL + news.
 
@@ -822,6 +823,10 @@ def enrich_exhibitors(
                     system=_RESCUE_SYSTEM, user=prompt,
                     max_tokens=256, temperature=0.0,
                 )
+                if usage_ledger is not None:
+                    usage_ledger.record(
+                        "rescue", getattr(llm_provider, "model", ""), resp.usage
+                    )
                 rescue_queries = _parse_rescue_queries(
                     resp.text, max_queries=rescue_max_queries
                 )

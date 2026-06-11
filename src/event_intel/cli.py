@@ -664,6 +664,41 @@ def benchmark_retry_stats_cmd(
     _print_json(stats)
 
 
+@benchmark_app.command("cost")
+def benchmark_cost_cmd(
+    run_dir: str = typer.Option(
+        ..., "--run-dir",
+        help="Directory tree holding run_summary.json files (or a single file).",
+    ),
+    out: str | None = typer.Option(None, "--out", help="Write the cost JSON here."),
+    as_json: bool = typer.Option(
+        False, "--json", help="Print the JSON aggregate instead of the table."
+    ),
+) -> None:
+    """Y1D D0 — aggregate per-run LLM token usage into a cost table, converted
+    against the reference models (config llm.reference_pricing: claude-sonnet-4-6
+    and gpt-5.4-mini). Runs without an llm_usage block (pre-D0) are reported,
+    not silently dropped.
+    """
+    import json as _json
+    from pathlib import Path
+
+    from event_intel.eval import cost as _cost
+
+    paths = _cost.collect_run_summaries(Path(run_dir).expanduser())
+    agg = _cost.aggregate_costs(paths)
+    agg["run_dir"] = str(run_dir)
+    if out:
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
+        Path(out).write_text(
+            _json.dumps(agg, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    if as_json:
+        _print_json(agg)
+    else:
+        typer.echo(_cost.render_cost_table(agg))
+
+
 @benchmark_app.command("company-packet")
 def benchmark_company_packet_cmd(
     pair: str = typer.Option(..., "--pair"),

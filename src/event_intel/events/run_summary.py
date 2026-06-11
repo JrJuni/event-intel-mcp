@@ -152,6 +152,10 @@ class RunSummary:
     # only — deliberately NOT folded into run_fingerprint (that would churn the
     # committed baselines; sources don't affect scores, only drafting/rationale).
     source_index_fingerprint: str | None = None
+    # Y1D D0: per-stage LLM token usage + reference-model cost conversion
+    # (runtime.llm_ledger summary shape). None for pre-D0 runs / ledger failure.
+    # NOT folded into run_fingerprint — usage is an outcome, not an input.
+    llm_usage: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

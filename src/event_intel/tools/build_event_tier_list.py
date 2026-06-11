@@ -37,6 +37,7 @@ from event_intel.rag import retriever as _retriever
 from event_intel.report import tier_list_md as _tier_list_md
 from event_intel.report import tier_list_yaml as _tier_list_yaml
 from event_intel.runtime import io_contract as _io
+from event_intel.runtime import llm_ledger as _llm_ledger
 from event_intel.runtime import paths as _paths
 from event_intel.runtime import preflight as _preflight
 from event_intel.scoring import compute as _scoring
@@ -203,10 +204,17 @@ def build_event_tier_list(
             )
 
         # 4. Extraction (S3, raises UPSTREAM_ERROR on LLM failure).
+        # Y1D D0: one usage ledger per build — every LLM stage records into it.
+        usage_ledger = _llm_ledger.LlmUsageLedger()
         llm_model_extract = config["llm"]["extract_exhibitors_model"]
         extract_llm = _llm.make_llm_provider(config, model=llm_model_extract)
         extraction = _extraction.extract_exhibitors(
             capture=capture, lang=lang, llm_provider=extract_llm, config=config,
+        )
+        # extraction pre-aggregates its per-chunk usage; fold it in as one entry.
+        usage_ledger.record(
+            "extraction", llm_model_extract, extraction.usage,
+            calls=extraction.chunks_processed,
         )
 
         # 5. Enrichment (S4) — optional.
@@ -232,6 +240,7 @@ def build_event_tier_list(
                 # N4 query-rescue: reuse the extraction LLM (proposes alternate
                 # queries for blocked-and-empty companies; never fetches).
                 llm_provider=extract_llm,
+                usage_ledger=usage_ledger,
             )
             enriched_rows = enrich_result.rows
         else:
@@ -284,6 +293,7 @@ def build_event_tier_list(
             rationale_for_tiers=rationale_for_tiers,
             rationale_max_tokens=int(config["llm"].get("rationale_max_tokens", 256)),
             target_mode=resolved_target_mode,
+            usage_ledger=usage_ledger,
         )
 
         # 7b. Source-library grounding for S/A rows (WSL W4). RATIONALE-ONLY: it
@@ -402,6 +412,11 @@ def build_event_tier_list(
 
         # 9b. Emit run-summary (CS1) — audit/reproducibility record. Auxiliary:
         #     an emitter failure must never fail an otherwise-successful build.
+        # Y1D D0: snapshot the ledger ONCE; reused by run_summary AND the return
+        # envelope. summary() never raises (pricing problems become warnings).
+        llm_usage_summary = usage_ledger.summary(
+            (config.get("llm", {}) or {}).get("reference_pricing")
+        )
         run_summary_path: Path | None = None
         try:
             from dataclasses import asdict as _asdict
@@ -484,6 +499,7 @@ def build_event_tier_list(
                 ],
                 warnings=list(extraction.warnings) + list(enrich_result.warnings),
                 source_index_fingerprint=source_index_fp,
+                llm_usage=llm_usage_summary,
             )
             run_summary_path = _run_summary.write_run_summary(rs, out_dir, allow_overwrite=True)
         except Exception:  # noqa: BLE001 — auxiliary, never fail the build
@@ -516,6 +532,7 @@ def build_event_tier_list(
             "tier_list_md_artifact_id": md_artifact_id,
             "tier_list_yaml_artifact_id": yaml_artifact_id,
             "run_summary_path": str(run_summary_path) if run_summary_path else None,
+            "llm_usage": llm_usage_summary,
         }
     except Exception as exc:
         # Stage hint best-effort — if exc is MCPError it carries its own.

@@ -119,6 +119,13 @@ scoring:
 
 llm:
   provider: anthropic              # anthropic | openai | chatgpt_oauth
+  reference_pricing:               # Y1D D0 — per-run cost conversion baselines ($/1M tokens).
+    # Applied to EVERY run's token totals regardless of the provider actually used,
+    # so a free ChatGPT-OAuth run still reports "what this would have cost".
+    # Verified 2026-06-11 against the official pricing pages (gpt-5.5-mini does
+    # not exist; gpt-5.4-mini is the current mini tier).
+    claude-sonnet-4-6: {input: 3.00, output: 15.00}
+    gpt-5.4-mini:      {input: 0.75, output: 4.50}
   draft_cards_model: claude-sonnet-4-6
   extract_exhibitors_model: claude-sonnet-4-6
   rationale_model: claude-sonnet-4-6
