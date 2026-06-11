@@ -60,7 +60,7 @@ Homepage = "https://github.com/JrJuni/event-intel-mcp"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"event_intel" = ["prompts/**/*.txt", "cards/schema_snapshot.json"]
+"event_intel" = ["prompts/**/*.txt", "cards/schema_snapshot.json", "events/data/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
