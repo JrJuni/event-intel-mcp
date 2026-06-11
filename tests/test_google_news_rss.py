@@ -296,12 +296,15 @@ def test_pool_signature_joins_lanes():
     assert w.cache_signature == "d+fb=g,b/sup10"
 
 
-def test_factory_builds_bing_extra_lane_by_default():
+def test_factory_builds_bing_first_google_second_by_default():
+    """Bing FIRST: direct publisher URLs feed the body lane; Google wrapper
+    URLs are robots-denied for body fetch (30/30 measured 2026-06-11)."""
     p = make_search_provider({"search": {"provider": "ddgs"}})
     assert len(p.lanes) == 2
     # Compare by name, not isinstance: the ddgs cold-import test re-imports the
     # search module, so class identities can differ across test order.
-    assert type(p.lanes[1]).__name__ == "BingNewsRssSearchProvider"
+    assert type(p.lanes[0]).__name__ == "BingNewsRssSearchProvider"
+    assert type(p.lanes[1]).__name__ == "GoogleNewsRssSearchProvider"
     assert "bingrss/v1" in p.cache_signature
     bad = {"search": {"provider": "ddgs", "news_extra_lanes": "nonsense_rss"}}
     with pytest.raises(MCPError) as ei:
@@ -347,8 +350,8 @@ def test_factory_wraps_ddgs_with_rss_fallback_by_default():
     p = make_search_provider({"search": {"provider": "ddgs"}})
     assert isinstance(p, FallbackSearchProvider)
     assert isinstance(p.primary, DdgsSearchProvider)
-    assert isinstance(p.fallback, GoogleNewsRssSearchProvider)
-    assert "+fb=gnrss/v1" in p.cache_signature
+    assert type(p.fallback).__name__ == "BingNewsRssSearchProvider"
+    assert "+fb=bingrss/v1" in p.cache_signature
 
 
 def test_factory_news_fallback_none_returns_bare_ddgs():
