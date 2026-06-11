@@ -1,0 +1,402 @@
+{
+  "pair": "p6_navercloud_aiexpo",
+  "run_id": "ai_expo_korea_2026-20260611071327-97b8aedf",
+  "run_fingerprint": "16718910ba91c87a7c888d6865f0f6f0b9ddf340b30bab6583c9202b686b3473",
+  "target_mode": "customer",
+  "metrics": {
+    "extraction_coverage": {
+      "value": 0.13705583756345177,
+      "status": "ok",
+      "n": 197
+    },
+    "mention_coverage": {
+      "value": 0.13705583756345177,
+      "status": "ok",
+      "n": 197
+    },
+    "precision_at_10": {
+      "value": 0.4,
+      "status": "ok",
+      "n": 10
+    },
+    "end_to_end_competitor_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "conditional_competitor_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    "competitor_extraction_coverage": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "end_to_end_bad_fit_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "conditional_bad_fit_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    "bad_fit_extraction_coverage": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "evidence_precision": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "evidence_yield": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "auc": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  },
+  "gates": [
+    {
+      "name": "extraction_coverage",
+      "threshold": 0.8,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.13705583756345177,
+      "status": "ok",
+      "n": 197
+    },
+    {
+      "name": "precision_at_10",
+      "threshold": 0.6,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.4,
+      "status": "ok",
+      "n": 10
+    },
+    {
+      "name": "conditional_competitor_leakage_rate",
+      "threshold": 0.1,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    {
+      "name": "conditional_bad_fit_leakage_rate",
+      "threshold": 0.05,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    {
+      "name": "evidence_precision",
+      "threshold": 0.85,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  ],
+  "eligibility": "fail",
+  "passed": false,
+  "news_capture": {
+    "schema": "news-capture/v1",
+    "grade": "advisory",
+    "thresholds": {
+      ">=10M": 10,
+      "<10M": 3
+    },
+    "companies": [
+      {
+        "name": "Supermicro Computer Inc. Taiwan",
+        "revenue_tier": ">=10M",
+        "bodied_news": 6,
+        "listed_news": 9,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "이스트소프트",
+        "revenue_tier": ">=10M",
+        "bodied_news": 1,
+        "listed_news": 10,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "(주)미스릴",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "일레븐랩스",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 10,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "MinIO",
+        "revenue_tier": ">=10M",
+        "bodied_news": 0,
+        "listed_news": 2,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "야놀자",
+        "revenue_tier": ">=10M",
+        "bodied_news": 3,
+        "listed_news": 10,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "한국딥러닝",
+        "revenue_tier": "<10M",
+        "bodied_news": 1,
+        "listed_news": 7,
+        "threshold": 3,
+        "met": false
+      },
+      {
+        "name": "아이티센클로잇",
+        "revenue_tier": ">=10M",
+        "bodied_news": 0,
+        "listed_news": 6,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "디에스앤지",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 1,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "(주)마음AI",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "사단법인 한국피지컬에이아이협회",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "솔트룩스이노베이션",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "케이투스 코리아",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "씨이랩",
+        "revenue_tier": null,
+        "bodied_news": 1,
+        "listed_news": 7,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "어드밴텍케이알(주)",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "하이퍼엑셀",
+        "revenue_tier": "<10M",
+        "bodied_news": 1,
+        "listed_news": 10,
+        "threshold": 3,
+        "met": false
+      },
+      {
+        "name": "에이아이씨 ㈜",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 2,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "Aqrose Technology",
+        "revenue_tier": "<10M",
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": 3,
+        "met": false
+      },
+      {
+        "name": "아이크래프트",
+        "revenue_tier": ">=10M",
+        "bodied_news": 0,
+        "listed_news": 7,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "엠키스코어",
+        "revenue_tier": ">=10M",
+        "bodied_news": 1,
+        "listed_news": 2,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "강원대학교병원 AI 암치유센터",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "경북소프트웨어마이스터고등학교",
+        "revenue_tier": "<10M",
+        "bodied_news": 1,
+        "listed_news": 1,
+        "threshold": 3,
+        "met": false
+      },
+      {
+        "name": "관악아날로그(주)",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "광주소프트웨어마이스터고등학교",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "교보디티에스(주)",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "굿인텔리전스",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "그래파이",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "누리에에이아이",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "뉴로클",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 2,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "대구소프트웨어마이스터고등학교",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      }
+    ],
+    "summary": {
+      "total": 30,
+      "unknown_tier": 19,
+      "big": {
+        "total": 7,
+        "met": 0,
+        "met_rate": 0.0
+      },
+      "small": {
+        "total": 4,
+        "met": 0,
+        "met_rate": 0.0
+      },
+      "overall_met_rate": 0.0
+    }
+  }
+}

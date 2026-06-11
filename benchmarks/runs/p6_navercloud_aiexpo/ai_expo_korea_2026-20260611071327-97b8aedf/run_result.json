@@ -1,0 +1,642 @@
+{
+  "pair": "p6_navercloud_aiexpo",
+  "run_id": "ai_expo_korea_2026-20260611071327-97b8aedf",
+  "run_fingerprint": "16718910ba91c87a7c888d6865f0f6f0b9ddf340b30bab6583c9202b686b3473",
+  "run_summary": {
+    "run_id": "ai_expo_korea_2026-20260611071327-97b8aedf",
+    "run_fingerprint": "16718910ba91c87a7c888d6865f0f6f0b9ddf340b30bab6583c9202b686b3473",
+    "git_commit_sha": "fd0c552d64c70be87cfacc147a68c4ae447af6c6",
+    "config_fp": "ac40f22b72ac4a7e473b4130dae044100631299e30a9325ce38a3bcf11975e2d",
+    "cards_fingerprint": "053384d1aa1959312b6ab92c7092ec26279b3402e7fe5f125161ad9bf12b794b",
+    "source_sha256": "a915bdb4bd1a288234140c73f18166c13bc29221e5e02b4da07573a20f37a6d0",
+    "provider": "chatgpt_oauth",
+    "model_ids": {
+      "extract": "claude-sonnet-4-6",
+      "rationale": "claude-sonnet-4-6",
+      "embedding": "bge-m3"
+    },
+    "reference_timestamp": "2026-06-11T07:13:27.761953+00:00",
+    "target_mode": "customer",
+    "max_companies": null,
+    "max_chunks_per_event": 12,
+    "refresh": false,
+    "cache_hits": 120,
+    "cache_misses": 30,
+    "skipped_from_resume": 0,
+    "search_calls": 150,
+    "extracted": 223,
+    "enriched": 30,
+    "scored": 30,
+    "extraction_coverage": null,
+    "stages": [
+      {
+        "stage": "source_capture",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "extraction",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "enrichment",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "retrieval",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "scoring",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "report",
+        "ok": true,
+        "error_code": null
+      }
+    ],
+    "companies": [
+      {
+        "name": "Supermicro Computer Inc. Taiwan",
+        "tier": "B",
+        "final_score": 4.891442596870295,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.46003180742263794,
+          "source_confidence": 0.95,
+          "buying_signal": 0.8908981164015874,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.89 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "이스트소프트",
+        "tier": "C",
+        "final_score": 3.578803897633078,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4437733292579651,
+          "source_confidence": 0.95,
+          "buying_signal": 0.8897801523300817,
+          "website_verification": 0.0,
+          "category_fit": 0.8333333333333334,
+          "competitor_penalty": 0.5034818053245544,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.58 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "(주)미스릴",
+        "tier": "C",
+        "final_score": 2.6951521515846255,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.42338405052820843,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.70 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "일레븐랩스",
+        "tier": "C",
+        "final_score": 1.7012072592973708,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.5319368541240692,
+          "source_confidence": 0.95,
+          "buying_signal": 0.3,
+          "website_verification": 0.0,
+          "category_fit": 0.9333333333333333,
+          "competitor_penalty": 0.5320526957511902,
+          "bad_fit_penalty": 0.5229675471782684
+        },
+        "tier_reasons": [
+          "final_score=1.70 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "MinIO",
+        "tier": "B",
+        "final_score": 4.937411314249039,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4874704380830129,
+          "source_confidence": 0.95,
+          "buying_signal": 0.2,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.94 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "야놀자",
+        "tier": "C",
+        "final_score": 3.842320861796628,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.5155532161394755,
+          "source_confidence": 0.95,
+          "buying_signal": 0.8976976834271287,
+          "website_verification": 0.0,
+          "category_fit": 0.8888888888888888,
+          "competitor_penalty": 0.5169196128845215,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.84 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "한국딥러닝",
+        "tier": "B",
+        "final_score": 5.576162097890183,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4848420023918152,
+          "source_confidence": 0.95,
+          "buying_signal": 0.8886664847189163,
+          "website_verification": 0.0,
+          "category_fit": 0.9090909090909091,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.58 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "아이티센클로잇",
+        "tier": "C",
+        "final_score": 3.715964999675856,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4687901735305786,
+          "source_confidence": 0.95,
+          "buying_signal": 0.8931473399554253,
+          "website_verification": 0.0,
+          "category_fit": 0.9230769230769231,
+          "competitor_penalty": 0.5256405472755432,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.72 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "디에스앤지",
+        "tier": "C",
+        "final_score": 2.4553886413574224,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4253742496172587,
+          "source_confidence": 0.95,
+          "buying_signal": 0.2,
+          "website_verification": 0.0,
+          "category_fit": 0.8333333333333334,
+          "competitor_penalty": 0.5130668878555298,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.46 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "(주)마음AI",
+        "tier": "C",
+        "final_score": 0.5405104786157605,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4940006335576375,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5318613946437836,
+          "bad_fit_penalty": 0.5019906163215637
+        },
+        "tier_reasons": [
+          "final_score=0.54 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "사단법인 한국피지컬에이아이협회",
+        "tier": "C",
+        "final_score": 0.0,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.4411968191464742,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5301679968833923,
+          "bad_fit_penalty": 0.5112771391868591
+        },
+        "tier_reasons": [
+          "final_score=0.00 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "솔트룩스이노베이션",
+        "tier": "C",
+        "final_score": 0.3560201257467266,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.475841482480367,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5681719183921814,
+          "bad_fit_penalty": 0.5031610429286957
+        },
+        "tier_reasons": [
+          "final_score=0.36 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "케이투스 코리아",
+        "tier": "C",
+        "final_score": 3.4746608614921564,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4332202871640523,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.47 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "씨이랩",
+        "tier": "C",
+        "final_score": 2.317149692365945,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.5275643964608511,
+          "source_confidence": 0.95,
+          "buying_signal": 0.8897803330351388,
+          "website_verification": 0.0,
+          "category_fit": 0.8888888888888888,
+          "competitor_penalty": 0.5728384256362915,
+          "bad_fit_penalty": 0.5414451360702515
+        },
+        "tier_reasons": [
+          "final_score=2.32 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "어드밴텍케이알(주)",
+        "tier": "C",
+        "final_score": 3.51801483631134,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.4476716121037801,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.52 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "하이퍼엑셀",
+        "tier": "C",
+        "final_score": 3.857200070786253,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.5062650044759115,
+          "source_confidence": 0.95,
+          "buying_signal": 0.8931474705512956,
+          "website_verification": 0.0,
+          "category_fit": 0.9285714285714286,
+          "competitor_penalty": 0.5197637975215912,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.86 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "에이아이씨 ㈜",
+        "tier": "C",
+        "final_score": 2.329861304163932,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.4428274830182393,
+          "source_confidence": 0.95,
+          "buying_signal": 0.2,
+          "website_verification": 0.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.5281774699687958,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.33 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "Aqrose Technology",
+        "tier": "B",
+        "final_score": 4.291051197052002,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.37201706568400067,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.29 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "아이크래프트",
+        "tier": "C",
+        "final_score": 2.558285670621054,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.46738972266515094,
+          "source_confidence": 0.95,
+          "buying_signal": 0.3,
+          "website_verification": 0.0,
+          "category_fit": 0.8571428571428571,
+          "competitor_penalty": 0.572742223739624,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.56 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "엠키스코어",
+        "tier": "B",
+        "final_score": 4.640034935580052,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4341169595718384,
+          "source_confidence": 0.95,
+          "buying_signal": 0.400122704576358,
+          "website_verification": 0.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.64 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "강원대학교병원 AI 암치유센터",
+        "tier": "C",
+        "final_score": 0.6544408708810812,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.41927852233250934,
+          "source_confidence": 0.9,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.558112770318985,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=0.65 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "경북소프트웨어마이스터고등학교",
+        "tier": "B",
+        "final_score": 4.955912942570962,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4531219998995463,
+          "source_confidence": 0.9,
+          "buying_signal": 0.6976979619148824,
+          "website_verification": 0.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.96 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "관악아날로그(주)",
+        "tier": "C",
+        "final_score": 1.7048712104558947,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.46395933628082275,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5320019423961639,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.70 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "광주소프트웨어마이스터고등학교",
+        "tier": "C",
+        "final_score": 1.6381140112876897,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4418874780337016,
+          "source_confidence": 0.9,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.510728120803833,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.64 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "교보디티에스(주)",
+        "tier": "C",
+        "final_score": 3.439180421829224,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.4213934739430745,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.44 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "굿인텔리전스",
+        "tier": "C",
+        "final_score": 0.3986357927322387,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.44392599662144977,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5192728638648987,
+          "bad_fit_penalty": 0.5162748694419861
+        },
+        "tier_reasons": [
+          "final_score=0.40 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "그래파이",
+        "tier": "C",
+        "final_score": 1.8341499894857403,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.48414411147435504,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.512366384267807,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.83 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "누리에에이아이",
+        "tier": "C",
+        "final_score": 3.5127850055694583,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.44592833518981934,
+          "source_confidence": 0.95,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.51 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "뉴로클",
+        "tier": "C",
+        "final_score": 1.372385807973997,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.5281206369400024,
+          "source_confidence": 0.95,
+          "buying_signal": 0.2,
+          "website_verification": 0.0,
+          "category_fit": 0.8571428571428571,
+          "competitor_penalty": 0.5555693209171295,
+          "bad_fit_penalty": 0.5112791061401367
+        },
+        "tier_reasons": [
+          "final_score=1.37 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "대구소프트웨어마이스터고등학교",
+        "tier": "C",
+        "final_score": 0.40632886290550285,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.47520993153254193,
+          "source_confidence": 0.9,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5294512510299683,
+          "bad_fit_penalty": 0.5064886212348938
+        },
+        "tier_reasons": [
+          "final_score=0.41 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      }
+    ],
+    "warnings": [
+      "capped enrichment at 30/223 exhibitors (set enrichment.max_companies in config to raise)"
+    ],
+    "pair": null,
+    "source_index_fingerprint": null
+  },
+  "top10_evidence": []
+}
