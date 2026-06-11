@@ -185,6 +185,7 @@ def score_exhibitors(
     rationale_max_tokens: int = 256,
     reference_date: datetime | None = None,
     target_mode: str = "customer",
+    usage_ledger: object | None = None,
 ) -> ScoringSummary:
     """Score every (enriched, fit_result) pair and decide tier.
 
@@ -278,6 +279,10 @@ def score_exhibitors(
             except Exception:
                 # Rationale is decorative — never fail the whole batch on it.
                 continue
+            if usage_ledger is not None:
+                usage_ledger.record(
+                    "rationale", getattr(llm_provider, "model", ""), resp.usage
+                )
             rationale, angle = _parse_rationale_response(resp.text)
             scored.rationale = rationale
             scored.angle = angle

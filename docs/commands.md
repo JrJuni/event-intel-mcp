@@ -173,6 +173,12 @@ print([(r.title, r.url) for r in p.search('MongoDB', kind='news', count=3, days=
 #   [--diagnostics-dir PATH] [--out stats.json]
 # R3 codifies the final retry policy from this after the R2 smoke campaign
 # (>=10 zero-config runs across site shapes/languages/time-of-day).
+
+# Per-run LLM cost table (Y1D D0) — aggregates run_summary.json llm_usage blocks
+# and converts token totals against the reference models (config
+# llm.reference_pricing: claude-sonnet-4-6 $3/$15, gpt-5.4-mini $0.75/$4.50):
+~/miniconda3/envs/event-intel/python.exe -m event_intel.cli benchmark cost \
+  --run-dir outputs/default   # [--out cost.json] [--json]
 ```
 
 ```bash
