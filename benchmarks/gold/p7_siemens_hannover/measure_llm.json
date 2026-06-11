@@ -1,0 +1,420 @@
+{
+  "pair": "p7_siemens_hannover",
+  "run_id": "hannover_messe_2026-20260611135120-1459f660",
+  "run_fingerprint": "502c9d4375047d68eadf16255761c1796de513a3c7a16d795f37892481cf2a10",
+  "target_mode": "customer",
+  "metrics": {
+    "extraction_coverage": {
+      "value": 0.009358752166377816,
+      "status": "ok",
+      "n": 2885
+    },
+    "mention_coverage": {
+      "value": 0.009358752166377816,
+      "status": "ok",
+      "n": 2885
+    },
+    "precision_at_10": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 10
+    },
+    "target_extraction_coverage": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 4
+    },
+    "end_to_end_competitor_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 2
+    },
+    "conditional_competitor_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 2
+    },
+    "competitor_extraction_coverage": {
+      "value": 1.0,
+      "status": "ok",
+      "n": 2
+    },
+    "end_to_end_bad_fit_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 2
+    },
+    "conditional_bad_fit_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    "bad_fit_extraction_coverage": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 2
+    },
+    "evidence_precision": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "evidence_yield": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "auc": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  },
+  "gates": [
+    {
+      "name": "target_extraction_coverage",
+      "threshold": 0.8,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.0,
+      "status": "ok",
+      "n": 4
+    },
+    {
+      "name": "extraction_coverage",
+      "threshold": 0.8,
+      "direction": ">=",
+      "applicability": "optional",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.009358752166377816,
+      "status": "ok",
+      "n": 2885
+    },
+    {
+      "name": "precision_at_10",
+      "threshold": 0.6,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.0,
+      "status": "ok",
+      "n": 10
+    },
+    {
+      "name": "conditional_competitor_leakage_rate",
+      "threshold": 0.1,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 2
+    },
+    {
+      "name": "conditional_bad_fit_leakage_rate",
+      "threshold": 0.05,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    {
+      "name": "evidence_precision",
+      "threshold": 0.85,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  ],
+  "eligibility": "fail",
+  "passed": false,
+  "news_capture": {
+    "schema": "news-capture/v1",
+    "grade": "advisory",
+    "thresholds": {
+      ">=10M": 10,
+      "<10M": 3
+    },
+    "companies": [
+      {
+        "name": "abb",
+        "revenue_tier": ">=10M",
+        "bodied_news": 0,
+        "listed_news": 20,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "aras",
+        "revenue_tier": ">=10M",
+        "bodied_news": 9,
+        "listed_news": 20,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "asprova",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "asti automation",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "autforce automation",
+        "revenue_tier": null,
+        "bodied_news": 1,
+        "listed_news": 10,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "automation steeg und hoffmeyer",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "aveva",
+        "revenue_tier": null,
+        "bodied_news": 4,
+        "listed_news": 19,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "aveva solutions",
+        "revenue_tier": null,
+        "bodied_news": 5,
+        "listed_news": 16,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "bar automation",
+        "revenue_tier": null,
+        "bodied_news": 2,
+        "listed_news": 11,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "beckhoff automation",
+        "revenue_tier": null,
+        "bodied_news": 2,
+        "listed_news": 20,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "bosch",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 18,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "bosch connected industry",
+        "revenue_tier": null,
+        "bodied_news": 4,
+        "listed_news": 13,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "bosch rexroth",
+        "revenue_tier": null,
+        "bodied_news": 8,
+        "listed_news": 18,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "changsha ata automation",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "chengdu crp robot technology",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 1,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "cobro robot teknolojiler",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 1,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "cohera automations",
+        "revenue_tier": null,
+        "bodied_news": 1,
+        "listed_news": 1,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "comau",
+        "revenue_tier": null,
+        "bodied_news": 1,
+        "listed_news": 20,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "critical manufacturing",
+        "revenue_tier": null,
+        "bodied_news": 3,
+        "listed_news": 20,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "cybus",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 5,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "dassault systemes deutschland",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 2,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "denso robotics europe",
+        "revenue_tier": null,
+        "bodied_news": 1,
+        "listed_news": 1,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "deutschmann automation",
+        "revenue_tier": null,
+        "bodied_news": 1,
+        "listed_news": 1,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "dmg mori emea holding",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "dongguan vitrans automation equipment",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "ds automotion",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 3,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "edag production solutions",
+        "revenue_tier": null,
+        "bodied_news": 2,
+        "listed_news": 10,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "elisa industriq",
+        "revenue_tier": null,
+        "bodied_news": 1,
+        "listed_news": 15,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "elite robots deutschland",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 11,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "emerson process management",
+        "revenue_tier": null,
+        "bodied_news": 10,
+        "listed_news": 13,
+        "threshold": null,
+        "met": null
+      }
+    ],
+    "summary": {
+      "total": 30,
+      "unknown_tier": 28,
+      "big": {
+        "total": 2,
+        "met": 0,
+        "met_rate": 0.0
+      },
+      "small": {
+        "total": 0,
+        "met": 0,
+        "met_rate": null
+      },
+      "overall_met_rate": 0.0
+    }
+  }
+}
