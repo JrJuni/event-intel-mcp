@@ -126,3 +126,189 @@ def test_missing_wordlist_fails_open(monkeypatch):
     assert E.name_is_ambiguous("Dust") is False
     text = "A dust storm article."
     assert E.is_relevant_news(text, name="Dust", ctx_terms=_ctx()) is True
+
+
+# ====================================================================== #
+# C2 — call-site wiring: enrichment floor gate + buying_signal
+# ====================================================================== #
+
+
+def _enrich_cfg(gate: bool | None):
+    cfg = {
+        "enrichment": {
+            "max_companies": 30, "count_web": 5, "count_news": 5,
+            "news_days_back": 180, "cache_enabled": True,
+            "official_url_levenshtein_threshold": 0.4,
+        },
+    }
+    if gate is not None:
+        cfg["enrichment"]["news_entity_gate"] = {"enabled": gate}
+    return cfg
+
+
+class _NewsOnlySearch:
+    def __init__(self, news):
+        self._news = news
+        self.last_call_degraded = False
+
+    def search(self, query, *, kind, count, days=None, lang="en"):
+        return list(self._news) if kind == "news" else []
+
+    def ping(self):  # pragma: no cover
+        return {"status": "ok"}
+
+
+def _dust_news():
+    from dataclasses import dataclass
+
+    @dataclass
+    class _SR:
+        title: str
+        url: str
+        snippet: str
+        source: str | None = None
+        published_at: object = None
+
+    return [
+        _SR(title="Massive dust storm sweeps the region",
+            url="https://weather.example.com/storm", snippet="weather alerts issued"),
+        _SR(title="Dust launches enterprise agents",
+            url="https://techpress.example.com/dust",
+            snippet="agents grounded in company knowledge"),
+    ]
+
+
+def _run_dust_enrichment(tmp_path, gate):
+    from event_intel.events.enrichment import enrich_exhibitors
+    from event_intel.events.extraction import ExhibitorCandidate
+
+    return enrich_exhibitors(
+        candidates=[ExhibitorCandidate(name="Dust", source_snippet=DUST_SNIPPET)],
+        workspace_id=f"c2{'on' if gate else 'off'}", lang="en",
+        config=_enrich_cfg(gate),
+        search_provider=_NewsOnlySearch(_dust_news()),
+        cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+    )
+
+
+def test_enrichment_gate_on_drops_homonym_from_floor_evidence(tmp_path):
+    result = _run_dust_enrichment(tmp_path, gate=True)
+    row = result.rows[0]
+    ev_urls = {e.url for e in row.evidence}
+    assert "https://techpress.example.com/dust" in ev_urls
+    assert "https://weather.example.com/storm" not in ev_urls
+    assert len(row.news_signals) == 2  # both still listed (visibility)
+
+
+def test_enrichment_gate_off_keeps_pre_c2_behavior(tmp_path):
+    result = _run_dust_enrichment(tmp_path, gate=None)  # absent key = off
+    ev_urls = {e.url for e in result.rows[0].evidence}
+    assert "https://weather.example.com/storm" in ev_urls  # old behavior
+
+
+def test_enrichment_gate_multi_token_name_unchanged(tmp_path):
+    from dataclasses import dataclass
+
+    from event_intel.events.enrichment import enrich_exhibitors
+    from event_intel.events.extraction import ExhibitorCandidate
+
+    @dataclass
+    class _SR:
+        title: str
+        url: str
+        snippet: str
+        source: str | None = None
+        published_at: object = None
+
+    news = [_SR(title="Synaptik Robotics wins industrial tender",
+                url="https://news.example.com/s1", snippet="robotic arms")]
+    result = enrich_exhibitors(
+        candidates=[ExhibitorCandidate(
+            name="Synaptik Robotics", source_snippet="industrial robot arm control",
+        )],
+        workspace_id="c2multi", lang="en", config=_enrich_cfg(True),
+        search_provider=_NewsOnlySearch(news),
+        cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+    )
+    assert "https://news.example.com/s1" in {e.url for e in result.rows[0].evidence}
+
+
+# ---------- buying_signal ----------
+
+
+def _dust_row(news):
+    from event_intel.events.enrichment import EnrichedExhibitor, NewsSignal
+
+    return EnrichedExhibitor(
+        name="Dust", source_snippet=DUST_SNIPPET,
+        news_signals=[
+            NewsSignal(title=t, url=u, snippet=s) for (t, u, s) in news
+        ],
+    )
+
+
+def test_buying_signal_entity_gate_halves_homonym_only_news():
+    from event_intel.scoring.dimensions import score_buying_signal
+
+    homonym = [
+        ("Dust storm warning issued", "https://w/1", "weather"),
+        ("Dust levels rise in mines", "https://w/2", "safety"),
+        ("Cleaning dust from your PC", "https://w/3", "howto"),
+    ]
+    row = _dust_row(homonym)
+    gated = score_buying_signal(row, entity_gate=True)
+    ungated = score_buying_signal(row, entity_gate=False)
+    assert ungated == pytest.approx(0.6)   # 3 news, token "dust" matches
+    assert gated == pytest.approx(0.3)     # gate: none relevant → base halved
+
+
+def test_buying_signal_entity_gate_keeps_contextual_news():
+    from event_intel.scoring.dimensions import score_buying_signal
+
+    row = _dust_row([
+        ("Dust ships enterprise agents grounded in company data", "https://t/1", "ai"),
+        ("Dust storm hits", "https://w/1", "weather"),
+        ("Dust storm again", "https://w/2", "weather"),
+    ])
+    assert score_buying_signal(row, entity_gate=True) == pytest.approx(0.6)
+
+
+def test_score_exhibitors_threads_entity_gate_from_config():
+    from event_intel.rag.retriever import FitResult
+    from event_intel.scoring.compute import score_exhibitors
+
+    row = _dust_row([
+        ("Dust storm warning issued", "https://w/1", "weather"),
+        ("Dust levels rise in mines", "https://w/2", "safety"),
+        ("Cleaning dust from your PC", "https://w/3", "howto"),
+    ])
+    fit = FitResult(name="Dust", capability_fit=0.8, top_hits=[],
+                    capability_fit_breakdown={})
+    scoring_cfg = {
+        "scoring": {
+            "weights": {"buying_signal": 1.0},
+            "tier_rules": {
+                "S": {"min_final_score": 9.9, "evidence_floor_min": 2},
+                "A": {"min_final_score": 9.9, "evidence_floor_min": 1},
+                "B": {"min_final_score": 0.0, "evidence_floor_min": 0},
+                "C": {"min_final_score": 0.0, "evidence_floor_min": 0},
+            },
+        },
+    }
+    off = score_exhibitors(
+        enriched=[row], fit_results=[fit], cards=None,
+        config=dict(scoring_cfg), top_k=5,
+    )
+    on_cfg = {**scoring_cfg, "enrichment": {"news_entity_gate": {"enabled": True}}}
+    on = score_exhibitors(
+        enriched=[row], fit_results=[fit], cards=None, config=on_cfg, top_k=5,
+    )
+    assert on.rows[0].dimensions.buying_signal < off.rows[0].dimensions.buying_signal
+
+
+def test_config_fingerprint_includes_entity_gate():
+    from event_intel.events.enrichment import _config_fingerprint
+
+    base = {"max_companies": 30}
+    with_gate = {"max_companies": 30, "news_entity_gate": {"enabled": True}}
+    assert _config_fingerprint(base) != _config_fingerprint(with_gate)

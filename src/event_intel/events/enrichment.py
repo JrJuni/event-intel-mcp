@@ -103,6 +103,8 @@ def _config_fingerprint(enrichment_cfg: dict, *, provider_sig: str = "") -> str:
         "evidence_queries": enrichment_cfg.get("evidence_queries", {}) or {},
         # B1 — body-lane settings change what evidence a row carries.
         "news_body": enrichment_cfg.get("news_body", {}) or {},
+        # C2 — the entity gate changes which news survive to evidence.
+        "news_entity_gate": enrichment_cfg.get("news_entity_gate", {}) or {},
     }
     blob = json.dumps(relevant, sort_keys=True, default=str)
     return hashlib.sha1(blob.encode()).hexdigest()[:16]
@@ -576,6 +578,12 @@ def enrich_exhibitors(
         failure_log_path or (home / "diagnostics" / workspace_id / "search_failures.jsonl"),
         base_fields={"workspace": workspace_id},
     )
+    # C2 — entity-relevance gate (absent key = off, like evidence_queries;
+    # shipped defaults.yaml turns it on). Strengthens the news gate for
+    # homonym-risk names only; fail-open without context terms.
+    entity_gate = bool(
+        (enrichment_cfg.get("news_entity_gate", {}) or {}).get("enabled", False)
+    )
     # B1 — article body fetch lane. Built only when config enables it (absent
     # key = off, like evidence_queries, so existing callers/tests keep their
     # exact network behaviour); tests inject a fake via the body_fetcher param.
@@ -726,7 +734,9 @@ def enrich_exhibitors(
         from event_intel.events.evidence import (
             EvidenceItem,
             classify_url_type,
+            context_terms,
             domain_of,
+            is_relevant_news,
             mentions_name,
             merge_evidence,
             name_tokens,
@@ -735,6 +745,39 @@ def enrich_exhibitors(
 
         official_domain = domain_of(row.official_url)
         cand_name_tokens = name_tokens(cand.name)
+        # C2 — entity-relevance gate context: the company's own snippet/
+        # description terms disambiguate homonym names ("Dust" the company vs
+        # "dust storm"). Only consulted when the gate is enabled.
+        cand_ctx = (
+            context_terms(f"{cand.source_snippet or ''} {cand.description or ''}")
+            if entity_gate
+            else set()
+        )
+
+        def _news_relevant(
+            text: str,
+            news_url: str,
+            *,
+            cand_name: str = cand.name,
+            official_domain: str | None = official_domain,
+            cand_name_tokens: list[str] = cand_name_tokens,
+            cand_ctx: set[str] = cand_ctx,
+        ) -> bool:
+            """Shared news gate (floor evidence + B2 body gate). With the C2
+            entity gate on, is_relevant_news adds the homonym co-occurrence
+            requirement; off → the pre-C2 mentions_name/same_site behavior.
+            Loop vars bound as defaults so the closure captures THIS iteration.
+            """
+            if entity_gate:
+                return is_relevant_news(
+                    text, name=cand_name, ctx_terms=cand_ctx,
+                    news_domain=domain_of(news_url),
+                    official_domain=official_domain,
+                )
+            return mentions_name(text, cand_name_tokens) or bool(
+                official_domain
+                and same_site(domain_of(news_url), official_domain)
+            )
 
         def _evidence_relevant(
             url: str, title: str,
@@ -766,8 +809,7 @@ def enrich_exhibitors(
         # floor 2. news_signals still feed buying_signal (soft-downweighted).
         gated_news = [
             n for n in row.news_signals
-            if mentions_name(f"{n.title or ''} {n.snippet or ''}", cand_name_tokens)
-            or (official_domain and same_site(domain_of(n.url), official_domain))
+            if _news_relevant(f"{n.title or ''} {n.snippet or ''}", n.url)
         ]
         # B1 — fetch article bodies for the GATED news only (budget goes to
         # plausibly-relevant items). Never raises; failures leave the signal as
@@ -792,24 +834,13 @@ def enrich_exhibitors(
             # excluded from floor evidence (still listed under news_signals).
             # Snippet-only items and unavailable bodies fail OPEN (keep the
             # pre-B2 behavior; the snippet gate above already passed).
-            def _body_relevant(
-                n: NewsSignal,
-                *,
-                official_domain: str | None = official_domain,
-                cand_name_tokens: list[str] = cand_name_tokens,
-            ) -> bool:
+            def _body_relevant(n: NewsSignal) -> bool:
                 if n.body_sha is None or not hasattr(body_fetcher, "load_body"):
                     return True
                 body = body_fetcher.load_body(n.url)
                 if not body:
                     return True
-                return (
-                    mentions_name(body, cand_name_tokens)
-                    or bool(
-                        official_domain
-                        and same_site(domain_of(n.url), official_domain)
-                    )
-                )
+                return _news_relevant(body, n.url)
 
             floor_news = [n for n in gated_news if _body_relevant(n)]
         else:

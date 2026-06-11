@@ -338,10 +338,13 @@ def test_topn_aggregation_changes_tier_end_to_end():
             return [list(hits) for _ in query_embeddings]
 
     # official_url + name-matched news → floor 2, buying signal fires (so the
-    # capability_fit delta from top-N is what tips A vs B).
+    # capability_fit delta from top-N is what tips A vs B). The name is a COINED
+    # word on purpose: "Acme" is in COMMON_WORDS, and with the C2 entity gate on
+    # (live defaults) these context-free news titles would be gated out — this
+    # test is about top-N aggregation, not the homonym gate.
     rows = [EnrichedExhibitor(
-        name="Acme", source_snippet="cap evidence", official_url="https://acme.example",
-        news_signals=[NewsSignal(title=f"Acme news {i}", url=f"u{i}", snippet="") for i in range(3)],
+        name="Zentriq", source_snippet="cap evidence", official_url="https://zentriq.example",
+        news_signals=[NewsSignal(title=f"Zentriq news {i}", url=f"u{i}", snippet="") for i in range(3)],
     )]
     cfg = _config()
 

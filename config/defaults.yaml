@@ -29,6 +29,8 @@ enrichment:
     timeout_s: 10
     min_body_chars: 400            # below this → snippet-only (too thin to gate/score)
     cache_ttl_days: 14             # fetched bodies reused across runs (URL-keyed)
+  news_entity_gate:                # C2 — homonym disambiguation (Dust/Ramp/Chroma false positives)
+    enabled: true                  # ambiguous single-common-word names require ctx-term co-occurrence; fail-open without context
   fetch_timeout_seconds: 10
   fetch_body_max_chars: 2000
   cache_enabled: true              # Cache search responses per (provider, query, kind) hash

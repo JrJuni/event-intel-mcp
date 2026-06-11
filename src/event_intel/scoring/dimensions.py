@@ -22,7 +22,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from event_intel.events.evidence import mentions_name, name_tokens
+from event_intel.events.evidence import (
+    context_terms,
+    domain_of,
+    is_relevant_news,
+    mentions_name,
+    name_tokens,
+)
 from event_intel.scoring.cjk import CjkSpec, cjk_bigrams, resolve_segmenter
 from event_intel.timeutil import recency_weight
 
@@ -61,6 +67,7 @@ def score_buying_signal(
     triggers: list[str] | None = None,
     reference_date: datetime | None = None,
     half_life_days: float = 180.0,
+    entity_gate: bool = False,
 ) -> float:
     """News-driven signal: count bracket × company-name relevance + recency bonus.
 
@@ -83,10 +90,30 @@ def score_buying_signal(
     # Same relevance test as the floor evidence gate (review round-3 #2): the old
     # substring matcher let "data"⊂"database" / "meta"⊂"metadata" count unrelated
     # articles. evidence.mentions_name is token-boundary + generic-token guarded.
-    tokens = name_tokens(row.name)
-    matched = [
-        n for n in news if mentions_name(f"{n.title or ''} {n.snippet or ''}", tokens)
-    ]
+    # With entity_gate on (news plan C2, config enrichment.news_entity_gate) the
+    # SHARED is_relevant_news predicate governs instead: same mentions_name core
+    # + official-domain bypass + homonym co-occurrence requirement for ambiguous
+    # single-common-word names ("Dust" articles must co-mention the company's
+    # own context terms, not just the word "dust").
+    if entity_gate:
+        ctx = context_terms(
+            f"{row.source_snippet or ''} {getattr(row, 'description', None) or ''}"
+        )
+        official = domain_of(getattr(row, "official_url", None))
+        matched = [
+            n for n in news
+            if is_relevant_news(
+                f"{n.title or ''} {n.snippet or ''}",
+                name=row.name, ctx_terms=ctx,
+                news_domain=domain_of(n.url), official_domain=official,
+            )
+        ]
+    else:
+        tokens = name_tokens(row.name)
+        matched = [
+            n for n in news
+            if mentions_name(f"{n.title or ''} {n.snippet or ''}", tokens)
+        ]
     if not matched:
         base *= 0.5
 
@@ -258,6 +285,7 @@ def compute_dimensions(
     half_life_days: float = 180.0,
     negative_sim_threshold: float = 0.0,
     cjk: CjkSpec | None = None,
+    entity_gate: bool = False,
 ) -> DimensionScores:
     triggers = [t.signal for t in cards.buying_triggers] if cards else []
     return DimensionScores(
@@ -268,6 +296,7 @@ def compute_dimensions(
             triggers=triggers,
             reference_date=reference_date,
             half_life_days=half_life_days,
+            entity_gate=entity_gate,
         ),
         website_verification=score_website_verification(row),
         category_fit=score_category_fit(row, cards=cards, cjk=cjk),

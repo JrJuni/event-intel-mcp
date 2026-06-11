@@ -133,12 +133,13 @@ def _compute_one(
     half_life_days: float = 180.0,
     negative_sim_threshold: float = 0.0,
     cjk: CjkSpec | None = None,
+    entity_gate: bool = False,
 ) -> ScoredExhibitor:
     dims = compute_dimensions(
         row, fit, cards=cards, top_k=top_k,
         reference_date=reference_date, half_life_days=half_life_days,
         negative_sim_threshold=negative_sim_threshold,
-        cjk=cjk,
+        cjk=cjk, entity_gate=entity_gate,
     )
 
     raw = (
@@ -238,6 +239,15 @@ def score_exhibitors(
 
     cjk_spec = make_cjk_spec(config.get("scoring", {}).get("cjk_tokenizer"))
 
+    # Entity-relevance gate (news plan C2): buying_signal shares the same
+    # is_relevant_news predicate as the floor evidence gate. Absent key = off
+    # (back-compat); shipped defaults.yaml turns it on.
+    entity_gate = bool(
+        (config.get("enrichment", {}) or {})
+        .get("news_entity_gate", {})
+        .get("enabled", False)
+    )
+
     rows: list[ScoredExhibitor] = []
     for row, fit in zip(enriched, fit_results, strict=True):
         scored = _compute_one(
@@ -245,7 +255,7 @@ def score_exhibitors(
             weights=weights, tier_rules=tier_rules, top_k=top_k,
             reference_date=reference_date, half_life_days=half_life_days,
             negative_sim_threshold=negative_sim_threshold,
-            cjk=cjk_spec,
+            cjk=cjk_spec, entity_gate=entity_gate,
         )
         rows.append(scored)
 
