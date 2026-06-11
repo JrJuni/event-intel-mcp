@@ -1,0 +1,26 @@
+{
+  "_schema": "revenue-tiers/v1",
+  "_note": "Claude host judgment with web grounding (2026-06-11). true = est. annual revenue >= $10M (success criterion 5 denominator: >=10M needs >=10 news, below needs >=3).",
+  "tiers": {
+    "microsoft limited": true,
+    "google cloud": true,
+    "dell technologies | nvidia | microsoft azure local": true,
+    "servicenow": true,
+    "snowflake": true,
+    "rackspace technology": true,
+    "domo": true,
+    "dbt labs": true,
+    "quest software": true,
+    "precisely software limited": true,
+    "celebal technologies": true,
+    "astronomer inc": true,
+    "onix": true,
+    "eliatra": false,
+    "the data escape room": false,
+    "tekantis limited": false,
+    "power bi sentinel": false,
+    "count technologies ltd": false,
+    "euno": false,
+    "lakefs": false
+  }
+}

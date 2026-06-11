@@ -1,0 +1,273 @@
+{
+  "pair": "p5_snowflake_bdldn",
+  "labels": {
+    "eliatra": "neutral",
+    "dell technologies | nvidia | microsoft azure local": "competitor",
+    "the data escape room": "neutral",
+    "tekantis limited": "neutral",
+    "servicenow": "target",
+    "power bi sentinel": "neutral",
+    "count technologies ltd": "target",
+    "snowflake": "neutral",
+    "microsoft limited": "competitor",
+    "google cloud": "competitor",
+    "rackspace technology": "target",
+    "euno": "target",
+    "onix": "neutral",
+    "astronomer inc": "target",
+    "domo": "target",
+    "dbt labs": "target",
+    "quest software": "neutral",
+    "celebal technologies": "target",
+    "lakefs": "target",
+    "precisely software limited": "target"
+  },
+  "sha": "8a198150e14271bbe9a19d3209250fbf5936b4c80d8c40adbbc399435f547825",
+  "packet_sha": "53020ddedca7521ba53b0f7fa5627517ffa93e8a017ca69072a250e9d92ccfa3",
+  "grades": {
+    "eliatra": "gold",
+    "dell technologies | nvidia | microsoft azure local": "gold",
+    "the data escape room": "gold",
+    "tekantis limited": "gold",
+    "servicenow": "gold",
+    "power bi sentinel": "gold",
+    "count technologies ltd": "gold",
+    "snowflake": "gold",
+    "microsoft limited": "gold",
+    "google cloud": "gold",
+    "rackspace technology": "gold",
+    "euno": "gold",
+    "onix": "gold",
+    "astronomer inc": "gold",
+    "domo": "gold",
+    "dbt labs": "gold",
+    "quest software": "gold",
+    "celebal technologies": "gold",
+    "lakefs": "gold",
+    "precisely software limited": "gold"
+  },
+  "provenance": {
+    "eliatra": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "dell technologies | nvidia | microsoft azure local": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "the data escape room": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "tekantis limited": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "servicenow": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "power bi sentinel": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "count technologies ltd": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://count.co"
+      ],
+      "refine_note": "Collaborative BI/SQL canvas querying cloud warehouses incl. Snowflake - ecosystem ISV prospect."
+    },
+    "snowflake": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.snowflake.com"
+      ],
+      "refine_note": "SELF - the product vendor's own booth; neither target nor competitor of itself."
+    },
+    "microsoft limited": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "google cloud": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "rackspace technology": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.rackspace.com/data"
+      ],
+      "refine_note": "Managed cloud/data services provider; delivers data platform services incl. Snowflake - buyer/channel prospect."
+    },
+    "euno": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://euno.ai/solutions/integrations/dbt/",
+        "https://euno.ai/blog/semantic-layers"
+      ],
+      "refine_note": "Semantic-layer/dbt governance startup crawling warehouse+BI stacks - Snowflake-ecosystem ISV."
+    },
+    "onix": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "astronomer inc": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.astronomer.io/integrations/snowflake/"
+      ],
+      "refine_note": "Astronomer (Apache Airflow) orchestrates Snowflake pipelines; established ecosystem partner."
+    },
+    "domo": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.domo.com/partners/snowflake",
+        "https://www.domo.com/news/press/domo-expands-native-integration-capabilities-within-snowflake-data-cloud"
+      ],
+      "refine_note": "Official Snowflake partner (Partner Connect, Magic ETL on Snowflake, bi-directional Cloud Amplifier) - GPT's 'competitor' refuted by evidence."
+    },
+    "dbt labs": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.getdbt.com/product/integrations/snowflake"
+      ],
+      "refine_note": "dbt is the de-facto transformation layer on Snowflake; deep ecosystem partner."
+    },
+    "quest software": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "6876e9768755b6ccf20d4bb21481d80b78f9a8a8707cff38f2e58df33efb9778",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "celebal technologies": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://celebaltech.com/partners/snowflake"
+      ],
+      "refine_note": "Large data SI; Snowflake services partner (also MS/Databricks) - channel prospect."
+    },
+    "lakefs": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://lakefs.io"
+      ],
+      "refine_note": "Data versioning for lakehouse pipelines (Treeverse) - data-stack ecosystem ISV."
+    },
+    "precisely software limited": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.precisely.com/partners/snowflake"
+      ],
+      "refine_note": "Data integrity/quality vendor with a dedicated Snowflake partnership."
+    }
+  }
+}
