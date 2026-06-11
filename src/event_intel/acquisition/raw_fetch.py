@@ -131,8 +131,12 @@ def fetch_raw(
                         truncated = True
                         break
                 raw = b"".join(chunks)
-                encoding = resp.encoding or "utf-8"
-                body = raw.decode(encoding, errors="replace")
+                # Header charset > meta-charset sniff > utf-8 (textenc): a bare
+                # text/html header must not mojibake EUC-KR/Shift-JIS pages —
+                # resp.encoding can't distinguish "declared" from "default".
+                from event_intel.textenc import decode_html
+
+                body = decode_html(raw, header_charset=resp.charset_encoding)
 
                 ct = resp.headers.get("content-type", "")
                 return RawResponse(

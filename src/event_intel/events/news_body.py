@@ -244,8 +244,14 @@ class NewsBodyFetcher:
                     if len(buf) >= self.cfg.max_bytes_per_page:
                         truncated = True
                         break
-                text = bytes(buf[: self.cfg.max_bytes_per_page]).decode(
-                    resp.encoding or "utf-8", errors="replace"
+                from event_intel.textenc import decode_html
+
+                # Header charset > meta sniff > utf-8 — an EUC-KR newsroom with
+                # a bare text/html header must not mojibake its body (the body
+                # gate's mentions_name would silently fail on Korean names).
+                text = decode_html(
+                    bytes(buf[: self.cfg.max_bytes_per_page]),
+                    header_charset=resp.charset_encoding,
                 )
                 return {
                     "status": resp.status_code,
