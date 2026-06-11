@@ -500,6 +500,34 @@ def test_build_unknown_capability_fit_mode_warns_and_uses_llm(all_fakes, monkeyp
     assert "llm_fit" in rs["llm_usage"]["stages"]
 
 
+def test_build_ledger_records_actual_extraction_model_not_config_string(
+    all_fakes, monkeypatch, repo_root
+):
+    """D3 regression — with chatgpt_oauth the factory IGNORES the model param,
+    so the ledger must record the provider's actual model (the OAuth one), not
+    llm.extract_exhibitors_model from config. Mislabeling a free-OAuth run as a
+    paid Sonnet run corrupts the cost report."""
+    import copy
+    import json as _json
+
+    cfg = copy.deepcopy(_MIN_CONFIG)
+    cfg["llm"]["provider"] = "chatgpt_oauth"
+    cfg["llm"]["chatgpt_oauth_model"] = "fake-oauth-mini"
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: cfg)
+    monkeypatch.setattr(_llm, "ChatGPTOAuthProvider", _FakeLLM)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_modellabel",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    models = rs["llm_usage"]["stages"]["extraction"]["models"]
+    assert models == ["fake-oauth-mini"], models
+    assert "fake-sonnet" not in models
+
+
 # ---------- Y1D D2: LLM roster triage (over-cap selection) ----------
 
 
