@@ -1,0 +1,642 @@
+{
+  "pair": "p5_snowflake_bdldn",
+  "run_id": "big_data_ldn_2026-20260611070536-f0bdab95",
+  "run_fingerprint": "da00456368aed7418f8f5d822570504d0a61a9c539da720f13c978edc0cafab9",
+  "run_summary": {
+    "run_id": "big_data_ldn_2026-20260611070536-f0bdab95",
+    "run_fingerprint": "da00456368aed7418f8f5d822570504d0a61a9c539da720f13c978edc0cafab9",
+    "git_commit_sha": "fd0c552d64c70be87cfacc147a68c4ae447af6c6",
+    "config_fp": "ac40f22b72ac4a7e473b4130dae044100631299e30a9325ce38a3bcf11975e2d",
+    "cards_fingerprint": "8d91c0321af9df88a94e2998c9113c95141417d5223b5d652b471bdf80e2ee25",
+    "source_sha256": "20d1a7692e6d7c7516c3115a01c374df4f317688e602bccdaa155426e1738254",
+    "provider": "chatgpt_oauth",
+    "model_ids": {
+      "extract": "claude-sonnet-4-6",
+      "rationale": "claude-sonnet-4-6",
+      "embedding": "bge-m3"
+    },
+    "reference_timestamp": "2026-06-11T07:05:36.338611+00:00",
+    "target_mode": "customer",
+    "max_companies": null,
+    "max_chunks_per_event": 12,
+    "refresh": false,
+    "cache_hits": 90,
+    "cache_misses": 30,
+    "skipped_from_resume": 0,
+    "search_calls": 120,
+    "extracted": 162,
+    "enriched": 30,
+    "scored": 30,
+    "extraction_coverage": null,
+    "stages": [
+      {
+        "stage": "source_capture",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "extraction",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "enrichment",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "retrieval",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "scoring",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "report",
+        "ok": true,
+        "error_code": null
+      }
+    ],
+    "companies": [
+      {
+        "name": "microsoft limited",
+        "tier": "C",
+        "final_score": 2.787811685204505,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4805881977081299,
+          "source_confidence": 0.99,
+          "buying_signal": 0.2,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.6254151165485382,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.79 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "rackspace technology",
+        "tier": "B",
+        "final_score": 4.489139240107355,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.5120157301425934,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8980946113807747,
+          "website_verification": 1.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.6261571049690247,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.49 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "uptitude",
+        "tier": "C",
+        "final_score": 1.6521293675899509,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.48735036452611286,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.655691921710968,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.65 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "euno",
+        "tier": "B",
+        "final_score": 4.399227780974733,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.45266671975453693,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8853506845082362,
+          "website_verification": 1.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.5633709728717804,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.40 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "women in data",
+        "tier": "B",
+        "final_score": 4.705674882424432,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.48043715953826904,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8998547581120053,
+          "website_verification": 1.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.5058339238166809,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.71 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "google cloud",
+        "tier": "C",
+        "final_score": 3.0258339648198165,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.49579886595408124,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8992300217232778,
+          "website_verification": 1.0,
+          "category_fit": 0.8571428571428571,
+          "competitor_penalty": 0.6545066237449646,
+          "bad_fit_penalty": 0.5161395072937012
+        },
+        "tier_reasons": [
+          "final_score=3.03 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "oakland everything data",
+        "tier": "B",
+        "final_score": 4.0344038460360885,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.48951921860376996,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8994702297917294,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5766740441322327,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.03 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "redpanda data inc",
+        "tier": "C",
+        "final_score": 3.20313388466835,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4990990360577901,
+          "source_confidence": 0.99,
+          "buying_signal": 0.2,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.6297609210014343,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.20 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "alteryx uk ltd",
+        "tier": "C",
+        "final_score": 1.7424829608201977,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.40949273109436035,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5631414949893951,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.74 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "bigeye",
+        "tier": "C",
+        "final_score": 2.0828246599435802,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.43810051679611206,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.6666666666666666,
+          "competitor_penalty": 0.5394701957702637,
+          "bad_fit_penalty": 0.5113324820995331
+        },
+        "tier_reasons": [
+          "final_score=2.08 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "servicenow",
+        "tier": "B",
+        "final_score": 4.684231150667264,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.5232108434041342,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8999030609398377,
+          "website_verification": 1.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.5807874202728271,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.68 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "apgar group",
+        "tier": "C",
+        "final_score": 2.216392088532447,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.426968773206075,
+          "source_confidence": 0.99,
+          "buying_signal": 0.2,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5284326374530792,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.22 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "onix",
+        "tier": "C",
+        "final_score": 3.111365457922808,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4436478614807129,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8853509260221268,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5807441473007202,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.11 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "snowflake",
+        "tier": "B",
+        "final_score": 4.479548931459224,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.5062151153882345,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8788335142795485,
+          "website_verification": 1.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.5835276246070862,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.48 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "simpson associates",
+        "tier": "C",
+        "final_score": 2.4345642900466915,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4712377190589905,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.546899676322937,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.43 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "qerent revenue diagnostics",
+        "tier": "C",
+        "final_score": 1.7297280287742614,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4710753361384074,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6195708513259888,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.73 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "yuki",
+        "tier": "C",
+        "final_score": 2.1759489601850515,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.36873018741607666,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5329261720180511,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.18 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "precisely software limited",
+        "tier": "B",
+        "final_score": 4.022655887882445,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.47163522243499756,
+          "source_confidence": 0.99,
+          "buying_signal": 0.6749220476418964,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.5756093859672546,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.02 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "secoda",
+        "tier": "C",
+        "final_score": 2.7104381358623506,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.48129228750864667,
+          "source_confidence": 0.99,
+          "buying_signal": 0.2,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.6481253504753113,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.71 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "caci ltd",
+        "tier": "C",
+        "final_score": 1.7009433960914606,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4580483039220174,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6166290044784546,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.70 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "airbyte",
+        "tier": "C",
+        "final_score": 3.2628782367706313,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.49070511261622113,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.6483534574508667,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.26 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "fidra analytics",
+        "tier": "C",
+        "final_score": 1.5054353034496306,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4967125356197357,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.7056292295455933,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.51 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "7dxperts",
+        "tier": "C",
+        "final_score": 1.5220309203863147,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.44609183073043823,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6574984490871429,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.52 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "e6data inc",
+        "tier": "C",
+        "final_score": 1.5020757472515103,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.46332677205403644,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6779727339744568,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.50 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "domo",
+        "tier": "B",
+        "final_score": 4.374609989774728,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4141506751378377,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8976979833526775,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.5212540030479431,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.37 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "celebal technologies",
+        "tier": "B",
+        "final_score": 4.617594095961954,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.5385869642098745,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8931476091654473,
+          "website_verification": 1.0,
+          "category_fit": 0.8333333333333334,
+          "competitor_penalty": 0.5922537744045258,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.62 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "datavault builder ag",
+        "tier": "C",
+        "final_score": 1.6241978263854975,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4460512598355611,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6282731294631958,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.62 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "dataiq",
+        "tier": "C",
+        "final_score": 2.929295662641525,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4649571379025777,
+          "source_confidence": 0.99,
+          "buying_signal": 0.2,
+          "website_verification": 1.0,
+          "category_fit": 0.6666666666666666,
+          "competitor_penalty": 0.6430216431617737,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.93 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "eden smith limited",
+        "tier": "C",
+        "final_score": 1.8307358926534656,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4279886881510417,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5537800490856171,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.83 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "quest software",
+        "tier": "B",
+        "final_score": 4.287444744304695,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.5271962881088257,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8813480457967378,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.6360474824905396,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.29 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      }
+    ],
+    "warnings": [
+      "capped enrichment at 30/162 exhibitors (set enrichment.max_companies in config to raise)"
+    ],
+    "pair": null,
+    "source_index_fingerprint": null
+  },
+  "top10_evidence": []
+}
