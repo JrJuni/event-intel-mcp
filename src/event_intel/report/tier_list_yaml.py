@@ -48,11 +48,17 @@ if TYPE_CHECKING:
 
 
 # v2: typed `evidence` per exhibitor; v3: top-level `target_mode` (18V item 2);
-# v4: per-exhibitor `source_provenance` from the raw source library (WSL W4).
-REPORT_SCHEMA_VERSION = 4
+# v4: per-exhibitor `source_provenance` from the raw source library (WSL W4);
+# v5: per-exhibitor `news_relatedness` — article-body ↔ product-card cosine
+#     (news plan B2, criterion ③; REPORT-ONLY, no path back to scores).
+REPORT_SCHEMA_VERSION = 5
 
 
-def _exhibitor_to_dict(scored: object, provenance: list[dict] | None = None) -> dict:
+def _exhibitor_to_dict(
+    scored: object,
+    provenance: list[dict] | None = None,
+    news_relatedness: list[dict] | None = None,
+) -> dict:
     row = scored.row
     fit = scored.fit
     return {
@@ -75,6 +81,10 @@ def _exhibitor_to_dict(scored: object, provenance: list[dict] | None = None) -> 
         # WSL W4: raw-source grounding (rationale-only; never affects the score
         # fields above). Empty list when no source library was synced.
         "source_provenance": list(provenance or []),
+        # B2 criterion ③: per fetched article, max cosine of its body against
+        # the product cards. Diagnostics/report only — staged decision: tier
+        # folding requires separate approval after smoke-distribution review.
+        "news_relatedness": list(news_relatedness or []),
     }
 
 
@@ -92,15 +102,18 @@ def build_tier_list_payload(
     needs_review: list[EnrichedExhibitor] | None,
     context: ReportContext,
     source_provenance: dict[str, list[dict]] | None = None,
+    news_relatedness: dict[str, list[dict]] | None = None,
 ) -> dict:
     """`source_provenance` maps exhibitor name → its raw-source grounding chunks
-    (WSL W4). Absent / None → every exhibitor gets an empty list. It is added to
-    the report ONLY — the scoring fields are untouched by it.
+    (WSL W4); `news_relatedness` maps exhibitor name → per-article body↔product
+    relatedness entries (B2 criterion ③). Absent / None → empty lists. Both are
+    added to the report ONLY — the scoring fields are untouched by them.
     """
     generated_at = context.generated_at or datetime.now(UTC)
     counts = dict(summary.tier_counts)
     counts["needs_review"] = len(needs_review or [])
     prov = source_provenance or {}
+    rel = news_relatedness or {}
     return {
         "schema_version": REPORT_SCHEMA_VERSION,
         "workspace_id": context.workspace_id,
@@ -111,7 +124,8 @@ def build_tier_list_payload(
         "generated_at": generated_at.isoformat(),
         "tier_counts": counts,
         "exhibitors": [
-            _exhibitor_to_dict(s, prov.get(s.row.name)) for s in summary.rows
+            _exhibitor_to_dict(s, prov.get(s.row.name), rel.get(s.row.name))
+            for s in summary.rows
         ],
         "needs_review": [_needs_review_to_dict(r) for r in (needs_review or [])],
     }

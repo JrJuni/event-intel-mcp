@@ -332,3 +332,289 @@ def test_news_signal_body_fields_roundtrip_resume():
     restored = _from_dict(_to_dict(row))
     assert restored.news_signals[0].body_sha == "abc123"
     assert restored.news_signals[0].body_chars == 999
+
+
+# ---------- B2 (4) near-duplicate detection ----------
+
+
+def _bodied_fetcher(tmp_path, bodies: dict[str, str]):
+    """Fetcher whose fetch_fn serves canned HTML per URL."""
+
+    def _fetch(url):
+        return {"status": 200, "text": bodies[url], "final_url": url}
+
+    return NewsBodyFetcher(cfg=_cfg(min_body_chars=10), cache_dir=tmp_path / "b",
+                           now=NOW, fetch_fn=_fetch)
+
+
+def _html(text: str) -> str:
+    return "<html><body><article><h1>head</h1>" + "".join(
+        f"<p>{text} sentence {i} continues with more context.</p>" for i in range(6)
+    ) + "</article></body></html>"
+
+
+def test_find_near_duplicates_exact_and_shingle(tmp_path):
+    u1, u2, u3 = (f"https://news{i}.example.com/a" for i in range(3))
+    base = "Mobius Labs launched its NPU compiler for automotive edge AI"
+    bodies = {
+        u1: _html(base),
+        u2: _html(base),  # identical body, different outlet -> dup
+        u3: _html("Totally different company ships quantum networking hardware"),
+    }
+    f = _bodied_fetcher(tmp_path, bodies)
+    sigs = [NewsSignal(title="t", url=u, snippet="s") for u in (u1, u2, u3)]
+    assert f.attach_bodies(sigs) == 3
+    dups = f.find_near_duplicates(sigs)
+    assert [d.url for d in dups] == [u2]  # later copy flagged, distinct kept
+
+
+def test_find_near_duplicates_skips_bodiless(tmp_path):
+    f = _bodied_fetcher(tmp_path, {})
+    sigs = [NewsSignal(title="t", url="https://x.example.com", snippet="s")]
+    assert f.find_near_duplicates(sigs) == []  # no body_sha -> never a dup
+
+
+def test_shingle_jaccard_primitives():
+    from event_intel.events.news_body import _jaccard, _shingles
+
+    a = _shingles("one two three four five six seven eight nine ten")
+    assert _jaccard(a, a) == 1.0
+    assert _jaccard(a, set()) == 0.0
+    assert _shingles("") == set()
+    assert _shingles("short text") == {"short text"}  # < n words -> one shingle
+
+
+# ---------- B2 (2) body content gate + (4) dedupe wiring in enrichment ----------
+
+
+class _GateFetcher:
+    """Bodies pre-baked per URL; mimics the B1 fetcher contract."""
+
+    def __init__(self, bodies: dict[str, str], dups: list | None = None):
+        self._bodies = bodies
+        self._dups = set(dups or [])
+
+    def attach_bodies(self, signals):
+        n = 0
+        for s in signals:
+            if s.url in self._bodies:
+                s.body_sha = "sha-" + s.url[-4:]
+                s.body_chars = len(self._bodies[s.url])
+                n += 1
+        return n
+
+    def load_body(self, url):
+        return self._bodies.get(url)
+
+    def find_near_duplicates(self, signals):
+        return [s for s in signals if s.url in self._dups]
+
+
+def test_body_gate_excludes_wrong_entity_from_floor(tmp_path):
+    """Snippet matches the name but the BODY is about dust storms (criterion 2):
+    not floor evidence. A body that does mention the company stays."""
+    on_url = "https://news.example.com/on"
+    wrong_url = "https://news.example.com/wrong"
+    news = [
+        _SR(title="Mobius Labs raises", url=on_url, snippet="round"),
+        _SR(title="Mobius Labs update", url=wrong_url, snippet="story"),
+    ]
+    fetcher = _GateFetcher({
+        on_url: "Mobius Labs shipped a new NPU compiler product for edge AI.",
+        wrong_url: "A giant dust storm crossed the desert; weather alerts issued.",
+    })
+    result = enrich_exhibitors(
+        candidates=[ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)],
+        workspace_id="b2gate", lang="en", config=_enrich_config(),
+        search_provider=_FakeSearch(news),
+        cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+        body_fetcher=fetcher,
+    )
+    row = result.rows[0]
+    ev_urls = {e.url for e in row.evidence}
+    assert on_url in ev_urls
+    assert wrong_url not in ev_urls          # body gate excluded it from floor
+    assert len(row.news_signals) == 2        # still listed as news (buying signal)
+
+
+def test_body_gate_fails_open_without_body(tmp_path):
+    """Snippet-gated news without a fetchable body keeps pre-B2 behavior."""
+    url = "https://news.example.com/nobody"
+    news = [_SR(title="Mobius Labs raises", url=url, snippet="round")]
+    fetcher = _GateFetcher({})  # no bodies at all
+    result = enrich_exhibitors(
+        candidates=[ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)],
+        workspace_id="b2open", lang="en", config=_enrich_config(),
+        search_provider=_FakeSearch(news),
+        cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+        body_fetcher=fetcher,
+    )
+    assert url in {e.url for e in result.rows[0].evidence}
+
+
+def test_enrichment_drops_near_duplicate_news(tmp_path):
+    u1, u2 = "https://a.example.com/x", "https://b.example.com/x"
+    news = [
+        _SR(title="Mobius Labs raises", url=u1, snippet="round"),
+        _SR(title="Mobius Labs raises (syndicated)", url=u2, snippet="round"),
+    ]
+    body = "Mobius Labs announced a funding round for its NPU compiler."
+    fetcher = _GateFetcher({u1: body, u2: body}, dups=[u2])
+    result = enrich_exhibitors(
+        candidates=[ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)],
+        workspace_id="b2dup", lang="en", config=_enrich_config(),
+        search_provider=_FakeSearch(news),
+        cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+        body_fetcher=fetcher,
+    )
+    row = result.rows[0]
+    assert [n.url for n in row.news_signals] == [u1]   # dup dropped entirely
+    assert u2 not in {e.url for e in row.evidence}
+    assert any("dedup" in w for w in row.enrichment_warnings)
+
+
+# ---------- B2 (3) product relatedness (report-only) ----------
+
+
+class _FakeEmbedding:
+    def embed(self, texts):
+        return [[1.0, 0.0] for _ in texts]
+
+
+class _FakeVectorStore:
+    def __init__(self, distances):
+        self._distances = distances  # one list of hit-distances per query
+
+    def query(self, *, collection, query_embeddings, top_k=5, where=None):
+        assert collection == "product_wsx"
+        return [
+            [{"id": f"c{i}", "distance": d, "document": "", "metadata": {}}
+             for d in dists]
+            for i, dists in enumerate(self._distances[: len(query_embeddings)])
+        ]
+
+
+def test_gather_news_relatedness_maps_max_similarity():
+    from event_intel.events.enrichment import EnrichedExhibitor
+    from event_intel.events.news_body import gather_news_relatedness
+
+    rows = [EnrichedExhibitor(
+        name="Acme", source_snippet="s",
+        news_signals=[
+            NewsSignal(title="t", url="https://n/1", snippet="s",
+                       body_sha="aa", body_chars=500),
+            NewsSignal(title="t2", url="https://n/2", snippet="s"),  # no body
+        ],
+    )]
+    out = gather_news_relatedness(
+        rows=rows,
+        body_loader=lambda url: "body text" if url == "https://n/1" else None,
+        collection="product_wsx",
+        embedding_provider=_FakeEmbedding(),
+        vectorstore_provider=_FakeVectorStore([[0.4, 1.2]]),  # sims 0.8, 0.4
+    )
+    assert out == {"Acme": [{"url": "https://n/1", "relatedness": 0.8,
+                             "body_chars": 500}]}
+
+
+def test_gather_news_relatedness_graceful_on_failure_and_empty():
+    from event_intel.events.enrichment import EnrichedExhibitor
+    from event_intel.events.news_body import gather_news_relatedness
+
+    class _Boom:
+        def embed(self, texts):
+            raise RuntimeError("model missing")
+
+    bodied = EnrichedExhibitor(
+        name="A", source_snippet="s",
+        news_signals=[NewsSignal(title="t", url="u", snippet="s", body_sha="x")],
+    )
+    assert gather_news_relatedness(
+        rows=[bodied], body_loader=lambda u: "body",
+        collection="product_wsx",
+        embedding_provider=_Boom(), vectorstore_provider=_FakeVectorStore([]),
+    ) == {}
+    assert gather_news_relatedness(
+        rows=[], body_loader=lambda u: None, collection="product_wsx",
+        embedding_provider=_FakeEmbedding(),
+        vectorstore_provider=_FakeVectorStore([]),
+    ) == {}
+
+
+# ---------- B2 (3) report wiring: scoring fields untouched (W4 pattern) ----------
+
+
+def _scored_for_report(name):
+    from event_intel.events.enrichment import EnrichedExhibitor
+    from event_intel.rag.retriever import FitResult
+    from event_intel.scoring.compute import ScoredExhibitor
+    from event_intel.scoring.dimensions import DimensionScores
+
+    row = EnrichedExhibitor(
+        name=name, source_snippet=f"snippet for {name}",
+        official_url=f"https://example.com/{name.lower()}",
+        news_signals=[NewsSignal(title=f"{name} news", url="https://n/x",
+                                 snippet="n", body_sha="aa", body_chars=900)],
+    )
+    fit = FitResult(name=name, capability_fit=0.85, top_hits=[],
+                    capability_fit_breakdown={"Cap A": 3})
+    return ScoredExhibitor(
+        name=name, tier="S", final_score=8.0, evidence_floor=2,
+        dimensions=DimensionScores(
+            capability_fit=0.9, source_confidence=1.0, buying_signal=0.6,
+            website_verification=1.0, category_fit=0.5,
+            competitor_penalty=0.0, bad_fit_penalty=0.0,
+        ),
+        weights_used={}, tier_reasons=[], rationale="why", angle="angle",
+        row=row, fit=fit,
+    )
+
+
+def _report_summary(*scored):
+    from event_intel.scoring.compute import ScoringSummary
+
+    counts = {"S": 0, "A": 0, "B": 0, "C": 0}
+    for s in scored:
+        counts[s.tier] += 1
+    return ScoringSummary(rows=list(scored), tier_counts=counts, rationale_calls=0)
+
+
+def _report_ctx():
+    from event_intel.report.tier_list_md import ReportContext
+
+    return ReportContext(workspace_id="acme", event_name="Expo",
+                         event_slug="expo", lang="en", generated_at=NOW)
+
+
+_SCORE_KEYS = (
+    "tier", "final_score", "evidence_floor", "capability_fit",
+    "capability_fit_breakdown", "rationale", "angle", "evidence",
+    "official_url", "news_count", "source_snippet", "source_provenance",
+)
+
+
+def test_news_relatedness_does_not_change_any_scoring_field():
+    from event_intel.report.tier_list_yaml import build_tier_list_payload
+
+    summary = _report_summary(_scored_for_report("Acme"), _scored_for_report("Beta"))
+    rel = {"Acme": [{"url": "https://n/x", "relatedness": 0.81, "body_chars": 900}]}
+    without = build_tier_list_payload(summary=summary, needs_review=[], context=_report_ctx())
+    with_rel = build_tier_list_payload(
+        summary=summary, needs_review=[], context=_report_ctx(), news_relatedness=rel,
+    )
+    for a, b in zip(without["exhibitors"], with_rel["exhibitors"], strict=True):
+        for k in _SCORE_KEYS:
+            assert a[k] == b[k], f"scoring field {k} changed when relatedness attached"
+    assert with_rel["exhibitors"][0]["news_relatedness"] == rel["Acme"]
+    assert without["exhibitors"][0]["news_relatedness"] == []
+
+
+def test_md_renders_relatedness_only_for_matched_rows():
+    from event_intel.report.tier_list_md import render_tier_list_md
+
+    summary = _report_summary(_scored_for_report("Acme"), _scored_for_report("Beta"))
+    rel = {"Acme": [{"url": "https://n/x", "relatedness": 0.81, "body_chars": 900}]}
+    md = render_tier_list_md(summary=summary, needs_review=[], context=_report_ctx(),
+                             news_relatedness=rel)
+    assert md.count("relatedness") == 1  # only Acme's row carries the line
+    assert "0.81" in md

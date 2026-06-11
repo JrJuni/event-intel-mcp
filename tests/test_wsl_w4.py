@@ -85,11 +85,13 @@ def test_provenance_does_not_change_any_scoring_field():
     assert without["exhibitors"][0]["source_provenance"] == []
 
 
-def test_schema_version_bumped_to_4_and_field_present():
+def test_schema_version_and_report_only_fields_present():
     summary = _summary(_scored("Acme", "S", score=8.0, floor=2))
     payload = build_tier_list_payload(summary=summary, needs_review=[], context=_ctx())
-    assert payload["schema_version"] == REPORT_SCHEMA_VERSION == 4
+    # v4 = source_provenance (W4); v5 = news_relatedness (news plan B2).
+    assert payload["schema_version"] == REPORT_SCHEMA_VERSION == 5
     assert payload["exhibitors"][0]["source_provenance"] == []
+    assert payload["exhibitors"][0]["news_relatedness"] == []
 
 
 def test_md_renders_provenance_block_only_for_matched_rows():
