@@ -60,6 +60,18 @@ class SearchResult:
 
 
 class SearchProvider(ABC):
+    """Search backend contract.
+
+    Degradation convention (N1): a provider that degrades a query to an EMPTY
+    result instead of raising (e.g. ddgs after retry exhaustion) SHOULD expose
+    ``last_call_degraded: bool`` — True iff the most recent ``search()`` call on
+    this instance returned empty *because of* degradation rather than a genuine
+    absence of results. The flag is only valid until the next ``search()`` call
+    (instances are per-build and builds are single-threaded). Consumers read it
+    via ``getattr(provider, "last_call_degraded", False)`` so providers and test
+    fakes without the attribute keep working unchanged.
+    """
+
     @abstractmethod
     def search(
         self,
@@ -229,6 +241,9 @@ class DdgsSearchProvider(SearchProvider):
         self._clock = clock
         self._sleep = sleep
         self._degraded_queries = 0
+        # Per-call flag (N1): True iff the LAST search() degraded to empty.
+        # Valid only until the next search() on this instance.
+        self.last_call_degraded = False
 
     @property
     def degraded(self) -> bool:
@@ -295,6 +310,7 @@ class DdgsSearchProvider(SearchProvider):
     ) -> list[SearchResult]:
         from ddgs import DDGS
 
+        self.last_call_degraded = False
         region = self._region(lang)
         timelimit = self._timelimit(days) if days is not None else None
 
@@ -310,6 +326,7 @@ class DdgsSearchProvider(SearchProvider):
 
         raw = self._call_with_retry(_do)
         if raw is None:  # rate-limit graceful empty
+            self.last_call_degraded = True
             return []
         return [self._to_result(item, kind) for item in raw]
 
