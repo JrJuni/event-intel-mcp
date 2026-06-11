@@ -26,6 +26,7 @@ from event_intel.cards import validator as _validator
 from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_exception
 from event_intel.events import enrichment as _enrichment
 from event_intel.events import extraction as _extraction
+from event_intel.events import news_body as _news_body
 from event_intel.events import run_summary as _run_summary
 from event_intel.events import source_capture as _source_capture
 from event_intel.providers import embedding as _embedding
@@ -311,6 +312,38 @@ def build_event_tier_list(
         except Exception:  # noqa: BLE001 — grounding is auxiliary, never fail a build
             source_provenance = {}
 
+        # 7c. News-body ↔ product relatedness (news plan B2, criterion ③).
+        #     REPORT-ONLY like 7b: computed AFTER scoring against the product
+        #     card collection; written only to the report's news_relatedness
+        #     field — no path back to any score/tier (staged: tier folding
+        #     needs separate approval). Best-effort: any error → {}.
+        news_relatedness: dict[str, list[dict]] = {}
+        try:
+            nb_cfg = (config.get("enrichment", {}) or {}).get("news_body", {}) or {}
+            scored_rows = [s.row for s in summary.rows]
+            has_bodies = any(
+                getattr(n, "body_sha", None)
+                for r in scored_rows
+                for n in getattr(r, "news_signals", []) or []
+            )
+            if bool(nb_cfg.get("enabled", False)) and has_bodies:
+                from event_intel.cards.ingest import product_collection_name
+
+                _nb_loader = _news_body.NewsBodyFetcher(
+                    cfg=_news_body.NewsBodyConfig.from_dict(nb_cfg),
+                    cache_dir=Path.home() / ".event-intel" / "cache" / "news_body",
+                    now=datetime.now(UTC),
+                )
+                news_relatedness = _news_body.gather_news_relatedness(
+                    rows=scored_rows,
+                    body_loader=_nb_loader.load_body,
+                    collection=product_collection_name(ws),
+                    embedding_provider=_embedding.BgeM3Provider(),
+                    vectorstore_provider=_vectorstore.ChromaProvider(config=config),
+                )
+        except Exception:  # noqa: BLE001 — diagnostics only, never fail a build
+            news_relatedness = {}
+
         # 8. Reports — md + yaml (S5).
         context = _tier_list_md.ReportContext(
             workspace_id=ws, event_name=event_name, event_slug=slug,
@@ -334,11 +367,11 @@ def build_event_tier_list(
         ]
         md_text = _tier_list_md.render_tier_list_md(
             summary=summary, needs_review=needs_review_rows, context=context,
-            source_provenance=source_provenance,
+            source_provenance=source_provenance, news_relatedness=news_relatedness,
         )
         yaml_payload = _tier_list_yaml.build_tier_list_payload(
             summary=summary, needs_review=needs_review_rows, context=context,
-            source_provenance=source_provenance,
+            source_provenance=source_provenance, news_relatedness=news_relatedness,
         )
         yaml_text = _tier_list_yaml.dump_tier_list_yaml(yaml_payload)
 

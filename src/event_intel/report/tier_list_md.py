@@ -76,7 +76,11 @@ def _evidence_chips(row: EnrichedExhibitor) -> str:
 
 
 def _render_row(
-    scored: ScoredExhibitor, *, lang: str, provenance: list[dict] | None = None
+    scored: ScoredExhibitor,
+    *,
+    lang: str,
+    provenance: list[dict] | None = None,
+    news_relatedness: list[dict] | None = None,
 ) -> str:
     row = scored.row
     lines: list[str] = []
@@ -114,6 +118,16 @@ def _render_row(
             loc = p.get("locator") or p.get("source_path", "?")
             snip = " ".join((p.get("snippet") or "").split())
             lines.append(f"  - `{loc}` — “{snip}”")
+    if news_relatedness:
+        # B2 criterion ③ — diagnostics only; no effect on tier/score above.
+        prefix = "뉴스↔제품 연관도" if lang == "ko" else "news↔product relatedness"
+        top = sorted(
+            news_relatedness, key=lambda r: -float(r.get("relatedness", 0.0))
+        )[:3]
+        rendered = ", ".join(
+            f"[{r.get('relatedness', 0.0):.2f}]({r.get('url', '')})" for r in top
+        )
+        lines.append(f"- {prefix}: {rendered}")
     return "\n".join(lines)
 
 
@@ -164,16 +178,19 @@ def render_tier_list_md(
     needs_review: list[EnrichedExhibitor] | None = None,
     context: ReportContext,
     source_provenance: dict[str, list[dict]] | None = None,
+    news_relatedness: dict[str, list[dict]] | None = None,
 ) -> str:
     """Render the 6-section Markdown report.
 
     `needs_review` is the bucket of low-confidence rows from extraction +
     enrichment that scoring skipped. Rendered in its own section so the human
     can decide whether to promote / drop. `source_provenance` (WSL W4) maps
-    exhibitor name → raw-source grounding chunks, rendered as a sub-list on the
-    matching rows; it never affects scoring or tier placement.
+    exhibitor name → raw-source grounding chunks; `news_relatedness` (B2 ③)
+    maps exhibitor name → per-article body↔product cosine entries. Both render
+    as sub-lists on the matching rows and never affect scoring or tiers.
     """
     prov = source_provenance or {}
+    rel = news_relatedness or {}
     _assert_floor_invariant(summary, context.tier_rules)
     generated_at = context.generated_at or datetime.now(UTC)
     lang = context.lang
@@ -219,7 +236,11 @@ def render_tier_list_md(
             for scored in rows:
                 out.append("")
                 out.append(
-                    _render_row(scored, lang=lang, provenance=prov.get(scored.row.name))
+                    _render_row(
+                        scored, lang=lang,
+                        provenance=prov.get(scored.row.name),
+                        news_relatedness=rel.get(scored.row.name),
+                    )
                 )
         out.append("")
 

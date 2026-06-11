@@ -103,6 +103,30 @@ class NewsBodyFetcher:
         payload = self._cache_get(url)
         return payload.get("body") if payload else None
 
+    def find_near_duplicates(self, signals: list[NewsSignal]) -> list[NewsSignal]:
+        """Among bodied signals, return the LATER ones whose body is an exact or
+        near duplicate of an earlier one (criterion ④ — wire-syndicated copies
+        of the same article must not inflate evidence/news counts).
+
+        Deterministic, stdlib-only: normalized-text equality OR word-shingle
+        Jaccard >= 0.7. Signals without a loadable body are never duplicates.
+        """
+        kept: list[tuple[str, set[str]]] = []
+        dups: list[NewsSignal] = []
+        for sig in signals:
+            if not sig.body_sha:
+                continue
+            body = self.load_body(sig.url)
+            if not body:
+                continue
+            norm = " ".join(body.lower().split())
+            sh = _shingles(norm)
+            if any(norm == knorm or _jaccard(sh, ksh) >= 0.7 for knorm, ksh in kept):
+                dups.append(sig)
+            else:
+                kept.append((norm, sh))
+        return dups
+
     # ---------- cache ----------
 
     def _cache_path(self, url: str) -> Path:
@@ -260,3 +284,91 @@ class NewsBodyFetcher:
             "exc_classes": [exc] if exc else [],
             "truncated": truncated,
         })
+
+
+# ---------- near-duplicate primitives (criterion ④, deterministic) ----------
+
+
+def _shingles(text: str, n: int = 8) -> set[str]:
+    """Word n-gram shingles of a normalized text. Short texts (< n words)
+    collapse to a single shingle so tiny bodies still compare exactly.
+    """
+    words = text.split()
+    if not words:
+        return set()
+    if len(words) < n:
+        return {" ".join(words)}
+    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
+
+
+def _jaccard(a: set[str], b: set[str]) -> float:
+    if not a or not b:
+        return 0.0
+    return len(a & b) / len(a | b)
+
+
+# ---------- product relatedness (criterion ③ — REPORT-ONLY) ----------
+
+
+def gather_news_relatedness(
+    *,
+    rows: list,
+    body_loader: Callable[[str], str | None],
+    collection: str,
+    embedding_provider: object,
+    vectorstore_provider: object,
+    top_k: int = 3,
+    max_bodies: int = 200,
+    body_prefix_chars: int = 4000,
+) -> dict[str, list[dict]]:
+    """Per-article body ↔ product-card relatedness (success criterion ③).
+
+    Returns ``{exhibitor_name: [{url, relatedness, body_chars}]}`` where
+    ``relatedness`` is the max cosine similarity of the article body against
+    the ``product_{ws}`` card collection (same distance→similarity convention
+    as capability_fit retrieval).
+
+    REPORT-ONLY by contract (user decision: staged — tier folding needs a
+    separate approval after the smoke-campaign distribution is seen): computed
+    AFTER scoring, written only to the report's ``news_relatedness`` field.
+    Graceful — any failure or absence of bodies yields ``{}``; never fails a
+    build. ``max_bodies`` caps embedding work; the drop is visible because
+    bodied news without a relatedness entry can be counted by the caller.
+    """
+    texts: list[str] = []
+    keys: list[tuple[str, str, int]] = []
+    for row in rows:
+        for n in getattr(row, "news_signals", []) or []:
+            if len(texts) >= max_bodies:
+                break
+            if not getattr(n, "body_sha", None):
+                continue
+            body = body_loader(n.url)
+            if not body:
+                continue
+            texts.append(body[:body_prefix_chars])
+            keys.append((row.name, n.url, int(getattr(n, "body_chars", 0) or 0)))
+    if not texts:
+        return {}
+    try:
+        embeddings = embedding_provider.embed(texts)
+        if len(embeddings) != len(texts):
+            return {}
+        batch = vectorstore_provider.query(
+            collection=collection, query_embeddings=embeddings, top_k=top_k
+        )
+    except Exception:
+        return {}
+    # Same conversion the fit retriever uses (rag.retriever is the SSOT).
+    from event_intel.rag.retriever import _similarity_from_distance
+
+    out: dict[str, list[dict]] = {}
+    for (name, url, chars), hits in zip(keys, batch, strict=False):
+        sim = max(
+            (_similarity_from_distance(h.get("distance")) for h in hits),
+            default=0.0,
+        )
+        out.setdefault(name, []).append(
+            {"url": url, "relatedness": round(sim, 4), "body_chars": chars}
+        )
+    return out

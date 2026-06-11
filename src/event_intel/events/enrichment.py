@@ -769,7 +769,52 @@ def enrich_exhibitors(
             if mentions_name(f"{n.title or ''} {n.snippet or ''}", cand_name_tokens)
             or (official_domain and same_site(domain_of(n.url), official_domain))
         ]
-        for n in gated_news:
+        # B1 — fetch article bodies for the GATED news only (budget goes to
+        # plausibly-relevant items). Never raises; failures leave the signal as
+        # snippet-only evidence and log to fetch_failures.jsonl.
+        if body_fetcher is not None and gated_news:
+            body_fetcher.attach_bodies(gated_news)
+            # B2 ④ — drop near-duplicate articles (wire syndication): the same
+            # body at multiple URLs must not inflate evidence/news counts.
+            if hasattr(body_fetcher, "find_near_duplicates"):
+                dups = body_fetcher.find_near_duplicates(gated_news)
+                if dups:
+                    dup_urls = {n.url for n in dups}
+                    gated_news = [n for n in gated_news if n.url not in dup_urls]
+                    row.news_signals = [
+                        n for n in row.news_signals if n.url not in dup_urls
+                    ]
+                    row.enrichment_warnings.append(
+                        f"news dedup: dropped {len(dups)} near-duplicate article(s)"
+                    )
+            # B2 ② — body content gate: a FETCHED body that never mentions the
+            # company is a wrong-entity article despite the snippet match →
+            # excluded from floor evidence (still listed under news_signals).
+            # Snippet-only items and unavailable bodies fail OPEN (keep the
+            # pre-B2 behavior; the snippet gate above already passed).
+            def _body_relevant(
+                n: NewsSignal,
+                *,
+                official_domain: str | None = official_domain,
+                cand_name_tokens: list[str] = cand_name_tokens,
+            ) -> bool:
+                if n.body_sha is None or not hasattr(body_fetcher, "load_body"):
+                    return True
+                body = body_fetcher.load_body(n.url)
+                if not body:
+                    return True
+                return (
+                    mentions_name(body, cand_name_tokens)
+                    or bool(
+                        official_domain
+                        and same_site(domain_of(n.url), official_domain)
+                    )
+                )
+
+            floor_news = [n for n in gated_news if _body_relevant(n)]
+        else:
+            floor_news = gated_news
+        for n in floor_news:
             raw_ev.append(
                 EvidenceItem(
                     type=classify_url_type(n.url, from_news=True),
@@ -778,11 +823,6 @@ def enrich_exhibitors(
                     published_at=n.published_at,
                 )
             )
-        # B1 — fetch article bodies for the GATED news only (budget goes to
-        # plausibly-relevant items). Never raises; failures leave the signal as
-        # snippet-only evidence and log to fetch_failures.jsonl.
-        if body_fetcher is not None and gated_news:
-            body_fetcher.attach_bodies(gated_news)
         # Extra evidence queries are allocated round-robin up front (P2-2) so the
         # event-wide budget is shared fairly, not consumed by early companies.
         for suffix in assigned_queries.get(cand.name, []):
