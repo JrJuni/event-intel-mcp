@@ -221,6 +221,19 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 ---
 
+## [2026-06-11] entity 게이트가 회사명 자기 토큰으로 자명 통과 — 합성 테스트는 전부 green이었다
+
+**Tried**: ZNC C1/C2에서 동음이의 게이트(`is_relevant_news` — 위험 이름은 ctx 공기 요구)를 구현. 합성 테스트 23건 전부 green (Dust+폭풍 기사 → drop 포함). 9-cell 회귀 green.
+
+**Result**: CL 실증 재빌드(Pinecone×AIEWF)에서 **Dust의 floor evidence에 사하라 먼지 기사가 그대로 잔존** — 게이트가 프로덕션에서 no-op. 원인: enrichment의 snippet이 `company: Dust | description: ...`로 스캐폴딩되어 `context_terms`에 **회사명 토큰 'dust' 자체가 포함** → 모든 "dust storm" 기사가 ctx 공기를 자명하게 만족. 합성 테스트의 snippet(`DUST_SNIPPET`)에는 이름이 없어서 못 잡았다.
+
+**Lesson**:
+- **predicate 테스트의 입력은 실제 파이프라인이 만드는 입력 형태로.** 게이트 자체는 옳았지만 상류(스캐폴딩된 snippet)가 만드는 입력 분포가 테스트와 달랐다. 통합 지점의 실데이터 1건이 합성 23건보다 강했다.
+- **"자기 자신" 클래스는 항상 의심**: 이름→ctx, 자기 부스→competitor(GPT가 Snowflake 본인 부스를 conf 1.0으로 competitor 판정) 등 self-reference는 게이트·라벨 양쪽에서 별도 처리 필요.
+- 수정(PR #88): ctx에서 이름 토큰 제외 + 다중토큰 풀네임 phrase-strength 규칙(9-cell의 Together AI를 픽스처 수정 없이 의미론적으로 복원) + `ENRICH_CACHE_VERSION` 7. **Related**: `tests/test_entity_gate.py::test_own_name_token_in_context_cannot_satisfy_the_gate`.
+
+---
+
 ## Blind Review 판정 누적
 
 ### Zero-config 검색 provider plan 라운드 1 (Codex) — 2026-06-10

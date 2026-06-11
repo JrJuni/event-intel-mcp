@@ -128,3 +128,31 @@ Expo Tokyo**, kept blind until its one-shot holdout run.
 > `_ajax/`/`.json`). Doing so turns a false `operator_capture_required` into an
 > auto `xhr` verdict with a candidate endpoint — the main lever for minimizing
 > user intervention. See the design note below.
+
+## ZNC pairs (p5–p7, 2026-06-11) — selection criteria & artifacts
+
+Three DEV gold pairs produced by the zero-config news plan (G1–G4), all
+captured **keylessly** (no operator browser capture — product north star):
+
+| pair | product (card ws) | event | capture method | companies |
+|---|---|---|---|---|
+| `p5_snowflake_bdldn` | Snowflake (`snowflake`) | Big Data LDN 2026 (en) | public `exhibitors-sitemap.xml` | 179 |
+| `p6_navercloud_aiexpo` | NAVER Cloud HyperCLOVA X (`navercloud`) | AI EXPO KOREA 2026 (ko) | static page (EUC-KR meta-charset corrected) | 197 |
+| `p7_siemens_hannover` | Siemens Digital Industries (`siemens_di`) | Hannover Messe 2026 (en) | A–Z short-index crawl (28 pages, 1s courtesy) | 2,885 |
+
+Selection criteria (plan-fixed): famous product company (news-rich, cards
+draftable from public material) / publicly reachable exhibitor list (keyless)
+/ domain+language diversity vs existing pairs / **no holdout contact**
+(MongoDB × AI Expo Tokyo stays blind).
+
+Labeling: top10+decoy cohort (20/pair), L0–L6 multi-vendor (GPT-OAuth draft →
+independent Claude with input-SHA proof → host web-search refine → seal). All
+three sealed 20/20 gold. New committed artifact per pair:
+**`revenue_tiers.json`** (`revenue-tiers/v1`, host judgment ≥$10M) — the
+denominator for the ADVISORY `news_capture` block on `benchmark measure`
+(ZNC success criterion ⑤; not a frozen gate this cycle). Gates manifest:
+`gold/thresholds_znc.json` (frozen before any label was seen).
+
+Caveat recorded from p7: a 2,885-company roster head-truncates at the
+extraction chunk cap, biasing the cohort to the alphabet head — large rosters
+need a sampling strategy before their measures are comparable.
