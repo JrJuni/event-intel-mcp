@@ -52,7 +52,11 @@ if TYPE_CHECKING:
 #        cache_signature is folded into the cache key + config fingerprint, so
 #        switching backend (e.g. brave→ddgs) never reuses another engine's results
 #        for the same query/kind/count/days (blind review R1#1).
-ENRICH_CACHE_VERSION = 5
+#   v6 → degraded results no longer stick (news plan N1): rate-limit-degraded
+#        empty results are not cached and resume rows carry `degraded` (never
+#        reused). The bump flushes pre-N1 poisoned empty caches + un-flagged
+#        resume rows that may hide degraded empties.
+ENRICH_CACHE_VERSION = 6
 
 
 def _is_fresh(timestamp_raw: str | None, *, now: datetime, ttl_days: int | None) -> bool:
@@ -147,6 +151,10 @@ class EnrichedExhibitor:
     extraction_confidence: float = 1.0
     enrichment_status: str = "enriched"   # "enriched" | "needs_review" | "failed"
     enrichment_warnings: list[str] = field(default_factory=list)
+    # True iff at least one search query for this row degraded to empty (e.g.
+    # rate-limit). Degraded rows are persisted for durability but never reused
+    # from resume, so the next run retries them (news plan N1).
+    degraded: bool = False
 
 
 @dataclass
@@ -393,6 +401,7 @@ def _to_dict(
         "extraction_confidence": row.extraction_confidence,
         "enrichment_status": row.enrichment_status,
         "enrichment_warnings": row.enrichment_warnings,
+        "degraded": row.degraded,
         "_cache_version": ENRICH_CACHE_VERSION,
         "input_fp": input_fp,
         "enriched_at": enriched_at,
@@ -420,6 +429,7 @@ def _from_dict(d: dict) -> EnrichedExhibitor:
         extraction_confidence=float(d.get("extraction_confidence", 1.0)),
         enrichment_status=d.get("enrichment_status", "enriched"),
         enrichment_warnings=list(d.get("enrichment_warnings", [])),
+        degraded=bool(d.get("degraded", False)),
     )
 
 
@@ -576,8 +586,13 @@ def enrich_exhibitors(
         )
         fp_by_name[cand.name] = expected_fp
         done_row = done_by_name.get(cand.name)
-        if done_row is not None and done_row.get("input_fp") == expected_fp and _is_fresh(
-            done_row.get("enriched_at"), now=now, ttl_days=resume_ttl_days
+        if (
+            done_row is not None
+            and done_row.get("input_fp") == expected_fp
+            and _is_fresh(done_row.get("enriched_at"), now=now, ttl_days=resume_ttl_days)
+            # Degraded rows (rate-limit empties) are persisted for durability but
+            # never reused — the next run must retry them (news plan N1).
+            and not done_row.get("degraded", False)
         ):
             reusable[cand.name] = done_row
         else:
@@ -624,6 +639,8 @@ def enrich_exhibitors(
                 cache_hits += 1
             else:
                 cache_misses += 1
+            if web_hits["degraded"]:
+                row.degraded = True
             picked = _pick_official_url(cand.name, web_hits["results"], threshold=url_threshold)
             row.official_url = picked
             if picked is None and web_hits["results"]:
@@ -645,6 +662,8 @@ def enrich_exhibitors(
             cache_hits += 1
         else:
             cache_misses += 1
+        if news_hits["degraded"]:
+            row.degraded = True
         for hit in news_hits["results"]:
             # Drop utility/non-article pages (login/docs/privacy…) — not real
             # buying signals. Filter by path, so newsroom press releases stay.
@@ -730,6 +749,8 @@ def enrich_exhibitors(
                 cache_hits += 1
             else:
                 cache_misses += 1
+            if ev_hits["degraded"]:
+                row.degraded = True
             for hit in ev_hits["results"]:
                 if not _is_article_like(hit.url):
                     continue
@@ -749,6 +770,12 @@ def enrich_exhibitors(
             # Shouldn't happen — extraction enforces snippet — but guard anyway.
             row.enrichment_status = "needs_review"
             row.enrichment_warnings.append("missing source_snippet after extraction")
+
+        if row.degraded:
+            row.enrichment_warnings.append(
+                "search degraded for one or more queries; evidence may be "
+                "incomplete (row will re-enrich on the next run)"
+            )
 
         rows.append(row)
         # Append per-company AS SOON AS the row finishes (durability — review r2 #4):
@@ -792,12 +819,17 @@ def _search_with_cache(
     now: datetime,
     refresh: bool = False,
 ) -> dict:
-    """Returns `{results: list[SearchResult], was_hit: bool}`. The cache stores
-    serialized SearchResult dicts (title/url/snippet/source) — `extra` and
-    `published_at` are dropped for portability.
+    """Returns `{results: list[SearchResult], was_hit: bool, degraded: bool}`.
+    The cache stores serialized SearchResult dicts (title/url/snippet/source) —
+    `extra` and `published_at` are dropped for portability.
 
     `refresh` skips the cache READ (forcing a live call) but still WRITES the
     fresh result, so a subsequent non-refresh run benefits (review r2 #3).
+
+    Degradation (news plan N1): when the provider reports the call degraded to
+    empty (e.g. rate-limit past retries), the empty result is NOT cached — a
+    degraded "no results" must not block retries for cache_ttl_days. Genuine
+    empty results are still cached so absent companies aren't re-queried.
     """
     if cache_enabled and not refresh:
         cached = cache.get(query, kind=kind, lang=lang, count=count, days=days, now=now)
@@ -805,6 +837,7 @@ def _search_with_cache(
             return {
                 "results": [_dict_to_searchresult(d) for d in cached],
                 "was_hit": True,
+                "degraded": False,
             }
     try:
         live = search_provider.search(
@@ -814,13 +847,14 @@ def _search_with_cache(
         raise MCPError(
             error_code=ErrorCode.UPSTREAM_ERROR,
             stage=Stage.ENRICHMENT,
-            message=f"Brave {kind} search failed for query {query!r}: {exc}",
+            message=f"{kind} search failed for query {query!r}: {exc}",
             hint={"query": query, "kind": kind},
             retryable=True,
         ) from exc
-    if cache_enabled:
+    degraded = bool(getattr(search_provider, "last_call_degraded", False))
+    if cache_enabled and not degraded:
         cache.put(
             query, kind=kind, lang=lang, count=count, days=days,
             results=[_searchresult_to_dict(r) for r in live], now=now,
         )
-    return {"results": live, "was_hit": False}
+    return {"results": live, "was_hit": False, "degraded": degraded}

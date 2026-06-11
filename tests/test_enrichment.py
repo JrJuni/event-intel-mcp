@@ -726,3 +726,150 @@ def test_resume_durable_when_later_company_fails(tmp_path):
     names = {r["name"] for r in lines}
     assert "Mobius Labs" in names           # finished + durably persisted
     assert "NeuroDrive Inc." not in names   # failed before append
+
+
+# ---------- N1: degraded results must not stick (news plan) ----------
+
+
+class DegradedFakeSearch(FakeSearch):
+    """Fake that degrades (empty result + ``last_call_degraded``) for queries
+    containing any fragment in ``degrade_for`` — mimics ddgs rate-limit
+    graceful-empty behaviour (N1 contract)."""
+
+    def __init__(self):
+        super().__init__()
+        self.degrade_for: set[str] = set()
+        self.last_call_degraded = False
+
+    def search(self, query, *, kind, count, days=None, lang="en"):
+        self.last_call_degraded = False
+        if any(frag in query for frag in self.degrade_for):
+            self.calls.append(
+                {"query": query, "kind": kind, "count": count, "days": days, "lang": lang}
+            )
+            self.last_call_degraded = True
+            return []
+        return super().search(query, kind=kind, count=count, days=days, lang=lang)
+
+
+def test_degraded_empty_not_cached_but_genuine_empty_is(tmp_path):
+    """A rate-limit empty must not be served from cache later; a genuine empty
+    (provider answered, zero hits) is still cached."""
+    cands = [
+        ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30),
+        ExhibitorCandidate(name="Quanta MedAI", source_snippet="y" * 30),
+    ]
+    s1 = DegradedFakeSearch()
+    s1.degrade_for.add("Mobius Labs")          # degraded empty (both kinds)
+    s1.web_by_name["Quanta MedAI"] = []        # genuine empty answers
+    s1.news_by_name["Quanta MedAI"] = []
+    enrich_exhibitors(
+        candidates=cands, workspace_id="n1a", lang="en", config=_config(),
+        search_provider=s1,
+        cache_dir=tmp_path / "cache", resume_path=tmp_path / "r1.jsonl",
+    )
+
+    # Fresh resume file → both rows enrich again; only degraded queries go live.
+    s2 = DegradedFakeSearch()
+    enrich_exhibitors(
+        candidates=cands, workspace_id="n1a", lang="en", config=_config(),
+        search_provider=s2,
+        cache_dir=tmp_path / "cache", resume_path=tmp_path / "r2.jsonl",
+    )
+    queried = {c["query"] for c in s2.calls}
+    assert any("Mobius Labs" in q for q in queried), "degraded query must retry live"
+    assert not any("Quanta MedAI" in q for q in queried), "genuine empty must be cache-served"
+
+
+def test_degraded_row_reenriches_next_run_then_reuses(tmp_path):
+    """run1 degraded → resume row never reused → run2 retries live and succeeds
+    → run3 reuses the healthy row with zero search calls."""
+    cands = [ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)]
+    resume = tmp_path / "resume.jsonl"
+
+    s1 = DegradedFakeSearch()
+    s1.degrade_for.add("Mobius Labs")
+    r1 = enrich_exhibitors(
+        candidates=cands, workspace_id="n1b", lang="en", config=_config(),
+        search_provider=s1, cache_dir=tmp_path / "cache", resume_path=resume,
+    )
+    assert r1.rows[0].degraded is True
+    assert r1.skipped_from_resume == 0
+
+    s2 = DegradedFakeSearch()  # healthy now
+    s2.web_by_name["Mobius Labs"] = [
+        _SR(title="Mobius Labs — official", url="https://mobiuslabs.example.com", snippet=""),
+    ]
+    s2.news_by_name["Mobius Labs"] = [
+        _SR(title="Mobius Labs raises", url="https://news.example.com/m1", snippet="..."),
+    ]
+    r2 = enrich_exhibitors(
+        candidates=cands, workspace_id="n1b", lang="en", config=_config(),
+        search_provider=s2, cache_dir=tmp_path / "cache", resume_path=resume,
+    )
+    assert r2.skipped_from_resume == 0, "degraded row must NOT be reused"
+    assert len(s2.calls) > 0
+    assert r2.rows[0].degraded is False
+    assert r2.rows[0].official_url == "https://mobiuslabs.example.com"
+
+    s3 = DegradedFakeSearch()
+    r3 = enrich_exhibitors(
+        candidates=cands, workspace_id="n1b", lang="en", config=_config(),
+        search_provider=s3, cache_dir=tmp_path / "cache", resume_path=resume,
+    )
+    assert r3.skipped_from_resume == 1, "healthy row IS reused"
+    assert len(s3.calls) == 0
+    assert r3.rows[0].official_url == "https://mobiuslabs.example.com"
+
+
+def test_degraded_row_carries_field_and_warning(tmp_path):
+    cands = [ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)]
+    s = DegradedFakeSearch()
+    s.degrade_for.add("Mobius Labs")
+    resume = tmp_path / "r.jsonl"
+    result = enrich_exhibitors(
+        candidates=cands, workspace_id="n1c", lang="en", config=_config(),
+        search_provider=s, cache_dir=tmp_path / "cache", resume_path=resume,
+    )
+    row = result.rows[0]
+    assert row.degraded is True
+    assert any("degraded" in w for w in row.enrichment_warnings)
+    persisted = [
+        json.loads(ln)
+        for ln in resume.read_text(encoding="utf-8").splitlines() if ln.strip()
+    ]
+    assert persisted[0]["degraded"] is True
+
+
+def test_partial_degrade_news_only_still_marks_row(tmp_path):
+    """Web succeeds, news degrades → row is still degraded (will retry), and the
+    successful web answer IS cached (no wasted budget on retry)."""
+    cands = [ExhibitorCandidate(name="Mobius Labs", source_snippet="x" * 30)]
+
+    class _NewsDegrade(DegradedFakeSearch):
+        def search(self, query, *, kind, count, days=None, lang="en"):
+            if kind == "news":
+                self.calls.append({"query": query, "kind": kind})
+                self.last_call_degraded = True
+                return []
+            return super().search(query, kind=kind, count=count, days=days, lang=lang)
+
+    s1 = _NewsDegrade()
+    s1.web_by_name["Mobius Labs"] = [
+        _SR(title="Mobius Labs — official", url="https://mobiuslabs.example.com", snippet=""),
+    ]
+    r1 = enrich_exhibitors(
+        candidates=cands, workspace_id="n1d", lang="en", config=_config(),
+        search_provider=s1, cache_dir=tmp_path / "cache", resume_path=tmp_path / "r1.jsonl",
+    )
+    assert r1.rows[0].degraded is True
+    assert r1.rows[0].official_url == "https://mobiuslabs.example.com"
+
+    # Retry run (fresh resume): web comes from cache, only news goes live.
+    s2 = DegradedFakeSearch()
+    enrich_exhibitors(
+        candidates=cands, workspace_id="n1d", lang="en", config=_config(),
+        search_provider=s2, cache_dir=tmp_path / "cache", resume_path=tmp_path / "r2.jsonl",
+    )
+    live_kinds = {c["kind"] for c in s2.calls}
+    assert live_kinds == {"news"}, f"web should be cache-served, got {s2.calls}"

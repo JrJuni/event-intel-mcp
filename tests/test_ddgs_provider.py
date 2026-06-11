@@ -181,3 +181,24 @@ def test_ddgs_not_imported_at_search_module_load():
     sys.modules.pop("event_intel.providers.search", None)
     importlib.import_module("event_intel.providers.search")
     assert "ddgs" not in sys.modules
+
+
+def test_last_call_degraded_set_on_degrade_and_reset_on_success():
+    """N1: the per-call flag marks a degraded (rate-limit) empty and resets on
+    the next successful call on the same instance."""
+    _FakeDDGS.text_raises = 99  # always rate-limited
+    p = _provider(max_retries=1)
+    assert p.search("acme", kind="web") == []
+    assert p.last_call_degraded is True
+
+    _FakeDDGS.text_raises = 0  # healthy again
+    r = p.search("acme", kind="web")
+    assert len(r) == 1
+    assert p.last_call_degraded is False
+
+
+def test_last_call_degraded_false_by_default_and_after_genuine_results():
+    p = _provider()
+    assert p.last_call_degraded is False
+    p.search("acme", kind="news")
+    assert p.last_call_degraded is False
