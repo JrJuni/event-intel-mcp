@@ -13,7 +13,7 @@ search:
   provider: ddgs                   # ddgs (keyless zero-config default) | searxng | brave
   searxng_url: ""                  # required when provider=searxng (configured in a later slice)
   min_interval_ms: 1100            # ddgs: process-wide min gap between requests (DDG rate-limits ~20-30/min)
-  max_retries: 5                   # ddgs: backoff attempts before degrading to empty (provisional ceiling — finalized from R2 smoke failure data)
+  max_retries: 5                   # ddgs: backoff attempts before degrading. PROVISIONAL (R3): 0 rate-limits in ~900 queries at this throttle — ceiling untested, kept as safety net (retry-playbook §1)
   ddgs_backend: auto               # ddgs engine(s); "auto" shuffles all per call, or comma-list (news lane: duckduckgo, bing, yahoo)
   news_fallback: google_news_rss   # keyless NEWS fallback when ddgs degrades (google_news_rss | none); ddgs-only
 
@@ -29,6 +29,8 @@ enrichment:
     timeout_s: 10
     min_body_chars: 400            # below this → snippet-only (too thin to gate/score)
     cache_ttl_days: 14             # fetched bodies reused across runs (URL-keyed)
+    max_retries: 1                 # R3 data-derived: ONE retry for transient shapes (429/5xx/transport) only; 4xx never retried (retry-playbook §2)
+    retry_pause_s: 2
   news_entity_gate:                # C2 — homonym disambiguation (Dust/Ramp/Chroma false positives)
     enabled: true                  # ambiguous single-common-word names require ctx-term co-occurrence; fail-open without context
   query_rescue:                    # N4 — LLM proposes alternate queries for blocked-and-empty companies (fetch stays deterministic)
