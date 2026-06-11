@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from event_intel.errors import ErrorCode, MCPError, Stage
+from event_intel.runtime.failure_log import FailureLog
 
 if TYPE_CHECKING:
     from event_intel.events.evidence import EvidenceItem
@@ -487,6 +488,7 @@ def enrich_exhibitors(
     search_provider: SearchProvider,
     cache_dir: Path | None = None,
     resume_path: Path | None = None,
+    failure_log_path: Path | None = None,
     max_companies: int | None = None,
     refresh: bool = False,
     now: datetime | None = None,
@@ -495,6 +497,9 @@ def enrich_exhibitors(
 
     `cache_dir` defaults to `~/.event-intel/cache/search/{workspace_id}/`.
     `resume_path` defaults to `~/.event-intel/resume/{workspace_id}.jsonl`.
+    `failure_log_path` defaults to
+    `~/.event-intel/diagnostics/{workspace_id}/search_failures.jsonl` (R1 —
+    failure-pattern events for the retry-policy evidence base; best-effort).
 
     `refresh=True` bypasses BOTH the resume artifact and the search cache reads —
     a real refresh, not just resume (review r2 #3). Fresh results are still
@@ -554,6 +559,12 @@ def enrich_exhibitors(
     resume_file = resume_path or (home / "resume" / f"{workspace_id}.jsonl")
     cache = _SearchCache(cache_root, ttl_days=cache_ttl_days, provider_sig=provider_sig)
     resume = _ResumeStore(resume_file)
+    # R1: one failure-pattern event per live search — the evidence base for the
+    # R3 retry policy. Best-effort; never breaks a build.
+    failure_log = FailureLog(
+        failure_log_path or (home / "diagnostics" / workspace_id / "search_failures.jsonl"),
+        base_fields={"workspace": workspace_id},
+    )
 
     # refresh bypasses resume entirely; otherwise reuse is gated per-candidate
     # below (input_fp match AND TTL fresh).
@@ -648,7 +659,7 @@ def enrich_exhibitors(
                 search_provider=search_provider, query=web_query,
                 kind="web", count=count_web, lang=lang,
                 hits_counter=(lambda hit: None),
-                now=now, refresh=refresh,
+                now=now, refresh=refresh, failure_log=failure_log,
             )
             _tally(web_hits, row)
             picked = _pick_official_url(cand.name, web_hits["results"], threshold=url_threshold)
@@ -666,7 +677,7 @@ def enrich_exhibitors(
             search_provider=search_provider, query=news_query,
             kind="news", count=count_news, lang=lang, days=news_days,
             hits_counter=(lambda hit: None),
-            now=now, refresh=refresh,
+            now=now, refresh=refresh, failure_log=failure_log,
         )
         _tally(news_hits, row)
         for hit in news_hits["results"]:
@@ -748,7 +759,7 @@ def enrich_exhibitors(
                 search_provider=search_provider, query=f'"{cand.name}" {suffix}',
                 kind="web", count=count_web, lang=lang,
                 hits_counter=(lambda hit: None),
-                now=now, refresh=refresh,
+                now=now, refresh=refresh, failure_log=failure_log,
             )
             _tally(ev_hits, row)
             for hit in ev_hits["results"]:
@@ -824,6 +835,7 @@ def _search_with_cache(
     hits_counter: Callable[..., object],
     now: datetime,
     refresh: bool = False,
+    failure_log: FailureLog | None = None,
 ) -> dict:
     """Returns `{results: list[SearchResult], was_hit: bool, degraded: bool}`.
     The cache stores serialized SearchResult dicts (title/url/snippet/source) —
@@ -845,6 +857,13 @@ def _search_with_cache(
                 "was_hit": True,
                 "degraded": False,
             }
+    def _drain_provider_events() -> None:
+        if failure_log is None:
+            return
+        drain = getattr(search_provider, "drain_events", None)
+        if callable(drain):
+            failure_log.append_all(drain())
+
     try:
         live = search_provider.search(
             query, kind=kind, count=count, days=days, lang=lang
@@ -856,6 +875,17 @@ def _search_with_cache(
         # A mid-run search failure degrades THIS query instead of aborting the
         # whole enrichment stage (N2): the row gets flagged degraded (N1) so the
         # next run retries it; nothing is cached.
+        _drain_provider_events()
+        if failure_log is not None:
+            failure_log.append({
+                "ts": now.isoformat(),
+                "provider": getattr(search_provider, "cache_signature", ""),
+                "kind": kind,
+                "lang": lang,
+                "query": query,
+                "outcome": "error",
+                "exc_classes": [type(exc).__name__],
+            })
         return {
             "results": [],
             "was_hit": False,
@@ -863,6 +893,7 @@ def _search_with_cache(
             "error": f"{kind} search failed for query {query!r}: "
                      f"{type(exc).__name__}: {exc}",
         }
+    _drain_provider_events()
     degraded = bool(getattr(search_provider, "last_call_degraded", False))
     if cache_enabled and not degraded:
         cache.put(
