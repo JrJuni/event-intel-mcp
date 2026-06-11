@@ -533,20 +533,280 @@ class SearxngSearchProvider(SearchProvider):
             return {"status": "error", "remaining_quota": None, "error": str(e)}
 
 
+class GoogleNewsRssSearchProvider(SearchProvider):
+    """Keyless NEWS-ONLY lane via the public Google News RSS search feed (N3).
+
+    Used as the fallback half of ``FallbackSearchProvider`` when the primary
+    (ddgs) degrades a news query. ``kind="web"`` always returns [] — this lane
+    is never composed for web. All failures degrade to empty (never raise) and
+    set ``last_call_degraded``. A modest courtesy interval guards the feed
+    (separate from the ddgs limiter). ToS note: public RSS endpoint, robots-
+    permitted path, low volume (fires only on degraded news queries), no
+    article fetching here — bodies go through the B1 robots-gated lane, whose
+    redirect-follow resolves the ``news.google.com/rss/articles/...`` wrapper
+    links this feed returns. Known limitation: ``domain_of()`` on the wrapper
+    URL is news.google.com, so ``same_site`` checks never match (the
+    title/snippet token gate still applies).
+
+    httpx / xml.etree / email.utils are imported lazily (cold-start safe).
+    """
+
+    BASE_URL = "https://news.google.com/rss/search"
+    # lang → (hl, gl) for the feed's locale params.
+    _LOCALE = {"en": ("en-US", "US"), "ko": ("ko", "KR"),
+               "ja": ("ja", "JP"), "zh": ("zh-CN", "CN")}
+
+    def __init__(
+        self,
+        *,
+        min_interval_ms: int = 500,
+        timeout: float = 10.0,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+        transport: object | None = None,
+    ) -> None:
+        self.min_interval_ms = int(min_interval_ms)
+        self.timeout = timeout
+        self._clock = clock
+        self._sleep = sleep
+        self._transport = transport  # httpx transport override (tests)
+        self._degraded_queries = 0
+        self.last_call_degraded = False
+        self.events: list[dict] = []
+
+    @property
+    def degraded(self) -> bool:
+        return self._degraded_queries > 0
+
+    @property
+    def degraded_queries(self) -> int:
+        return self._degraded_queries
+
+    @property
+    def cache_signature(self) -> str:
+        return "gnrss/v1"
+
+    def ping(self) -> dict:
+        # No live call — keyless best-effort fallback lane.
+        return {"status": "best_effort", "provider": "google_news_rss",
+                "remaining_quota": None}
+
+    def drain_events(self) -> list[dict]:
+        events, self.events = self.events, []
+        return events
+
+    def search(
+        self,
+        query: str,
+        *,
+        kind: Literal["web", "news"] = "web",
+        count: int = 10,
+        days: int | None = None,
+        lang: str = "en",
+    ) -> list[SearchResult]:
+        self.last_call_degraded = False
+        if kind != "news":
+            return []  # news-only lane by contract
+        start = self._clock()
+        outcome = "ok"
+        exc_class: str | None = None
+        try:
+            results = self._fetch_feed(query, count=count, days=days, lang=lang)
+        except Exception as exc:
+            self._degraded_queries += 1
+            self.last_call_degraded = True
+            outcome, exc_class = "degraded", type(exc).__name__
+            results = []
+        self.events.append({
+            "ts": datetime.now(UTC).isoformat(),
+            "provider": "google_news_rss",
+            "backend": "rss",
+            "kind": kind,
+            "lang": lang,
+            "query": query,
+            "attempts": 1,
+            "exc_classes": [exc_class] if exc_class else [],
+            "outcome": outcome,
+            "elapsed_s": round(self._clock() - start, 3),
+        })
+        return results
+
+    def _fetch_feed(
+        self, query: str, *, count: int, days: int | None, lang: str
+    ) -> list[SearchResult]:
+        import httpx
+
+        q = query if days is None else f"{query} when:{days}d"
+        hl, gl = self._LOCALE.get((lang or "").lower(), ("en-US", "US"))
+        _GNRSS_RATE_LIMITER.wait(
+            self.min_interval_ms / 1000.0, clock=self._clock, sleep=self._sleep
+        )
+        kwargs: dict = {"timeout": self.timeout, "follow_redirects": True}
+        if self._transport is not None:
+            kwargs["transport"] = self._transport
+        with httpx.Client(**kwargs) as client:
+            resp = client.get(
+                self.BASE_URL,
+                params={"q": q, "hl": hl, "gl": gl, "ceid": f"{gl}:{hl}"},
+            )
+            resp.raise_for_status()
+            text = resp.text
+        return self._parse_rss(text, count=count)
+
+    @staticmethod
+    def _parse_rss(xml_text: str, *, count: int) -> list[SearchResult]:
+        import html as _html
+        import re as _re
+        import xml.etree.ElementTree as ET
+        from email.utils import parsedate_to_datetime
+
+        root = ET.fromstring(xml_text)
+        out: list[SearchResult] = []
+        for item in root.iter("item"):
+            if len(out) >= count:
+                break
+            title = (item.findtext("title") or "").strip()
+            link = (item.findtext("link") or "").strip()
+            if not title or not link:
+                continue
+            desc_raw = item.findtext("description") or ""
+            snippet = _re.sub(r"<[^>]+>", " ", _html.unescape(desc_raw))
+            snippet = " ".join(snippet.split())
+            published = None
+            pub_raw = item.findtext("pubDate")
+            if pub_raw:
+                try:
+                    published = parsedate_to_datetime(pub_raw)
+                except (TypeError, ValueError):
+                    published = None
+            out.append(SearchResult(
+                title=title,
+                url=link,
+                snippet=snippet,
+                source=(item.findtext("source") or "").strip() or None,
+                published_at=published,
+            ))
+        return out
+
+
+# Courtesy limiter for the RSS feed — separate from the ddgs limiter so the two
+# lanes don't serialize each other.
+_GNRSS_RATE_LIMITER = _RateLimiter()
+
+
+class FallbackSearchProvider(SearchProvider):
+    """Compose a primary lane with a keyless fallback (N3).
+
+    The fallback fires ONLY when the primary reports the call degraded
+    (``last_call_degraded``) and the kind is in ``kinds`` (default: news).
+    Genuine empties do NOT fall back — they are real answers (budget +
+    determinism). The combined ``cache_signature`` differs from the bare
+    primary's, so toggling the fallback never replays the other mode's cache
+    and re-fingerprints resume rows once (same mechanism as a provider switch).
+    """
+
+    def __init__(
+        self,
+        primary: SearchProvider,
+        fallback: SearchProvider,
+        *,
+        kinds: tuple[str, ...] = ("news",),
+    ) -> None:
+        self.primary = primary
+        self.fallback = fallback
+        self.kinds = tuple(kinds)
+        self.last_call_degraded = False
+
+    @property
+    def cache_signature(self) -> str:
+        return f"{self.primary.cache_signature}+fb={self.fallback.cache_signature}"
+
+    @property
+    def degraded(self) -> bool:
+        return bool(
+            getattr(self.primary, "degraded", False)
+            or getattr(self.fallback, "degraded", False)
+        )
+
+    @property
+    def degraded_queries(self) -> int:
+        return int(getattr(self.primary, "degraded_queries", 0)) + int(
+            getattr(self.fallback, "degraded_queries", 0)
+        )
+
+    def ping(self) -> dict:
+        status = dict(self.primary.ping())
+        status["news_fallback"] = getattr(
+            self.fallback, "cache_signature", self.fallback.__class__.__name__
+        )
+        return status
+
+    def drain_events(self) -> list[dict]:
+        events: list[dict] = []
+        for p in (self.primary, self.fallback):
+            drain = getattr(p, "drain_events", None)
+            if callable(drain):
+                events.extend(drain())
+        return events
+
+    def search(
+        self,
+        query: str,
+        *,
+        kind: Literal["web", "news"] = "web",
+        count: int = 10,
+        days: int | None = None,
+        lang: str = "en",
+    ) -> list[SearchResult]:
+        results = self.primary.search(
+            query, kind=kind, count=count, days=days, lang=lang
+        )
+        primary_degraded = bool(getattr(self.primary, "last_call_degraded", False))
+        self.last_call_degraded = primary_degraded
+        if not primary_degraded or kind not in self.kinds:
+            return results
+        rescued = self.fallback.search(
+            query, kind=kind, count=count, days=days, lang=lang
+        )
+        # Degraded only if BOTH lanes failed to answer; a fallback answer
+        # (even an empty feed) is cacheable like any real answer ONLY when the
+        # fallback itself didn't degrade.
+        self.last_call_degraded = bool(
+            getattr(self.fallback, "last_call_degraded", False)
+        )
+        return rescued
+
+
 def make_search_provider(config: dict) -> SearchProvider:
     """Factory: select the search backend from ``search.provider`` (default ddgs).
 
     Mirrors ``providers.llm.make_llm_provider``. ddgs is the zero-config default
     (keyless); brave (keyed) and searxng (self-hosted, requires searxng_url) are
     opt-in. Invalid names / missing required config fail loud with CONFIG_ERROR.
+
+    ddgs additionally gets a keyless NEWS fallback lane (``search.news_fallback``,
+    default google_news_rss) — brave/searxng raise instead of degrading, so
+    wrapping them would never fire and only churn their cache signatures (N3).
     """
     search_cfg = (config or {}).get("search", {}) or {}
     provider = search_cfg.get("provider", "ddgs")
     if provider == "ddgs":
-        return DdgsSearchProvider(
+        ddgs = DdgsSearchProvider(
             min_interval_ms=int(search_cfg.get("min_interval_ms", 1100)),
             max_retries=int(search_cfg.get("max_retries", 5)),
             backend=str(search_cfg.get("ddgs_backend", "auto") or "auto"),
+        )
+        fallback = search_cfg.get("news_fallback", "google_news_rss") or "none"
+        if fallback == "none":
+            return ddgs
+        if fallback == "google_news_rss":
+            return FallbackSearchProvider(ddgs, GoogleNewsRssSearchProvider())
+        raise MCPError(
+            error_code=ErrorCode.CONFIG_ERROR,
+            stage=Stage.PREFLIGHT,
+            message=f"invalid search.news_fallback: {fallback!r}",
+            hint={"allowed": ["google_news_rss", "none"]},
+            retryable=False,
         )
     if provider == "brave":
         return BraveSearchProvider()

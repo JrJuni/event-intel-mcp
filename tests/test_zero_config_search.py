@@ -17,9 +17,11 @@ from event_intel.providers import search as S
 
 
 def test_factory_default_is_ddgs_when_no_search_section():
-    """S2 flips the zero-config default to ddgs (keyless)."""
+    """S2 flips the zero-config default to ddgs (keyless); N3 wraps it with the
+    keyless news fallback by default."""
     p = S.make_search_provider({})
-    assert isinstance(p, S.DdgsSearchProvider)
+    assert isinstance(p, S.FallbackSearchProvider)
+    assert isinstance(p.primary, S.DdgsSearchProvider)
 
 
 def test_factory_explicit_brave():
@@ -31,7 +33,9 @@ def test_brave_key_present_does_not_force_brave(monkeypatch):
     """R1#1 migration: a present BRAVE_API_KEY must NOT silently select brave —
     only an explicit search.provider: brave does. Default stays zero-config ddgs."""
     monkeypatch.setenv("BRAVE_API_KEY", "sk-brave")
-    assert isinstance(S.make_search_provider({}), S.DdgsSearchProvider)
+    p = S.make_search_provider({})
+    assert isinstance(p, S.FallbackSearchProvider)
+    assert isinstance(p.primary, S.DdgsSearchProvider)
     assert isinstance(
         S.make_search_provider({"search": {"provider": "brave"}}), S.BraveSearchProvider
     )
@@ -41,8 +45,10 @@ def test_factory_explicit_ddgs_threads_throttle_config():
     p = S.make_search_provider(
         {"search": {"provider": "ddgs", "min_interval_ms": 500, "max_retries": 7}}
     )
-    assert isinstance(p, S.DdgsSearchProvider)
-    assert p.min_interval_ms == 500 and p.max_retries == 7
+    assert isinstance(p, S.FallbackSearchProvider)
+    ddgs = p.primary
+    assert isinstance(ddgs, S.DdgsSearchProvider)
+    assert ddgs.min_interval_ms == 500 and ddgs.max_retries == 7
 
 
 def test_factory_searxng_requires_url():
