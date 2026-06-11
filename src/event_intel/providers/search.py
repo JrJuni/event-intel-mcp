@@ -13,7 +13,7 @@ from event_intel.errors import ErrorCode, MCPError, Stage
 
 # Search backends selectable via `search.provider` (zero-config plan). searxng
 # lands in a later slice; the factory builds brave + ddgs.
-_VALID_SEARCH_PROVIDERS: tuple[str, ...] = ("ddgs", "searxng", "brave")
+_VALID_SEARCH_PROVIDERS: tuple[str, ...] = ("auto", "ddgs", "searxng", "brave")
 
 
 class _RateLimiter:
@@ -900,7 +900,14 @@ def make_search_provider(config: dict) -> SearchProvider:
     wrapping them would never fire and only churn their cache signatures (N3).
     """
     search_cfg = (config or {}).get("search", {}) or {}
-    provider = search_cfg.get("provider", "ddgs")
+    provider = search_cfg.get("provider", "auto")
+    if provider == "auto":
+        # User decision 2026-06-11 (Brave control: big-co met 7/10 vs keyless
+        # 1-3/10): the FREE Brave key is the assumed default — auto resolves to
+        # brave when the key is present, else the keyless ddgs+RSS pool. An
+        # EXPLICIT provider value still wins (supersedes ZCS R1#1's "key must
+        # not silently select brave", which predated the quality evidence).
+        provider = "brave" if os.environ.get("BRAVE_API_KEY") else "ddgs"
     if provider == "ddgs":
         ddgs = DdgsSearchProvider(
             min_interval_ms=int(search_cfg.get("min_interval_ms", 1100)),

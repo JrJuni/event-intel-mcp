@@ -105,8 +105,18 @@ def _search_status_block() -> dict:
     except Exception:  # noqa: BLE001 — best-effort; default to brave
         config = None
     search_cfg = (config or {}).get("search") or {}
-    provider = search_cfg.get("provider", "ddgs")
+    provider = search_cfg.get("provider", "auto")
     out: dict = {"provider": provider, "warnings": []}
+    if provider == "auto":
+        # Mirror the factory: free Brave key = assumed default, else keyless.
+        provider = "brave" if os.environ.get("BRAVE_API_KEY") else "ddgs"
+        out["provider"] = f"auto→{provider}"
+        if provider == "ddgs":
+            out["warnings"].append(
+                "no BRAVE_API_KEY — running keyless; a FREE Brave key "
+                "(brave.com/search/api, 2k queries/mo) markedly improves news "
+                "coverage (set it in .env or the installer form)"
+            )
     if provider == "brave":
         has_key = bool(os.environ.get("BRAVE_API_KEY"))
         out["status"] = "ok" if has_key else "missing_key"

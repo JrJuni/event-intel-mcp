@@ -29,16 +29,21 @@ def test_factory_explicit_brave():
     assert isinstance(p, S.BraveSearchProvider)
 
 
-def test_brave_key_present_does_not_force_brave(monkeypatch):
-    """R1#1 migration: a present BRAVE_API_KEY must NOT silently select brave —
-    only an explicit search.provider: brave does. Default stays zero-config ddgs."""
+def test_auto_default_selects_brave_when_key_present(monkeypatch):
+    """User decision 2026-06-11 (supersedes ZCS R1#1, pre-quality-evidence):
+    default `auto` resolves to brave when the FREE key is set (control run:
+    big-co met 7/10 vs keyless 1–3/10), keyless pool otherwise. An EXPLICIT
+    provider value still always wins."""
     monkeypatch.setenv("BRAVE_API_KEY", "sk-brave")
-    p = S.make_search_provider({})
+    assert isinstance(S.make_search_provider({}), S.BraveSearchProvider)
+    # explicit ddgs wins over the key
+    p = S.make_search_provider({"search": {"provider": "ddgs"}})
     assert isinstance(p, S.FallbackSearchProvider)
     assert isinstance(p.primary, S.DdgsSearchProvider)
-    assert isinstance(
-        S.make_search_provider({"search": {"provider": "brave"}}), S.BraveSearchProvider
-    )
+    # no key → auto falls back to the keyless pool
+    monkeypatch.delenv("BRAVE_API_KEY")
+    p2 = S.make_search_provider({})
+    assert isinstance(p2, S.FallbackSearchProvider)
 
 
 def test_factory_explicit_ddgs_threads_throttle_config():
