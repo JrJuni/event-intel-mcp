@@ -20,11 +20,11 @@ search:
 enrichment:
   max_companies: 30                # Per-event cap on enriched exhibitors
   count_web: 5                     # web results per official-URL query (legacy alias: brave_count_web)
-  count_news: 12                   # news results per company (success criterion ⑤ needs ≥10 for large companies; legacy alias: brave_count_news)
+  count_news: 20                   # news results per company (user decision 2026-06-11, backlog #15: 12 left big-co bodied-news at 5–9 vs the ≥10 bar; legacy alias: brave_count_news)
   news_days_back: 180
   news_body:                       # B1 — article body fetch lane (success criterion ①)
     enabled: true
-    max_per_company: 12            # body fetches per company (gated news only)
+    max_per_company: 20            # body fetches per company (gated news only; raised with count_news so the bodied ceiling isn't capped below the ≥10 bar)
     max_bytes_per_page: 1048576    # hard streaming byte cap per article (1 MiB)
     timeout_s: 10
     min_body_chars: 400            # below this → snippet-only (too thin to gate/score)
