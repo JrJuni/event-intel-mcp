@@ -6,7 +6,7 @@
 
 ## 진행 중
 
-- **ZNC — Zero-config 뉴스 수집(본문 크롤링 포함) 신뢰성 + entity 게이트 + 경험적 retry policy + gold pair 3종 (진행 중, plan `~/.claude/plans/config-zero-mossy-toucan.md` [CURRENT] — 기존 entity-게이트 plan C 통합. 엔진 슬라이스 9/9 완료 #75~#83, 데이터-ops 잔여)**
+- **ZNC — Zero-config 뉴스 수집(본문 크롤링 포함) 신뢰성 + entity 게이트 + 경험적 retry policy + gold pair 3종 ✅ 전체 완료 (2026-06-11, plan `~/.claude/plans/config-zero-mossy-toucan.md` [완료·아카이브] — PR #75~#93, 단 하루에 19 PR. R2 크론만 계속 누적)**
   - **계기.** 사용자 최우선: **config zero — 배포 패키지만으로(키 0) 뉴스 서치·크롤링 동작** + "너무 빨리 포기하지 않게". 탐색이 실버그 확인: ① ddgs 결과-0건이 `DDGSException`으로 raise → **enrichment 스테이지 전체 abort**, ② 기존 retry가 잡던 `RatelimitException`은 ddgs 9.14가 **실제로 raise 안 하는 죽은 코드**, ③ rate-limit 빈 결과가 캐시/resume에 7일 고착. **성공 기준 5(사용자 계약)**: ①본문 크롤링 ②제품/솔루션 정보 포함 ③RAG 연관도 산출 가능(이번 phase는 report-only) ④중복 없음 ⑤매출 ≥$10M→뉴스 ≥10건/미만→≥3건(revenue tier는 G-lane 라벨링에서). retry 상수는 **경험적**(실패 계측→스모크 ≥10회→R3 명문화, 최대 ~5회 + 사이트형태 playbook).
   - ✅ **N1** (#75) — degraded 결과 미고착: per-call `last_call_degraded`, degraded는 캐시 미기록 + resume row `degraded`(재사용 금지→다음 실행 재시도). `ENRICH_CACHE_VERSION` 6. → playbook #15.
   - ✅ **N2** (#76) — 예외 분류 fix(genuine-empty=`[]`·캐시 / 그 외=재시도→degrade, 메시지 리터럴 핀 테스트) + `search.ddgs_backend: auto`(fresh DDGS/attempt=엔진 회전) + no-stage-abort(MCPError만 fatal) + max_retries 5(잠정—R3 확정). → lesson 2026-06-11.
@@ -17,8 +17,15 @@
   - ✅ **C1** (#81) — entity 게이트 predicate(`name_is_ambiguous`/`context_terms`/`is_relevant_news`) + `events/data/common_words.txt`(Norvig top-50k — chroma ~41k라 50k 컷, plan open item 확정). 행동변경 0.
   - ✅ **C2** (#82) — 게이트를 floor evidence + B2 본문 게이트 + `score_buying_signal`에 연결(`enrichment.news_entity_gate.enabled`, 기본 on). **점수/티어 의도적 변경(승인 범위)** — Dust/Ramp/Chroma류 거짓양성 차단. 9-cell green(변별적 이름 무변화 — plan 예측 적중).
   - ✅ **N4** (#83) — LLM query-rescue rung(최후 수단): official 0+news 0+**degraded**인 회사만(진짜 부재 미발동), LLM이 **쿼리만 제안**(현지어/법인격/산업 변형, `prompts/{en,ko}/query_rescue.txt`) → 동일 결정론 lane 재실행(N1·N3·B1·C2 전부 적용). 회수 시 resume 최종화(run2 LLM 0콜). 캡 5사×3쿼리.
-  - ⏳ **남은 것(데이터-ops)**: **G1**(gold pair 3종 캡처: Snowflake×Big Data LDN / Siemens DI×Hannover Messe / 네이버클라우드×AI EXPO KOREA — 라이브 feasibility, holdout 비접촉) → **R2**(zero-config 스모크 ≥10회, 시간대 분산) → **R3**(retry policy 명문화 + `docs/retry-playbook.md` 신설) → **CL**(키 0 라이브 실증 + Pinecone×AIEWF 재빌드로 Dust/Ramp 하락 확인) → **G2–G4**(카드 ingest → L0–L6 gold 라벨링+revenue tier → measure `news_capture` 게이트).
-  - **테스트**: 전 슬라이스 CI green(pytest+cjk), ruff clean. +~100 신규 테스트.
+  - ✅ **G1** — gold pair 3종 **전부 키리스 캡처** (operator-capture 0 — 사용자 north star, 메모리 `no-operator-capture-flow`): Big Data LDN(공개 exhibitors-sitemap, 179사) / AI EXPO KOREA(정적 페이지+EUC-KR 교정, 197사) / Hannover Messe(A–Z 인덱스 크롤 2,885사 — **ladder 챌린지 휴리스틱이 로그인 오버레이 `:has-captcha` 속성에 오탐**한 것이지 실제 봇월 아님). holdout 비접촉.
+  - ✅ **버그픽스 3건 (라이브가 잡음)**: #86 테스트 홈 격리(pytest fake가 실홈 진단 오염 — autouse `Path.home()` 격리) / #87 **meta-charset 스니핑**(`textenc.py` — EUC-KR 페이지가 utf-8 기본값으로 mojibake, 3개 디코드 지점 교정) / #88 **entity 게이트 self-token fix**(snippet의 회사명 토큰이 ctx를 자명 통과시켜 게이트 no-op — 이름 토큰 제외 + 다중토큰 풀네임 phrase-strength 규칙, `ENRICH_CACHE_VERSION` 7).
+  - ✅ **CL 실증** — Pinecone×AIEWF 재빌드: **Dust A 6.41→C 3.75, Chroma B 4.17→C 3.27, floor 뉴스 0건**(동음이의 기사 전부 차단). 키 0(ddgs+RSS+OAuth)으로 금일 전 빌드 완주 — 성공 기준 ①(본문 73~78%) ②(게이트 활성) ③(연관도 산출, report-only) ④(dedup 활성) 충족.
+  - ✅ **G2** (#89) — 카드 3종(Snowflake/Siemens DI/네이버클라우드) draft→스키마 교정→ingest(26/29/25 chunks). R2 pairs를 본 게임 조합으로 전환.
+  - ✅ **G3** (#90/#91/#92) — **3 pair 전부 20/20 gold** (L0–L6 멀티벤더: GPT 초안→Claude 독립(SHA 증명)→웹 refine→seal). 분포 T/C/B/N: p5=10/3/0/7, p6=8/1/1/10, p7=4/2/2/12. 합의율 0.5/0.5/0.7. 대표 판정: Domo 양벤더 오판→파트너 증거로 target, self-부스→neutral, T3Q=competitor(업스테이지 리셀러), Aras=PLM competitor. **revenue_tiers.json 신설**(기준 ⑤ 분모). 택소노미 규율: bad_fit=카드 사유 매칭만, 대학·재단=neutral.
+  - ✅ **G4** (#91/#92) — `eval/news_capture.py` **advisory** 메트릭(freeze 규율상 게이트 승격은 차기 freeze) + measure 3 pair: **P@10 0.5/0.4/0.0**(p7 0.0은 2,885사 head-truncation 샘플링 왜곡 — 대형 roster 샘플링 전략 필요 교훈), eligibility fail(coverage, DEV 예상). **기준 ⑤ 정량 결론: 대기업 본문뉴스 ≥10건 달성률 0~20% → count_news 12→20+ 상향 필요(사용자 결정 대기)**.
+  - ✅ **R2 인프라+캠페인** (#85) — `benchmarks/r2_pairs.yaml` + `scripts/r2_smoke.py` + Task Scheduler `EventIntelR2Smoke`(4h 간격, 사용자 지정). 첫 배치 3 pair 완주. **크론은 계속 누적 중** — ≥10런마다 retry-playbook 재집계.
+  - ✅ **R3** (#93) — **1,141 events 기반 retry policy 명문화** + `docs/retry-playbook.md` 신설(8번째 standing doc): 검색 lane rate-limit 0/900(스로틀-우선 CONFIRMED, 재시도 상한은 PROVISIONAL 정직 표기) / 본문 lane 403=16/16 결정적(재시도 0회) vs 429·5xx·transport(1회 재시도) **코드 반영**.
+  - **결과**: 키 0으로 뉴스 서치+본문 크롤링 전 체인 동작·실증. 실패는 ①스테이지를 못 죽이고 ②캐시/resume에 고착 안 되고 ③폴백·본문·rescue가 차례로 발화하고 ④degraded로 가시화되고 ⑤retry 상수는 데이터로 명문화. gold DEV pair 4종(GTC+신규 3) 확보 → **Y1D 재개 조건 충족 여부 = 사용자 결정**(backlog #1/#6). 테스트 +~150, 전 슬라이스 CI green.
 
 - **BD Critique Harness — 호스트-판정 다중렌즈 진단 ✅ 전체 완료·아카이브 (2026-06-10~11, plan `snoopy-weaving-robin.md` — S1~S4 #69~#72 + 후속 #73/#74, 라이브 e2e 검증)**
   - **계기.** 정확도가 독립 gold 대비 검증된 적 없음(진짜 빈틈), 정식 gold/holdout은 데이터 블로커로 보류. 그 사이 **"엔진이 BD적으로 말 되나"를 싸게·대량 진단**. **핵심 제약**: silver-grade DEV 자문(엔진↔판정자 불일치 = 사람 spot-check 후보), gold 인증 아님(순환성). scoring **무변경**(직교 레인). ddgs+OAuth로 **크레딧 0**.
