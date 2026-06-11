@@ -29,6 +29,7 @@ from event_intel.events import extraction as _extraction
 from event_intel.events import news_body as _news_body
 from event_intel.events import run_summary as _run_summary
 from event_intel.events import source_capture as _source_capture
+from event_intel.events import triage as _triage
 from event_intel.providers import embedding as _embedding
 from event_intel.providers import llm as _llm
 from event_intel.providers import search as _search
@@ -218,6 +219,34 @@ def build_event_tier_list(
             calls=extraction.chunks_processed,
         )
 
+        # 4.5. Roster triage (Y1D D2) — when the roster exceeds the enrichment
+        #      cap, pick WHICH companies get the slots by LLM product-domain
+        #      relevance instead of "the first N in page order". Enrichment's
+        #      own cap stays as a no-op backstop. Roster ≤ cap → zero calls;
+        #      total LLM failure → first-N (old behaviour); never fails a build.
+        triage_warnings: list[str] = []
+        candidates_for_enrich = extraction.candidates
+        _triage_cfg = (config.get("enrichment", {}) or {}).get("triage", {}) or {}
+        if (
+            enrichment_enabled
+            and extraction.candidates
+            and bool(_triage_cfg.get("enabled", False))
+        ):
+            _enrich_cap = max_companies or int(
+                (config.get("enrichment", {}) or {}).get("max_companies", 30)
+            )
+            triage_result = _triage.triage_roster(
+                extraction.candidates,
+                _triage.build_capability_digest(cards),
+                extract_llm,
+                max_companies=_enrich_cap,
+                batch_size=int(_triage_cfg.get("batch_size", 120)),
+                lang=lang,
+                ledger=usage_ledger,
+            )
+            candidates_for_enrich = triage_result.selected
+            triage_warnings = triage_result.warnings
+
         # 5. Enrichment (S4) — optional.
         if enrichment_enabled and extraction.candidates:
             search_provider = _search.make_search_provider(config)
@@ -230,7 +259,7 @@ def build_event_tier_list(
             else:
                 resume_path = Path.home() / ".event-intel" / "resume" / ws / f"{slug}.jsonl"
             enrich_result = _enrichment.enrich_exhibitors(
-                candidates=extraction.candidates,
+                candidates=candidates_for_enrich,
                 workspace_id=ws,
                 lang=lang,
                 config=config,
@@ -520,6 +549,7 @@ def build_event_tier_list(
                 ],
                 warnings=(
                     list(extraction.warnings)
+                    + triage_warnings
                     + list(enrich_result.warnings)
                     + llm_fit_warnings
                 ),
@@ -549,6 +579,7 @@ def build_event_tier_list(
             "skipped_from_resume": enrich_result.skipped_from_resume,
             "warnings": (
                 list(extraction.warnings)
+                + triage_warnings
                 + list(enrich_result.warnings)
                 + llm_fit_warnings
                 + ([cards_warning] if cards_warning else [])

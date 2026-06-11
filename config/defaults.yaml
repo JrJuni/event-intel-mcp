@@ -41,6 +41,12 @@ enrichment:
     enabled: true
     max_companies: 5               # max LLM proposal calls per event
     max_queries: 3                 # max alternate queries per company
+  triage:                          # Y1D D2 — LLM roster triage when the extracted roster > max_companies:
+    enabled: true                  # score the FULL roster for product-domain relevance (batched, names+snippets
+                                   # only) and enrich the top-max_companies instead of "the first 30 in page order"
+                                   # (p7 Siemens 2,885 exhibitors → coverage 1% without this). Absent key = off.
+                                   # Total LLM failure degrades to the old first-N behaviour.
+    batch_size: 120                # companies per triage call
   fetch_timeout_seconds: 10
   fetch_body_max_chars: 2000
   cache_enabled: true              # Cache search responses per (provider, query, kind) hash

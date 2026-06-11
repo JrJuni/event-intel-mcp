@@ -100,8 +100,25 @@ class _FakeLLM:
 
     def chat_once(self, *, system, user, **kwargs):
         self.calls.append({"system": system[:60], "user_preview": user[:80]})
-        # Y1D D1 — capability-fit calls FIRST (the fit system prompt also says
+        # Y1D D2 — roster-triage calls FIRST (the triage system prompt also says
         # "B2B", which would otherwise route into the rationale branch below).
+        # Scores every listed roster index: NeuroDrive low, everyone else high.
+        if "shortlist" in system.lower():
+            import json as _json
+
+            scores = {}
+            for line in user.splitlines():
+                head, _, _ = line.partition(" — ")
+                idx_s, _, name = head.partition(". ")
+                if idx_s.strip().isdigit() and name:
+                    scores[idx_s.strip()] = 0.2 if "neurodrive" in name.lower() else 0.9
+            return _llm.LLMResponse(
+                text=_json.dumps({"scores": scores}),
+                usage={"input_tokens": 150, "output_tokens": 30},
+                model=self.model,
+            )
+        # Y1D D1 — capability-fit calls also before the rationale branch (the
+        # fit system prompt says "B2B" too).
         if "product-exhibitor fit" in system:
             return _llm.LLMResponse(
                 text='{"score": 0.85, "reasoning": "Domain match."}',
@@ -481,6 +498,97 @@ def test_build_unknown_capability_fit_mode_warns_and_uses_llm(all_fakes, monkeyp
     assert any("unknown scoring.capability_fit_mode" in w for w in out["warnings"])
     rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
     assert "llm_fit" in rs["llm_usage"]["stages"]
+
+
+# ---------- Y1D D2: LLM roster triage (over-cap selection) ----------
+
+
+def _enable_triage_config():
+    import copy
+
+    cfg = copy.deepcopy(_MIN_CONFIG)
+    cfg["enrichment"]["triage"] = {"enabled": True, "batch_size": 120}
+    return cfg
+
+
+def _write_sample_cards(repo_root):
+    """Place the valid fixture cards where _load_cards_or_warn looks."""
+    import os
+    import shutil
+
+    ws_dir = Path(os.environ["EVENT_INTEL_OUTPUT_DIR"]) / "default"
+    ws_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy(
+        repo_root / "tests" / "fixtures" / "cards" / "sample_cards.yaml",
+        ws_dir / "capability_cards.yaml",
+    )
+
+
+def test_build_triage_selects_over_cap(all_fakes, monkeypatch, repo_root):
+    """Roster (3) > max_companies (2) + cards present → triage picks by LLM
+    relevance (NeuroDrive scored low by the fake), NOT first-N."""
+    import json as _json
+
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: _enable_triage_config())
+    _write_sample_cards(repo_root)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_triage",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        max_companies=2, run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    assert out["candidates_extracted"] == 3
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    names = [c["name"] for c in rs["companies"]]
+    assert len(names) == 2
+    assert "NeuroDrive Inc." not in names      # first-N would have kept it
+    assert "EdgeVision Co., Ltd." in names     # first-N would have dropped it
+    stages = rs["llm_usage"]["stages"]
+    assert "triage" in stages and stages["triage"]["calls"] == 1
+    assert any(w.startswith("triage: selected 2/3") for w in out["warnings"])
+
+
+def test_build_triage_without_cards_first_n_fallback(all_fakes, monkeypatch, repo_root):
+    """Triage enabled but no cards file → zero triage calls, old first-N kept,
+    explicit warning (no silent behaviour change)."""
+    import json as _json
+
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: _enable_triage_config())
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_triage_nocards",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        max_companies=2, run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    names = [c["name"] for c in rs["companies"]]
+    assert len(names) == 2
+    assert "NeuroDrive Inc." in names          # first-N keeps roster order
+    assert "EdgeVision Co., Ltd." not in names
+    assert "triage" not in rs["llm_usage"]["stages"]
+    assert any("no capability digest" in w for w in out["warnings"])
+
+
+def test_build_triage_absent_key_is_off(all_fakes, repo_root):
+    """No enrichment.triage key (legacy config) → zero behaviour change:
+    enrichment's own first-N cap fires with its existing warning."""
+    import json as _json
+
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_notriage",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        max_companies=2, run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    assert "triage" not in rs["llm_usage"]["stages"]
+    assert not any(w.startswith("triage:") for w in out["warnings"])
+    assert any("capped enrichment at 2/3" in w for w in out["warnings"])
+    names = [c["name"] for c in rs["companies"]]
+    assert "NeuroDrive Inc." in names and "EdgeVision Co., Ltd." not in names
 
 
 def test_build_e2e_korean_lang(all_fakes, repo_root):
