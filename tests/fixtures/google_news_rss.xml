@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:media="http://search.yahoo.com/mrss/" version="2.0">
+  <channel>
+    <generator>NFE/5.0</generator>
+    <title>"Acme Robotics" - Google News</title>
+    <language>en-US</language>
+    <lastBuildDate>Wed, 10 Jun 2026 12:34:56 GMT</lastBuildDate>
+    <item>
+      <title>Acme Robotics raises $50M Series B for warehouse automation - TechCrunch</title>
+      <link>https://news.google.com/rss/articles/CBMiTESTWRAPPER1?oc=5</link>
+      <guid isPermaLink="false">CBMiTESTWRAPPER1</guid>
+      <pubDate>Tue, 09 Jun 2026 08:15:00 GMT</pubDate>
+      <description>&lt;a href="https://news.google.com/rss/articles/CBMiTESTWRAPPER1?oc=5" target="_blank"&gt;Acme Robotics raises $50M Series B&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;font color="#6f6f6f"&gt;TechCrunch&lt;/font&gt;</description>
+      <source url="https://techcrunch.com">TechCrunch</source>
+    </item>
+    <item>
+      <title>Acme Robotics partners with major 3PL operator - Logistics Weekly</title>
+      <link>https://news.google.com/rss/articles/CBMiTESTWRAPPER2?oc=5</link>
+      <guid isPermaLink="false">CBMiTESTWRAPPER2</guid>
+      <pubDate>Mon, 01 Jun 2026 10:00:00 GMT</pubDate>
+      <description>&lt;a href="#"&gt;Acme Robotics partners with major 3PL operator&lt;/a&gt;</description>
+      <source url="https://logisticsweekly.example.com">Logistics Weekly</source>
+    </item>
+    <item>
+      <title>Third item used only for count-truncation checks - Wire</title>
+      <link>https://news.google.com/rss/articles/CBMiTESTWRAPPER3?oc=5</link>
+      <pubDate>not a real date</pubDate>
+      <description>plain text description</description>
+      <source url="https://wire.example.com">Wire</source>
+    </item>
+  </channel>
+</rss>

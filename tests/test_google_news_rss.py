@@ -1,0 +1,240 @@
+"""N3 — Google News RSS keyless news fallback lane + FallbackSearchProvider
+composition + factory wiring. No live network (MockTransport / fakes).
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from event_intel.errors import ErrorCode, MCPError
+from event_intel.providers.search import (
+    DdgsSearchProvider,
+    FallbackSearchProvider,
+    GoogleNewsRssSearchProvider,
+    SearchResult,
+    make_search_provider,
+)
+
+FIXTURE = Path(__file__).parent / "fixtures" / "google_news_rss.xml"
+
+
+def _rss_provider(handler=None, **kw):
+    import httpx
+
+    if handler is None:
+        def handler(request):  # noqa: ANN001
+            return httpx.Response(
+                200, content=FIXTURE.read_bytes(),
+                headers={"content-type": "application/xml"},
+            )
+    kw.setdefault("min_interval_ms", 0)
+    kw.setdefault("sleep", lambda s: None)
+    return GoogleNewsRssSearchProvider(transport=httpx.MockTransport(handler), **kw)
+
+
+# ---------- parsing ----------
+
+
+def test_rss_mapping_title_link_snippet_source_pubdate():
+    p = _rss_provider()
+    results = p.search("Acme Robotics", kind="news", count=10, days=30, lang="en")
+    assert len(results) == 3 and isinstance(results[0], SearchResult)
+    first = results[0]
+    assert first.title.startswith("Acme Robotics raises $50M")
+    assert first.url.startswith("https://news.google.com/rss/articles/")
+    assert "Series B" in first.snippet and "<" not in first.snippet  # tags stripped
+    assert first.source == "TechCrunch"
+    assert first.published_at is not None and first.published_at.year == 2026
+    # Unparseable pubDate degrades to None, item still kept.
+    assert results[2].published_at is None
+    assert p.last_call_degraded is False
+
+
+def test_rss_count_truncation():
+    assert len(_rss_provider().search("q", kind="news", count=2)) == 2
+
+
+def test_rss_query_params_days_and_korean_locale():
+    captured = {}
+
+    def handler(request):
+        import httpx
+
+        captured["params"] = dict(request.url.params)
+        return httpx.Response(200, content=FIXTURE.read_bytes())
+
+    _rss_provider(handler).search("에이크미", kind="news", count=5, days=30, lang="ko")
+    assert captured["params"]["q"] == "에이크미 when:30d"
+    assert captured["params"]["hl"] == "ko" and captured["params"]["gl"] == "KR"
+    assert captured["params"]["ceid"] == "KR:ko"
+
+
+def test_rss_web_kind_is_noop():
+    p = _rss_provider()
+    assert p.search("q", kind="web") == []
+    assert p.last_call_degraded is False  # by contract, not a degradation
+
+
+@pytest.mark.parametrize("status,content", [(503, b""), (200, b"this is not xml <<<")])
+def test_rss_failures_degrade_never_raise(status, content):
+    import httpx
+
+    p = _rss_provider(lambda req: httpx.Response(status, content=content))
+    assert p.search("q", kind="news") == []
+    assert p.last_call_degraded is True and p.degraded_queries == 1
+    events = p.drain_events()
+    assert events[0]["outcome"] == "degraded" and events[0]["provider"] == "google_news_rss"
+
+
+# ---------- FallbackSearchProvider composition ----------
+
+
+class _LaneFake:
+    """Configurable lane fake honoring the last_call_degraded contract."""
+
+    def __init__(self, *, results=None, degrade=False, signature="lane/v1"):
+        self.results = results or []
+        self.degrade = degrade
+        self.signature = signature
+        self.calls: list[tuple] = []
+        self.last_call_degraded = False
+        self._degraded_queries = 0
+
+    @property
+    def cache_signature(self):
+        return self.signature
+
+    @property
+    def degraded(self):
+        return self._degraded_queries > 0
+
+    @property
+    def degraded_queries(self):
+        return self._degraded_queries
+
+    def search(self, query, *, kind, count=10, days=None, lang="en"):
+        self.calls.append((query, kind))
+        self.last_call_degraded = self.degrade
+        if self.degrade:
+            self._degraded_queries += 1
+            return []
+        return list(self.results)
+
+    def ping(self):
+        return {"status": "best_effort", "provider": self.signature}
+
+
+def _sr(title="t"):
+    return SearchResult(title=title, url="https://x/1", snippet="s")
+
+
+def test_fallback_not_called_when_primary_ok():
+    primary = _LaneFake(results=[_sr()])
+    fb = _LaneFake(results=[_sr("fb")])
+    w = FallbackSearchProvider(primary, fb)
+    out = w.search("q", kind="news")
+    assert [r.title for r in out] == ["t"]
+    assert fb.calls == [] and w.last_call_degraded is False
+
+
+def test_fallback_rescues_degraded_news_query():
+    primary = _LaneFake(degrade=True)
+    fb = _LaneFake(results=[_sr("rescued")])
+    w = FallbackSearchProvider(primary, fb)
+    out = w.search("q", kind="news")
+    assert [r.title for r in out] == ["rescued"]
+    assert w.last_call_degraded is False  # rescued = a real, cacheable answer
+
+
+def test_fallback_skipped_for_web_kind():
+    primary = _LaneFake(degrade=True)
+    fb = _LaneFake(results=[_sr("fb")])
+    w = FallbackSearchProvider(primary, fb)
+    assert w.search("q", kind="web") == []
+    assert fb.calls == []
+    assert w.last_call_degraded is True  # web stays degraded (N1 non-stick)
+
+
+def test_both_lanes_degraded_stays_degraded():
+    w = FallbackSearchProvider(_LaneFake(degrade=True), _LaneFake(degrade=True))
+    assert w.search("q", kind="news") == []
+    assert w.last_call_degraded is True
+    assert w.degraded is True and w.degraded_queries == 2
+
+
+def test_fallback_signature_and_ping_disclose_composition():
+    w = FallbackSearchProvider(
+        _LaneFake(signature="ddgs/9/x"), _LaneFake(signature="gnrss/v1")
+    )
+    assert w.cache_signature == "ddgs/9/x+fb=gnrss/v1"
+    assert w.ping()["news_fallback"] == "gnrss/v1"
+
+
+# ---------- factory ----------
+
+
+def test_factory_wraps_ddgs_with_rss_fallback_by_default():
+    p = make_search_provider({"search": {"provider": "ddgs"}})
+    assert isinstance(p, FallbackSearchProvider)
+    assert isinstance(p.primary, DdgsSearchProvider)
+    assert isinstance(p.fallback, GoogleNewsRssSearchProvider)
+    assert "+fb=gnrss/v1" in p.cache_signature
+
+
+def test_factory_news_fallback_none_returns_bare_ddgs():
+    p = make_search_provider({"search": {"provider": "ddgs", "news_fallback": "none"}})
+    assert isinstance(p, DdgsSearchProvider)
+
+
+def test_factory_invalid_news_fallback_is_config_error():
+    with pytest.raises(MCPError) as ei:
+        make_search_provider(
+            {"search": {"provider": "ddgs", "news_fallback": "bing_rss"}}
+        )
+    assert ei.value.error_code == ErrorCode.CONFIG_ERROR
+
+
+def test_factory_never_wraps_brave(monkeypatch):
+    monkeypatch.setenv("BRAVE_API_KEY", "k")
+    p = make_search_provider({"search": {"provider": "brave"}})
+    assert not isinstance(p, FallbackSearchProvider)
+
+
+# ---------- enrichment integration ----------
+
+
+def test_enrichment_caches_fallback_answer_and_row_not_degraded(tmp_path):
+    from event_intel.events.enrichment import enrich_exhibitors
+    from event_intel.events.extraction import ExhibitorCandidate
+
+    primary = _LaneFake(degrade=True)
+    fb = _LaneFake(results=[SearchResult(
+        title="Mobius Labs ships compiler", url="https://news.x/1", snippet="npu",
+    )])
+    w = FallbackSearchProvider(primary, fb)
+    cfg = {"enrichment": {
+        "max_companies": 30, "count_web": 5, "count_news": 5,
+        "news_days_back": 180, "cache_enabled": True,
+        "official_url_levenshtein_threshold": 0.4,
+    }}
+    result = enrich_exhibitors(
+        candidates=[ExhibitorCandidate(
+            name="Mobius Labs", source_snippet="x" * 30,
+            url="https://mobius.example.com",  # skip the web lane
+        )],
+        workspace_id="n3ws", lang="en", config=cfg,
+        search_provider=w,
+        cache_dir=tmp_path / "c", resume_path=tmp_path / "r.jsonl",
+    )
+    row = result.rows[0]
+    assert row.degraded is False           # rescued answer is final
+    assert len(row.news_signals) == 1
+    persisted = [
+        json.loads(ln)
+        for ln in (tmp_path / "r.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert persisted[0]["degraded"] is False
+    # The rescued answer was cached under the WRAPPER signature.
+    assert len(list((tmp_path / "c").glob("*.json"))) == 1

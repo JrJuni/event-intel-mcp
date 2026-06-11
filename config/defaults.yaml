@@ -15,6 +15,7 @@ search:
   min_interval_ms: 1100            # ddgs: process-wide min gap between requests (DDG rate-limits ~20-30/min)
   max_retries: 5                   # ddgs: backoff attempts before degrading to empty (provisional ceiling — finalized from R2 smoke failure data)
   ddgs_backend: auto               # ddgs engine(s); "auto" shuffles all per call, or comma-list (news lane: duckduckgo, bing, yahoo)
+  news_fallback: google_news_rss   # keyless NEWS fallback when ddgs degrades (google_news_rss | none); ddgs-only
 
 enrichment:
   max_companies: 30                # Per-event cap on enriched exhibitors
