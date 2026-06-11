@@ -146,10 +146,21 @@ extraction (Sonnet, chunked, snippet-anchored, max 12 chunks/event)
 exhibitor_candidates.yaml  (raw)
    │ enrichment (web+news search per exhibitor via search.provider, cached, max 30 companies)
    │   ├ deterministic official URL rule (Levenshtein + keyword overlap)
-   │   ├ news_snippets (180-day window)
-   │   └ fetch body (top 3, 2000 chars cap)
+   │   ├ news collection ladder (zero-config news plan, ZNC):
+   │   │    ddgs backend=auto → classified retries (genuine-empty ≠ failure)
+   │   │    → Google News RSS fallback (news-only, fires on degraded queries)
+   │   │    → article BODY fetch (robots-gated, byte-capped, trafilatura)
+   │   │    → entity-relevance gate (homonym names need ctx co-occurrence)
+   │   │    → near-dup removal → LLM query-rescue (blocked-and-empty rows,
+   │   │      queries only — fetch stays deterministic)
+   │   ├ degraded results never stick: not cached, resume rows flagged +
+   │   │    re-enriched next run; failures degrade per-query, never abort the
+   │   │    stage (MCPError/config errors stay fatal)
+   │   └ failure-pattern diagnostics → ~/.event-intel/diagnostics/ (R1;
+   │        `benchmark retry-stats` aggregates; R3 codifies the retry policy)
    ▼
-enriched_exhibitors.yaml  (with verification_status, evidence packets)
+enriched_exhibitors.yaml  (with verification_status, evidence packets,
+                           per-news body_sha/body_chars)
    │ Event Evidence ingest → Chroma "event_{ws}_{slug}"
    │ Fit Retrieval (event → product, single direction)
    ▼
@@ -174,6 +185,8 @@ tier_list.md  +  tier_list.yaml  +  run_summary.json
 | **scoring** | `has_url + has_news` ∈ {0, 1, 2}. Floor rule: 2 → S/A allowed, 1 → A max, 0 → B max | `needs_review` separate state: extraction_confidence below threshold OR enrichment hard failure |
 
 `needs_review` is **not** part of the floor — it's an orthogonal lifecycle for low-confidence candidates that bypass scoring entirely. Reported in a dedicated section of `tier_list.md`.
+
+**Entity-relevance gate (ZNC C2)**: news only counts toward the floor (and buying_signal) if `is_relevant_news` passes — official-domain same-site bypass → whole-token name mention → for AMBIGUOUS names (single common-English-word distinctive token, e.g. Dust/Ramp/Chroma) an additional ≥1 context-term co-occurrence from the company's own snippet/description. Fail-open without context. Fetched article bodies are gated by the same predicate (B2), and near-duplicate bodies (wire syndication) are dropped. Per-article body↔product RAG relatedness is computed post-scoring and recorded in the report only (`news_relatedness`, REPORT_SCHEMA_VERSION 5) — no path to scores/tiers.
 
 ## Process model
 

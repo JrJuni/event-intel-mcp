@@ -27,6 +27,7 @@ The single source of truth for **patterns judged reusable** after solving a hard
 | `robots-txt` `urllib` `transport-failure` `policy-decoupling` | [12. robots.txt fetch decoupled from policy mapping](#12-robotstxt-fetch-decoupled-from-policy-mapping) | Never use `urllib.robotparser.read()` directly — it silently maps fetch failures (incl. 403 to Python-urllib UA) to `disallow_all=True`. Use httpx with explicit status→policy mapping (200→parse, 4xx→allow, 5xx/transport→deny) |
 | `sse-stream` `completed-required` `silent-truncation` `streaming-llm` | [13. SSE LLM streams require explicit `completed` event for success](#13-sse-llm-streams-require-explicit-completed-event-for-success) | Don't return collected deltas as success on stream EOF. Without an explicit `response.completed` (or backend equivalent) terminator, partial deltas are indistinguishable from network truncation. Raise RuntimeError |
 | `provider-factory` `user-config-override` `deep-merge` `swap-defaults` | [14. Provider factory + user config deep-merge for zero-cost provider swap](#14-provider-factory--user-config-deep-merge-for-zero-cost-provider-swap) | `make_llm_provider(config)` reads `~/.event-intel/config.yaml` deep-merged over `config/defaults.yaml`. User toggles `llm.provider: anthropic ↔ chatgpt_oauth` with no code change. Trade-off: cost (Anthropic) vs stability (subscription) |
+| `degraded` `cache-poisoning` `retry` `resume` `non-stick` | [15. Degraded results must never stick (non-stick caching)](#15-degraded-results-must-never-stick-non-stick-caching) | Failure-shaped empties (rate-limit/transport) are NOT cached and resume rows carry `degraded` (never reused) — only real answers persist. Genuine empties ARE cached. Per-call `last_call_degraded` flag distinguishes the two |
 
 When entries grow, re-sort by tag alphabetical order. Remove only when a pattern is invalidated (and record why).
 
@@ -688,6 +689,43 @@ def test_user_override_deep_merge(tmp_path, monkeypatch):
 - Validate exhaustively in the factory (typos in `reasoning_effort` etc. should raise at construction, not at first SSE call). See `_ALLOWED_REASONING_EFFORTS` in `providers/llm.py`
 
 **Reusable in**: Any project with multiple equivalent backends (LLM / embedding / vectorstore / search / fetch) where the choice may vary per environment (dev / staging / prod) or per user (cost vs quality preference). The pattern scales — add a 3rd provider by adding one factory branch + one config key, no callsite changes.
+
+---
+
+## 15. Degraded results must never stick (non-stick caching)
+
+**Problem**: A caching + resume layer treats every response as final. When an upstream degrades (rate-limit, transport error) to an EMPTY result, that empty gets cached with a TTL and persisted to resume rows — one bad moment then blocks all retries for the TTL window (here: 7 days). "Retry next time" silently became "retry next week". (ZNC N1, 2026-06-11 — root structural cause of "gives up too fast".)
+
+**Pattern**:
+1. The provider distinguishes **failure-shaped empty** from **genuine empty** and exposes a per-call flag (`last_call_degraded: bool`, reset at each call entry; consumers read via `getattr(p, "last_call_degraded", False)` so other providers/fakes need no change).
+2. The cache layer **skips writes for degraded results**; genuine empties ARE cached (don't re-hammer absent entities).
+3. Resume/checkpoint rows carry `degraded: bool` — appended for durability but **never reused**, so the next run retries regardless of TTL.
+4. Recovery (fallback lane / rescue answered) resets the flag → the row becomes final.
+5. One cache-version bump flushes pre-pattern poisoned caches + un-flagged rows.
+
+```python
+# provider: per-call flag
+self.last_call_degraded = False        # reset at search() entry
+if exhausted_retries:
+    self.last_call_degraded = True
+    return []
+
+# cache layer: only real answers persist
+degraded = bool(getattr(provider, "last_call_degraded", False))
+if cache_enabled and not degraded:
+    cache.put(...)
+
+# resume reuse gate
+if fp_match and fresh and not done_row.get("degraded", False):
+    reuse()
+```
+
+**Caveats**:
+- The flag is valid only until the next call on that instance — document on the ABC; keep instances per-run/single-threaded (or thread state through return values).
+- Decide explicitly which empties are "genuine" (here: ddgs `"No results found"` classification, N2) — misclassifying failures as genuine reintroduces the bug.
+- Pair with a run-level warning so degraded coverage is visible, not silent.
+
+**Reusable in**: any cached/resumable pipeline over flaky upstreams — search APIs, scrapers, webhook ingestion, batch LLM calls. **Related**: ZNC N1/N2/B1 (PRs #75/#76/#78), `lesson-learned.md` 2026-06-11 (ddgs dead-code exception contract).
 
 ---
 

@@ -208,6 +208,19 @@ sibling project **coldcall도 설계 단계에서 같은 벽**에 부딪혔고, 
 
 ---
 
+## [2026-06-11] ddgs retry 경로가 실환경에서 한 번도 발화한 적 없는 죽은 코드였다 (예외 계약을 라이브러리 소스로 검증 안 함)
+
+**Tried**: ZCS S2(2026-06-10)에서 `DdgsSearchProvider._call_with_retry`가 `ddgs.exceptions.RatelimitException`을 잡아 지수 backoff + graceful-empty 하도록 구현. 테스트는 fake가 그 예외를 raise해서 green.
+
+**Result**: ZNC 플래닝 중 설치된 ddgs 9.14.4 소스를 직접 열어보니 — **`RatelimitException`은 라이브러리 어디서도 raise되지 않는다**(정의만 존재). rate-limit은 generic `DDGSException`으로 옴 → retry/degrade 경로는 프로덕션에서 0회 발화. 더 나쁘게, **결과 0건인 정상 쿼리도 `DDGSException("No results found.")`을 raise** → enrichment가 `MCPError UPSTREAM_ERROR`로 감싸 **스테이지 전체 abort**. 무명 회사 1곳이 빌드를 죽이는 실버그가 테스트 green 뒤에 숨어 있었다.
+
+**Lesson**:
+- **서드파티 예외 계약은 라이브러리 소스에서 raise 지점을 grep해 검증하라.** 예외 클래스가 export된다는 것과 실제로 raise된다는 것은 별개다. fake가 그 예외를 raise하는 테스트는 "우리 코드가 그 예외를 처리한다"만 증명하지 "그 예외가 온다"는 증명하지 않는다.
+- "빈 결과"의 표현 방식(빈 리스트 vs 예외)은 라이브러리마다 다르다 — **happy-path 빈 응답을 실 라이브러리로 1회 확인**하는 통합 스모크가 이 클래스의 버그를 잡는다.
+- 수정(ZNC N2, PR #76): 예외 분류(genuine-empty → `[]`·캐시 / 그 외 → 재시도→degrade) + 메시지 리터럴 핀 테스트(`ddgs<10` 전제) + no-stage-abort. **Related**: `docs/playbook.md` #15 (degraded 미고착), `providers/search.py::_is_no_results`.
+
+---
+
 ## Blind Review 판정 누적
 
 ### Zero-config 검색 provider plan 라운드 1 (Codex) — 2026-06-10
