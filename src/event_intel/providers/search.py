@@ -695,14 +695,25 @@ _GNRSS_RATE_LIMITER = _RateLimiter()
 
 
 class FallbackSearchProvider(SearchProvider):
-    """Compose a primary lane with a keyless fallback (N3).
+    """Compose a primary lane with a keyless fallback (N3) + supplement (#15-1).
 
-    The fallback fires ONLY when the primary reports the call degraded
-    (``last_call_degraded``) and the kind is in ``kinds`` (default: news).
-    Genuine empties do NOT fall back — they are real answers (budget +
-    determinism). The combined ``cache_signature`` differs from the bare
-    primary's, so toggling the fallback never replays the other mode's cache
-    and re-fingerprints resume rows once (same mechanism as a provider switch).
+    Two firing modes, news-kind only:
+    - **Fallback** (N3): primary reports the call DEGRADED → the fallback's
+      answer replaces it. Genuine empties do NOT fall back — they are real
+      answers (budget + determinism).
+    - **Supplement** (cn20 re-measure finding: ddgs news SUPPLY tops out at
+      3–6 articles for most companies, far below the criterion-⑤ bar): when
+      the primary answers but returns FEWER than min(supplement_min, count)
+      results, the fallback is queried too and its non-duplicate items
+      (canonical-URL dedupe — best-effort: Google News wrapper URLs never
+      match publisher URLs, the B2 body near-dup pass is the real guard) are
+      APPENDED up to ``count``. A supplemented answer is a real answer —
+      never marked degraded. ``supplement_min=0`` disables.
+
+    The combined ``cache_signature`` (incl. the supplement threshold — it
+    changes the result space) differs from the bare primary's, so toggling
+    either mode never replays the other mode's cache and re-fingerprints
+    resume rows once (same mechanism as a provider switch).
     """
 
     def __init__(
@@ -711,15 +722,20 @@ class FallbackSearchProvider(SearchProvider):
         fallback: SearchProvider,
         *,
         kinds: tuple[str, ...] = ("news",),
+        supplement_min: int = 0,
     ) -> None:
         self.primary = primary
         self.fallback = fallback
         self.kinds = tuple(kinds)
+        self.supplement_min = int(supplement_min)
         self.last_call_degraded = False
 
     @property
     def cache_signature(self) -> str:
-        return f"{self.primary.cache_signature}+fb={self.fallback.cache_signature}"
+        sig = f"{self.primary.cache_signature}+fb={self.fallback.cache_signature}"
+        if self.supplement_min:
+            sig += f"/sup{self.supplement_min}"
+        return sig
 
     @property
     def degraded(self) -> bool:
@@ -763,18 +779,40 @@ class FallbackSearchProvider(SearchProvider):
         )
         primary_degraded = bool(getattr(self.primary, "last_call_degraded", False))
         self.last_call_degraded = primary_degraded
-        if not primary_degraded or kind not in self.kinds:
+        if kind not in self.kinds:
             return results
-        rescued = self.fallback.search(
-            query, kind=kind, count=count, days=days, lang=lang
-        )
-        # Degraded only if BOTH lanes failed to answer; a fallback answer
-        # (even an empty feed) is cacheable like any real answer ONLY when the
-        # fallback itself didn't degrade.
-        self.last_call_degraded = bool(
-            getattr(self.fallback, "last_call_degraded", False)
-        )
-        return rescued
+        if primary_degraded:
+            rescued = self.fallback.search(
+                query, kind=kind, count=count, days=days, lang=lang
+            )
+            # Degraded only if BOTH lanes failed to answer; a fallback answer
+            # (even an empty feed) is cacheable like any real answer ONLY when
+            # the fallback itself didn't degrade.
+            self.last_call_degraded = bool(
+                getattr(self.fallback, "last_call_degraded", False)
+            )
+            return rescued
+        # Supplement: a healthy-but-thin news answer gets topped up (#15-1).
+        if self.supplement_min and len(results) < min(self.supplement_min, count):
+            extra = self.fallback.search(
+                query, kind=kind, count=count, days=days, lang=lang
+            )
+            from event_intel.events.evidence import canonical_url
+
+            seen = {canonical_url(r.url) for r in results if r.url}
+            merged = list(results)
+            for r in extra:
+                if len(merged) >= count:
+                    break
+                if not r.url:
+                    continue
+                cu = canonical_url(r.url)
+                if cu in seen:
+                    continue
+                seen.add(cu)
+                merged.append(r)
+            return merged
+        return results
 
 
 def make_search_provider(config: dict) -> SearchProvider:
@@ -800,7 +838,10 @@ def make_search_provider(config: dict) -> SearchProvider:
         if fallback == "none":
             return ddgs
         if fallback == "google_news_rss":
-            return FallbackSearchProvider(ddgs, GoogleNewsRssSearchProvider())
+            return FallbackSearchProvider(
+                ddgs, GoogleNewsRssSearchProvider(),
+                supplement_min=int(search_cfg.get("news_supplement_min", 10)),
+            )
         raise MCPError(
             error_code=ErrorCode.CONFIG_ERROR,
             stage=Stage.PREFLIGHT,

@@ -172,6 +172,86 @@ def test_fallback_signature_and_ping_disclose_composition():
     assert w.ping()["news_fallback"] == "gnrss/v1"
 
 
+# ---------- supplement mode (#15-1: supply ceiling fix) ----------
+
+
+def _srs(n, prefix="p"):
+    return [SearchResult(title=f"{prefix}{i}", url=f"https://{prefix}.example.com/{i}",
+                         snippet="s") for i in range(n)]
+
+
+def test_supplement_tops_up_thin_news_answer():
+    primary = _LaneFake(results=_srs(4, "p"))
+    fb = _LaneFake(results=_srs(8, "fb"))
+    w = FallbackSearchProvider(primary, fb, supplement_min=10)
+    out = w.search("q", kind="news", count=20)
+    assert [r.title for r in out[:4]] == ["p0", "p1", "p2", "p3"]  # primary first
+    assert len(out) == 12  # 4 primary + 8 RSS extras
+    assert w.last_call_degraded is False  # supplemented = real answer
+    assert len(fb.calls) == 1
+
+
+def test_supplement_dedupes_by_canonical_url_and_caps_at_count():
+    shared = SearchResult(title="dup", url="https://p.example.com/0", snippet="s")
+    primary = _LaneFake(results=_srs(4, "p"))
+    fb = _LaneFake(results=[shared] + _srs(30, "fb"))
+    w = FallbackSearchProvider(primary, fb, supplement_min=10)
+    out = w.search("q", kind="news", count=10)
+    assert len(out) == 10  # capped at count
+    assert sum(1 for r in out if r.url == "https://p.example.com/0") == 1  # deduped
+
+
+def test_supplement_not_fired_when_primary_sufficient_or_web_or_disabled():
+    primary = _LaneFake(results=_srs(10, "p"))
+    fb = _LaneFake(results=_srs(5, "fb"))
+    w = FallbackSearchProvider(primary, fb, supplement_min=10)
+    assert len(w.search("q", kind="news", count=20)) == 10
+    assert fb.calls == []  # >= threshold → no supplement
+    w2 = FallbackSearchProvider(_LaneFake(results=_srs(2, "p")),
+                                _LaneFake(results=_srs(5, "fb")), supplement_min=0)
+    w2.search("q", kind="news", count=20)
+    assert w2.fallback.calls == []  # disabled
+    w3 = FallbackSearchProvider(_LaneFake(results=_srs(2, "p")),
+                                _LaneFake(results=_srs(5, "fb")), supplement_min=10)
+    w3.search("q", kind="web", count=20)
+    assert w3.fallback.calls == []  # web kind never supplemented
+
+
+def test_supplement_threshold_bounded_by_count():
+    """count=5 with threshold 10 → fire only when fewer than 5 results."""
+    primary = _LaneFake(results=_srs(5, "p"))
+    fb = _LaneFake(results=_srs(5, "fb"))
+    w = FallbackSearchProvider(primary, fb, supplement_min=10)
+    w.search("q", kind="news", count=5)
+    assert fb.calls == []  # 5 >= min(10, 5) → sufficient
+
+
+def test_supplement_signature_isolates_cache():
+    w0 = FallbackSearchProvider(_LaneFake(signature="d"), _LaneFake(signature="g"))
+    w10 = FallbackSearchProvider(_LaneFake(signature="d"), _LaneFake(signature="g"),
+                                 supplement_min=10)
+    assert w0.cache_signature == "d+fb=g"
+    assert w10.cache_signature == "d+fb=g/sup10"
+
+
+def test_factory_threads_supplement_min():
+    p = make_search_provider({"search": {"provider": "ddgs"}})
+    assert p.supplement_min == 10  # defaults.yaml-mirrored factory default
+    p2 = make_search_provider(
+        {"search": {"provider": "ddgs", "news_supplement_min": 0}}
+    )
+    assert p2.supplement_min == 0
+
+
+def test_degraded_path_unchanged_replace_not_merge():
+    primary = _LaneFake(degrade=True)
+    fb = _LaneFake(results=_srs(3, "fb"))
+    w = FallbackSearchProvider(primary, fb, supplement_min=10)
+    out = w.search("q", kind="news", count=20)
+    assert [r.title for r in out] == ["fb0", "fb1", "fb2"]  # replaced, not merged
+    assert w.last_call_degraded is False
+
+
 # ---------- factory ----------
 
 
