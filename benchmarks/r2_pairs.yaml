@@ -1,0 +1,35 @@
+# R2 smoke campaign pairs (ZNC plan) — runs every 4h via Task Scheduler
+# (scripts/r2_smoke.ps1). Zero-config lane: search = ddgs + Google News RSS
+# fallback (keyless), LLM = ChatGPT OAuth (user config). Sources live in
+# benchmarks/sources/ (gitignored — captured 2026-06-11, see status.md G1).
+#
+# Diversity: en data-expo (competitor-rich: Snowflake/Databricks on the floor)
+# / ko AI-expo (Korean news lane + EUC-KR source) / en industrial mega-roster
+# (2,885 companies — caps + weak-fit behavior). Static event slugs are
+# deliberate: resume reuse means each 4h run retries ONLY degraded rows (N1),
+# which is exactly the recovery-vs-attempt data R3 needs.
+pairs:
+  - pair: mongodb_bdldn
+    workspace: mongodb
+    event_name: "Big Data LDN 2026"
+    event_slug: big_data_ldn_2026
+    source_kind: csv_file
+    source_ref: benchmarks/sources/big_data_ldn_2026.csv
+    lang: en
+    target_mode: customer
+  - pair: hyodol_aiexpo_kr
+    workspace: hyodol
+    event_name: "AI EXPO KOREA 2026"
+    event_slug: ai_expo_korea_2026
+    source_kind: html_file
+    source_ref: benchmarks/sources/ai_expo_korea_2026.html
+    lang: ko
+    target_mode: customer
+  - pair: pinecone_hannover
+    workspace: default
+    event_name: "Hannover Messe 2026"
+    event_slug: hannover_messe_2026
+    source_kind: csv_file
+    source_ref: benchmarks/sources/hannover_messe_2026.csv
+    lang: en
+    target_mode: customer
