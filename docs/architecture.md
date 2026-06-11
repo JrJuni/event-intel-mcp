@@ -144,6 +144,12 @@ extraction (Sonnet, chunked, snippet-anchored, max 12 chunks/event)
    │ snippet ≥ 20 chars enforced. lang-specific name normalization (en / ko).
    ▼
 exhibitor_candidates.yaml  (raw)
+   │ roster triage (Y1D D2, `enrichment.triage.enabled`): when the roster
+   │   exceeds max_companies, batched LLM calls score the FULL roster for
+   │   product-domain relevance (names+snippets vs ~200-token card digest) and
+   │   the top-max_companies go to enrichment — instead of "first 30 in page
+   │   order" (p7: 2,885 exhibitors → coverage 1%). roster ≤ cap → 0 calls;
+   │   total LLM failure → first-N (old behaviour); competitors must PASS
    │ enrichment (web+news search per exhibitor via search.provider, cached, max 30 companies)
    │   ├ deterministic official URL rule (Levenshtein + keyword overlap)
    │   ├ news collection ladder (zero-config news plan, ZNC):

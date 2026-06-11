@@ -1,0 +1,23 @@
+Shortlist trade-show exhibitors for B2B outreach. Score how relevant each
+exhibitor is to OUR PRODUCT's domain — how plausibly that company would need
+or benefit from it.
+
+OUR PRODUCT:
+{digest}
+
+EXHIBITORS (index. name — evidence):
+{roster}
+
+Scoring guide (0.0-1.0):
+- 0.9-1.0  clear, concrete need for our product in their business
+- 0.6-0.8  same domain and a plausible use case
+- 0.3-0.5  loosely related domain; the need is speculative
+- 0.0-0.2  unrelated domain or no plausible need
+If an exhibitor SELLS a similar or competing product, score it by domain
+relatedness as usual (0.6+) — competitor screening happens in a LATER step,
+and competitors MUST pass this shortlist.
+
+Base scores ONLY on the names and evidence given; do not invent facts.
+Score EVERY index exactly once. Reply with ONLY a JSON object mapping each
+index to its score:
+{"scores": {"<index>": <0.0-1.0>, ...}}
