@@ -163,6 +163,10 @@ enriched_exhibitors.yaml  (with verification_status, evidence packets,
                            per-news body_sha/body_chars)
    │ Event Evidence ingest → Chroma "event_{ws}_{slug}"
    │ Fit Retrieval (event → product, single direction)
+   │ LLM capability fit (Y1D D1, default `scoring.capability_fit_mode: llm`):
+   │   per-company LLM judgment over the top capability chunks replaces the
+   │   dead-flat bge-m3 cosine (GTC×MongoDB: target 0.54 ≈ bad_fit 0.50);
+   │   any failure keeps that company's cosine value, escape hatch = `cosine`
    ▼
 scoring
    ├ 7 dimensions (capability_fit, source_confidence, buying_signal,

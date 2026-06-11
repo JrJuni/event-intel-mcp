@@ -55,6 +55,11 @@ enrichment:
     max_extra_calls_per_event: 0   # Optional event-wide ATTEMPT ceiling (0 = off; max_companies bounds cost)
 
 scoring:
+  capability_fit_mode: llm           # Y1D D1. llm (default) = explicit LLM fit judgment per company,
+                                     # cosine kept as automatic per-company fallback on any failure.
+                                     # cosine = escape hatch (offline / zero-LLM-cost runs).
+                                     # Why: bge-m3 cosine measured dead-flat — GTC×MongoDB target 0.54
+                                     # vs bad_fit 0.50 — the 0.30-weight dimension carried no signal.
   weights:
     capability_fit: 0.30
     source_confidence: 0.15

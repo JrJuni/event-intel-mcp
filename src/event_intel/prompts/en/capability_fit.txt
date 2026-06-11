@@ -1,0 +1,23 @@
+Judge how relevant this exhibitor is to OUR PRODUCT's capability domain — how
+plausibly the exhibitor's business would need or benefit from a product with
+the capabilities below.
+
+OUR PRODUCT CAPABILITIES (top matching excerpts):
+{capabilities}
+
+EXHIBITOR:
+Name: {name}
+Evidence: {evidence}
+
+Scoring guide:
+- 0.9-1.0  clear, concrete need for these capabilities in their business
+- 0.6-0.8  same domain and a plausible use case
+- 0.3-0.5  loosely related domain; the need is speculative
+- 0.0-0.2  unrelated domain or no plausible need
+If the exhibitor SELLS a similar or competing product, score by domain
+relatedness as usual (0.6+) — competitor status is judged in a separate step,
+not here.
+
+Base the score ONLY on the evidence given; do not invent facts about the
+company. Reply with ONLY a JSON object, score first:
+{"score": <0.0-1.0>, "reasoning": "<one sentence, max 15 words>"}

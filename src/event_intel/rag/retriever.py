@@ -33,6 +33,11 @@ class FitResult:
     bad_fit_hits: int = 0                                  # explanatory only (NOT penalty driver)
     competitor_similarity: float = 0.0                    # max sim over competitor chunks → penalty
     bad_fit_similarity: float = 0.0                       # max sim over bad_fit chunks → penalty
+    # Y1D D1 — set by scoring/llm_fit.py when capability_fit_mode == "llm"
+    # replaced the cosine value. The cosine value is preserved for diagnostics.
+    capability_fit_source: str = "cosine"                 # "cosine" | "llm"
+    capability_fit_reasoning: str | None = None
+    cosine_capability_fit: float | None = None
 
 
 def _exhibitor_query_text(row: EnrichedExhibitor) -> str:

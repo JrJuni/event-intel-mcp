@@ -100,6 +100,14 @@ class _FakeLLM:
 
     def chat_once(self, *, system, user, **kwargs):
         self.calls.append({"system": system[:60], "user_preview": user[:80]})
+        # Y1D D1 — capability-fit calls FIRST (the fit system prompt also says
+        # "B2B", which would otherwise route into the rationale branch below).
+        if "product-exhibitor fit" in system:
+            return _llm.LLMResponse(
+                text='{"score": 0.85, "reasoning": "Domain match."}',
+                usage={"input_tokens": 30, "output_tokens": 12},
+                model=self.model,
+            )
         if "RATIONALE:" in system or "rationale" in system.lower() or "B2B" in system:
             return _llm.LLMResponse(
                 text="RATIONALE: Strong fit on NPU edge stack.\nANGLE: Ask about ADAS pilot.",
@@ -408,6 +416,71 @@ def test_build_skips_enrichment_when_disabled(all_fakes, repo_root):
     assert out["cache_misses"] == 0
     # Warning about disabled enrichment surfaces.
     assert any("enrichment disabled" in w for w in out["warnings"])
+
+
+# ---------- Y1D D1: LLM capability fit (default) + cosine escape hatch ----------
+
+
+def test_build_llm_capability_fit_is_default(all_fakes, repo_root):
+    """capability_fit_mode absent from config → llm mode runs (code default)."""
+    import json as _json
+
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_llmfit",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    stages = rs["llm_usage"]["stages"]
+    assert "llm_fit" in stages and stages["llm_fit"]["calls"] >= 3
+    # Every scored company carries the LLM judgment (fake replies 0.85), not the
+    # cosine value (0.875 from the FakeVS distances).
+    for c in rs["companies"]:
+        assert c["dimensions"]["capability_fit"] == 0.85
+    assert not any(w.startswith("llm_fit:") for w in out["warnings"])
+
+
+def test_build_capability_fit_cosine_escape_hatch(all_fakes, monkeypatch, repo_root):
+    """scoring.capability_fit_mode: cosine → zero fit LLM calls, cosine values intact."""
+    import copy
+    import json as _json
+
+    cfg = copy.deepcopy(_MIN_CONFIG)
+    cfg["scoring"]["capability_fit_mode"] = "cosine"
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: cfg)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_cosine",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    assert "llm_fit" not in rs["llm_usage"]["stages"]
+    # FakeVS distances 0.2/0.25/0.3 → top-3 cosine mean (0.9+0.875+0.85)/3.
+    for c in rs["companies"]:
+        assert abs(c["dimensions"]["capability_fit"] - 0.875) < 1e-9
+
+
+def test_build_unknown_capability_fit_mode_warns_and_uses_llm(all_fakes, monkeypatch, repo_root):
+    import copy
+    import json as _json
+
+    cfg = copy.deepcopy(_MIN_CONFIG)
+    cfg["scoring"]["capability_fit_mode"] = "embeddings"
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: cfg)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_badmode",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    assert any("unknown scoring.capability_fit_mode" in w for w in out["warnings"])
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    assert "llm_fit" in rs["llm_usage"]["stages"]
 
 
 def test_build_e2e_korean_lang(all_fakes, repo_root):
