@@ -200,6 +200,9 @@ _CONTEXT_STOPWORDS = {
     "than", "then", "when", "where", "which", "who", "how", "what", "why",
     "also", "been", "being", "were", "had", "his", "her", "she", "him", "out",
     "new", "use", "used", "using", "via", "per", "such", "other", "based",
+    # Scaffold words from structured snippets ("company: X | description: …")
+    # — metadata about the text, not content of it.
+    "description", "overview", "profile", "booth", "exhibitor",
 }
 
 _COMMON_WORDS_CACHE: frozenset[str] | None = None
@@ -270,17 +273,30 @@ def is_relevant_news(
        text must additionally co-mention >=1 of the company's ``ctx_terms``.
        Empty/None ctx_terms → fail-open (no context to disambiguate with —
        over-filtering a sparse-snippet company would cost real recall).
+
+    The company's OWN name tokens never count as context (live AIEWF bug,
+    2026-06-11): snippets shaped like "company: Dust | description: ..." put
+    "dust" into ctx_terms, which every "dust storm" article trivially
+    co-mentions — the gate must demand a NON-name disambiguating term.
+
+    Exception: when ALL tokens of a multi-token name appear in the text
+    ("Together AI" → both "together" and "ai"), the mention is phrase-strength
+    and needs no extra context — only bare single-common-word mentions
+    ("Dust", "Ramp") stay under the co-occurrence requirement.
     """
     if official_domain and news_domain and same_site(news_domain, official_domain):
         return True
-    if not mentions_name(text, name_tokens(name)):
+    toks = name_tokens(name)
+    if not mentions_name(text, toks):
         return False
     if not name_is_ambiguous(name):
         return True
-    terms = ctx_terms or set()
+    hay = {t for t in _NAME_TOKEN_RE.split((text or "").lower()) if t}
+    if len(toks) > 1 and all(t in hay for t in toks):
+        return True  # full multi-token name present — phrase-strength mention
+    terms = (ctx_terms or set()) - set(toks)
     if not terms:
         return True
-    hay = {t for t in _NAME_TOKEN_RE.split((text or "").lower()) if t}
     return bool(hay & terms)
 
 
