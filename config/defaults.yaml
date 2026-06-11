@@ -16,7 +16,8 @@ search:
   max_retries: 5                   # ddgs: backoff attempts before degrading. PROVISIONAL (R3): 0 rate-limits in ~900 queries at this throttle — ceiling untested, kept as safety net (retry-playbook §1)
   ddgs_backend: auto               # ddgs engine(s); "auto" shuffles all per call, or comma-list (news lane: duckduckgo, bing, yahoo)
   news_fallback: google_news_rss   # keyless NEWS fallback when ddgs degrades (google_news_rss | none); ddgs-only
-  news_supplement_min: 10          # #15-1: top up via RSS when ddgs returns < min(this, count) news (supply ceiling fix); 0 = off
+  news_supplement_min: 10          # #15-1: top up via the lane pool when ddgs returns < min(this, count) news (supply ceiling fix); 0 = off
+  news_extra_lanes: bing_news_rss  # additional keyless news lanes after news_fallback (comma list; bing items carry DIRECT publisher URLs)
 
 enrichment:
   max_companies: 30                # Per-event cap on enriched exhibitors

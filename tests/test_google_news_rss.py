@@ -252,6 +252,94 @@ def test_degraded_path_unchanged_replace_not_merge():
     assert w.last_call_degraded is False
 
 
+# ---------- multi-lane pool (#15-1 follow-up) ----------
+
+
+def test_supplement_pool_fires_next_lane_only_while_short():
+    primary = _LaneFake(results=_srs(4, "p"))
+    lane1 = _LaneFake(results=_srs(3, "g"))   # brings total to 7 — still short
+    lane2 = _LaneFake(results=_srs(9, "b"))   # fires; merge caps at count, not target
+    w = FallbackSearchProvider(primary, lane1, supplement_min=10,
+                               extra_lanes=[lane2])
+    out = w.search("q", kind="news", count=20)
+    assert len(out) == 16 and len(lane2.calls) == 1  # 4+3+9, all under count=20
+    # sufficient after lane1 → lane2 untouched
+    lane1b = _LaneFake(results=_srs(10, "g"))
+    lane2b = _LaneFake(results=_srs(9, "b"))
+    w2 = FallbackSearchProvider(_LaneFake(results=_srs(4, "p")), lane1b,
+                                supplement_min=10, extra_lanes=[lane2b])
+    out2 = w2.search("q", kind="news", count=20)
+    assert len(out2) == 14 and lane2b.calls == []
+
+
+def test_degraded_pool_tries_lanes_in_order():
+    primary = _LaneFake(degrade=True)
+    lane1 = _LaneFake(degrade=True)
+    lane2 = _LaneFake(results=_srs(2, "b"))
+    w = FallbackSearchProvider(primary, lane1, supplement_min=10,
+                               extra_lanes=[lane2])
+    out = w.search("q", kind="news", count=20)
+    assert [r.title for r in out] == ["b0", "b1"]
+    assert w.last_call_degraded is False
+    # all lanes degraded → degraded empty
+    w2 = FallbackSearchProvider(_LaneFake(degrade=True), _LaneFake(degrade=True),
+                                extra_lanes=[_LaneFake(degrade=True)])
+    assert w2.search("q", kind="news") == []
+    assert w2.last_call_degraded is True
+
+
+def test_pool_signature_joins_lanes():
+    w = FallbackSearchProvider(
+        _LaneFake(signature="d"), _LaneFake(signature="g"),
+        supplement_min=10, extra_lanes=[_LaneFake(signature="b")],
+    )
+    assert w.cache_signature == "d+fb=g,b/sup10"
+
+
+def test_factory_builds_bing_extra_lane_by_default():
+    p = make_search_provider({"search": {"provider": "ddgs"}})
+    assert len(p.lanes) == 2
+    # Compare by name, not isinstance: the ddgs cold-import test re-imports the
+    # search module, so class identities can differ across test order.
+    assert type(p.lanes[1]).__name__ == "BingNewsRssSearchProvider"
+    assert "bingrss/v1" in p.cache_signature
+    bad = {"search": {"provider": "ddgs", "news_extra_lanes": "nonsense_rss"}}
+    with pytest.raises(MCPError) as ei:
+        make_search_provider(bad)
+    assert ei.value.error_code == ErrorCode.CONFIG_ERROR
+
+
+def test_bing_rss_parses_items_and_mkt_param():
+    import httpx
+
+    from event_intel.providers.search import BingNewsRssSearchProvider
+
+    captured = {}
+    rss = (
+        b'<?xml version="1.0"?><rss version="2.0"><channel>'
+        b"<item><title>Snowflake expands in Seoul</title>"
+        b"<link>https://publisher.example.com/article-1</link>"
+        b"<description>Direct publisher link &lt;b&gt;markup&lt;/b&gt;</description>"
+        b"<pubDate>Wed, 10 Jun 2026 01:00:00 GMT</pubDate></item>"
+        b"<item><title>Second</title><link>https://publisher.example.com/a2</link></item>"
+        b"</channel></rss>"
+    )
+
+    def handler(request):
+        captured["params"] = dict(request.url.params)
+        return httpx.Response(200, content=rss)
+
+    p = BingNewsRssSearchProvider(min_interval_ms=0, sleep=lambda s: None,
+                                  transport=httpx.MockTransport(handler))
+    out = p.search("스노우플레이크", kind="news", count=5, lang="ko")
+    assert captured["params"]["format"] == "RSS"
+    assert captured["params"]["mkt"] == "ko-KR"
+    assert len(out) == 2
+    assert out[0].url == "https://publisher.example.com/article-1"  # direct URL
+    assert "<" not in out[0].snippet
+    assert p.cache_signature == "bingrss/v1"
+
+
 # ---------- factory ----------
 
 

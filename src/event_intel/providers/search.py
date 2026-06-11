@@ -552,6 +552,7 @@ class GoogleNewsRssSearchProvider(SearchProvider):
     """
 
     BASE_URL = "https://news.google.com/rss/search"
+    PROVIDER_NAME = "google_news_rss"
     # lang → (hl, gl) for the feed's locale params.
     _LOCALE = {"en": ("en-US", "US"), "ko": ("ko", "KR"),
                "ja": ("ja", "JP"), "zh": ("zh-CN", "CN")}
@@ -619,7 +620,7 @@ class GoogleNewsRssSearchProvider(SearchProvider):
             results = []
         self.events.append({
             "ts": datetime.now(UTC).isoformat(),
-            "provider": "google_news_rss",
+            "provider": self.PROVIDER_NAME,
             "backend": "rss",
             "kind": kind,
             "lang": lang,
@@ -694,6 +695,61 @@ class GoogleNewsRssSearchProvider(SearchProvider):
 _GNRSS_RATE_LIMITER = _RateLimiter()
 
 
+class BingNewsRssSearchProvider(GoogleNewsRssSearchProvider):
+    """Keyless NEWS lane via Bing News RSS (#15-1 follow-up: 멀티소스 pool).
+
+    Same contract as the Google lane (news-only, degrade-never-raise, R1
+    events). Two differences worth knowing: Bing item links are DIRECT
+    publisher URLs (no wrapper — canonical dedupe works against ddgs results),
+    and the feed has no recency parameter (``days`` is ignored; the recency
+    weighting downstream handles stale items). Verified live 2026-06-11.
+    """
+
+    BASE_URL = "https://www.bing.com/news/search"
+    PROVIDER_NAME = "bing_news_rss"
+    # lang → mkt market code.
+    _MKT = {"en": "en-US", "ko": "ko-KR", "ja": "ja-JP", "zh": "zh-CN"}
+
+    @property
+    def cache_signature(self) -> str:
+        return "bingrss/v1"
+
+    def _fetch_feed(
+        self, query: str, *, count: int, days: int | None, lang: str
+    ) -> list[SearchResult]:
+        import httpx
+
+        _BINGRSS_RATE_LIMITER.wait(
+            self.min_interval_ms / 1000.0, clock=self._clock, sleep=self._sleep
+        )
+        kwargs: dict = {"timeout": self.timeout, "follow_redirects": True}
+        if self._transport is not None:
+            kwargs["transport"] = self._transport
+        with httpx.Client(**kwargs) as client:
+            resp = client.get(
+                self.BASE_URL,
+                params={
+                    "q": query, "format": "RSS",
+                    "mkt": self._MKT.get((lang or "").lower(), "en-US"),
+                },
+            )
+            resp.raise_for_status()
+            text = resp.text
+        return self._parse_rss(text, count=count)
+
+
+_BINGRSS_RATE_LIMITER = _RateLimiter()
+
+# Keyless news-lane registry for the supplement pool (zero-config = no PAID
+# keys; the method itself is unrestricted — user clarification 2026-06-11).
+# GDELT DOC API is a verified-keyless future candidate (needs a >=10s courtesy
+# interval; see retry-playbook).
+_NEWS_LANES: dict[str, type] = {
+    "google_news_rss": GoogleNewsRssSearchProvider,
+    "bing_news_rss": BingNewsRssSearchProvider,
+}
+
+
 class FallbackSearchProvider(SearchProvider):
     """Compose a primary lane with a keyless fallback (N3) + supplement (#15-1).
 
@@ -723,16 +779,22 @@ class FallbackSearchProvider(SearchProvider):
         *,
         kinds: tuple[str, ...] = ("news",),
         supplement_min: int = 0,
+        extra_lanes: list[SearchProvider] | None = None,
     ) -> None:
         self.primary = primary
         self.fallback = fallback
+        # Ordered keyless lane pool: the original fallback first, then extras
+        # (#15-1 follow-up). Degraded → first lane that answers; supplement →
+        # iterate lanes only while still short.
+        self.lanes: list[SearchProvider] = [fallback, *(extra_lanes or [])]
         self.kinds = tuple(kinds)
         self.supplement_min = int(supplement_min)
         self.last_call_degraded = False
 
     @property
     def cache_signature(self) -> str:
-        sig = f"{self.primary.cache_signature}+fb={self.fallback.cache_signature}"
+        lane_sigs = ",".join(p.cache_signature for p in self.lanes)
+        sig = f"{self.primary.cache_signature}+fb={lane_sigs}"
         if self.supplement_min:
             sig += f"/sup{self.supplement_min}"
         return sig
@@ -755,11 +817,16 @@ class FallbackSearchProvider(SearchProvider):
         status["news_fallback"] = getattr(
             self.fallback, "cache_signature", self.fallback.__class__.__name__
         )
+        if len(self.lanes) > 1:
+            status["news_lanes"] = [
+                getattr(p, "cache_signature", p.__class__.__name__)
+                for p in self.lanes
+            ]
         return status
 
     def drain_events(self) -> list[dict]:
         events: list[dict] = []
-        for p in (self.primary, self.fallback):
+        for p in (self.primary, *self.lanes):
             drain = getattr(p, "drain_events", None)
             if callable(drain):
                 events.extend(drain())
@@ -782,35 +849,41 @@ class FallbackSearchProvider(SearchProvider):
         if kind not in self.kinds:
             return results
         if primary_degraded:
-            rescued = self.fallback.search(
-                query, kind=kind, count=count, days=days, lang=lang
-            )
-            # Degraded only if BOTH lanes failed to answer; a fallback answer
-            # (even an empty feed) is cacheable like any real answer ONLY when
-            # the fallback itself didn't degrade.
-            self.last_call_degraded = bool(
-                getattr(self.fallback, "last_call_degraded", False)
-            )
-            return rescued
+            # First lane that answers without degrading wins (replace).
+            for lane in self.lanes:
+                rescued = lane.search(
+                    query, kind=kind, count=count, days=days, lang=lang
+                )
+                lane_degraded = bool(getattr(lane, "last_call_degraded", False))
+                if not lane_degraded:
+                    self.last_call_degraded = False
+                    return rescued
+            self.last_call_degraded = True  # every lane failed to answer
+            return []
         # Supplement: a healthy-but-thin news answer gets topped up (#15-1).
-        if self.supplement_min and len(results) < min(self.supplement_min, count):
-            extra = self.fallback.search(
-                query, kind=kind, count=count, days=days, lang=lang
-            )
+        # Each next lane fires ONLY while still short of the target.
+        target = min(self.supplement_min, count)
+        if self.supplement_min and len(results) < target:
             from event_intel.events.evidence import canonical_url
 
             seen = {canonical_url(r.url) for r in results if r.url}
             merged = list(results)
-            for r in extra:
-                if len(merged) >= count:
+            for lane in self.lanes:
+                if len(merged) >= target:
                     break
-                if not r.url:
-                    continue
-                cu = canonical_url(r.url)
-                if cu in seen:
-                    continue
-                seen.add(cu)
-                merged.append(r)
+                extra = lane.search(
+                    query, kind=kind, count=count, days=days, lang=lang
+                )
+                for r in extra:
+                    if len(merged) >= count:
+                        break
+                    if not r.url:
+                        continue
+                    cu = canonical_url(r.url)
+                    if cu in seen:
+                        continue
+                    seen.add(cu)
+                    merged.append(r)
             return merged
         return results
 
@@ -837,17 +910,32 @@ def make_search_provider(config: dict) -> SearchProvider:
         fallback = search_cfg.get("news_fallback", "google_news_rss") or "none"
         if fallback == "none":
             return ddgs
-        if fallback == "google_news_rss":
-            return FallbackSearchProvider(
-                ddgs, GoogleNewsRssSearchProvider(),
-                supplement_min=int(search_cfg.get("news_supplement_min", 10)),
+        if fallback not in _NEWS_LANES:
+            raise MCPError(
+                error_code=ErrorCode.CONFIG_ERROR,
+                stage=Stage.PREFLIGHT,
+                message=f"invalid search.news_fallback: {fallback!r}",
+                hint={"allowed": [*_NEWS_LANES, "none"]},
+                retryable=False,
             )
-        raise MCPError(
-            error_code=ErrorCode.CONFIG_ERROR,
-            stage=Stage.PREFLIGHT,
-            message=f"invalid search.news_fallback: {fallback!r}",
-            hint={"allowed": ["google_news_rss", "none"]},
-            retryable=False,
+        extra_names = [
+            n.strip()
+            for n in str(search_cfg.get("news_extra_lanes", "bing_news_rss")).split(",")
+            if n.strip() and n.strip() != fallback
+        ]
+        bad = [n for n in extra_names if n not in _NEWS_LANES]
+        if bad:
+            raise MCPError(
+                error_code=ErrorCode.CONFIG_ERROR,
+                stage=Stage.PREFLIGHT,
+                message=f"invalid search.news_extra_lanes entries: {bad}",
+                hint={"allowed": list(_NEWS_LANES)},
+                retryable=False,
+            )
+        return FallbackSearchProvider(
+            ddgs, _NEWS_LANES[fallback](),
+            supplement_min=int(search_cfg.get("news_supplement_min", 10)),
+            extra_lanes=[_NEWS_LANES[n]() for n in extra_names],
         )
     if provider == "brave":
         return BraveSearchProvider()
