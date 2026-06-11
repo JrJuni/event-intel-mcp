@@ -747,6 +747,14 @@ def benchmark_measure_cmd(
     sealed_verdicts: str | None = typer.Option(None, "--sealed-verdicts"),
     threshold_manifest: str | None = typer.Option(None, "--thresholds", help="Frozen manifest."),
     target_mode: str = typer.Option("customer", "--target-mode"),
+    tier_list: str | None = typer.Option(
+        None, "--tier-list",
+        help="tier_list.yaml of the same run — enables the ADVISORY news_capture block (ZNC criterion 5).",
+    ),
+    revenue_tiers: str | None = typer.Option(
+        None, "--revenue-tiers",
+        help="revenue_tiers.json (gold artifact) — required with --tier-list.",
+    ),
     out: str | None = typer.Option(None, "--out", "-o", help="Write the report JSON here too."),
 ) -> None:
     """Reveal + join (step 9): run-result + sealed gold + match → metrics + gates."""
@@ -755,6 +763,10 @@ def benchmark_measure_cmd(
     from event_intel.eval import benchmark as _bm
     from event_intel.eval import blind as _blind
     from event_intel.eval import roster as _roster
+
+    if tier_list and not revenue_tiers:
+        typer.echo("--revenue-tiers is required with --tier-list.", err=True)
+        raise typer.Exit(code=2)
 
     rr = _bm.load_run_result(run_dir)
     roster = _roster.load_roster(roster_file)
@@ -776,6 +788,18 @@ def benchmark_measure_cmd(
         sealed_verdicts=sv, target_mode=target_mode, thresholds=gates,
     )
     payload = report.to_dict()
+    if tier_list:
+        # ADVISORY news_capture block (ZNC criterion 5) — not a frozen gate
+        # this cycle; computed from explicit committed/immutable artifacts.
+        import yaml as _yaml
+
+        from event_intel.eval import news_capture as _nc
+
+        tl_payload = _yaml.safe_load(Path(tier_list).read_text(encoding="utf-8"))
+        rt = json.loads(Path(revenue_tiers).read_text(encoding="utf-8"))
+        payload["news_capture"] = _nc.news_capture_report(
+            tl_payload, rt.get("tiers", rt)
+        )
     if out:
         Path(out).parent.mkdir(parents=True, exist_ok=True)
         Path(out).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

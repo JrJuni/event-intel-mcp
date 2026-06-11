@@ -1,0 +1,1572 @@
+[
+  {
+    "roster_id": "p6_navercloud_aiexpo-001",
+    "canonical_name": "이스트소프트",
+    "aliases": [
+      "ESTsoft"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-002",
+    "canonical_name": "(주)미스릴",
+    "aliases": [
+      "Mithril"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-003",
+    "canonical_name": "일레븐랩스",
+    "aliases": [
+      "ElevenLabs"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-004",
+    "canonical_name": "야놀자",
+    "aliases": [
+      "Yanolja"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-005",
+    "canonical_name": "한국딥러닝",
+    "aliases": [
+      "Korea Deep Learning"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-006",
+    "canonical_name": "아이티센클로잇",
+    "aliases": [
+      "ITCENCLOIT"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-007",
+    "canonical_name": "디에스앤지",
+    "aliases": [
+      "DS&G Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-008",
+    "canonical_name": "(주)마음AI",
+    "aliases": [
+      "MAUM.AI Inc"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-009",
+    "canonical_name": "사단법인 한국피지컬에이아이협회",
+    "aliases": [
+      "Korea Physical AI Association"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-010",
+    "canonical_name": "솔트룩스이노베이션",
+    "aliases": [
+      "Saltlux Innovation"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-011",
+    "canonical_name": "케이투스 코리아",
+    "aliases": [
+      "KAYTUS Korea"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-012",
+    "canonical_name": "씨이랩",
+    "aliases": [
+      "Xiilab"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-013",
+    "canonical_name": "어드밴텍케이알(주)",
+    "aliases": [
+      "Advantech"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-014",
+    "canonical_name": "하이퍼엑셀",
+    "aliases": [
+      "HyperAccel"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-015",
+    "canonical_name": "에이아이씨 ㈜",
+    "aliases": [
+      "AIC Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-016",
+    "canonical_name": "아이크래프트",
+    "aliases": [
+      "iCRAFT Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-017",
+    "canonical_name": "엠키스코어",
+    "aliases": [
+      "MKISCORE"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-018",
+    "canonical_name": "강원대학교병원 AI 암치유센터",
+    "aliases": [
+      "Kangwon National University Hospital AI cancer wellness center"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-019",
+    "canonical_name": "경북소프트웨어마이스터고등학교",
+    "aliases": [
+      "Gyeongbuk Software Meister High School"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-020",
+    "canonical_name": "관악아날로그(주)",
+    "aliases": [
+      "Gwanak Analog Co.,Ltd"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-021",
+    "canonical_name": "광주소프트웨어마이스터고등학교",
+    "aliases": [
+      "Gwangju Software Meister High School"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-022",
+    "canonical_name": "교보디티에스(주)",
+    "aliases": [
+      "KYOBODTS"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-023",
+    "canonical_name": "굿인텔리전스",
+    "aliases": [
+      "Good intelligence"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-024",
+    "canonical_name": "그래파이",
+    "aliases": [
+      "GraphAI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-025",
+    "canonical_name": "누리에에이아이",
+    "aliases": [
+      "NURIE AI Inc"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-026",
+    "canonical_name": "뉴로클",
+    "aliases": [
+      "Neurocle"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-027",
+    "canonical_name": "대구소프트웨어마이스터고등학교",
+    "aliases": [
+      "DAEGU SOFTWARE MEISTER HIGH SCHOOL"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-028",
+    "canonical_name": "대덕소프트웨어마이스터고등학교",
+    "aliases": [
+      "Daedeok Software Meister High School"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-029",
+    "canonical_name": "대한무역투자진흥공사",
+    "aliases": [
+      "KOTRA"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-030",
+    "canonical_name": "동국시스템즈",
+    "aliases": [
+      "DONGKUK SYSTEMS"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-031",
+    "canonical_name": "두루이디에스 주식회사",
+    "aliases": [
+      "DOOROO EDS CO., LTD."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-032",
+    "canonical_name": "디노티시아",
+    "aliases": [
+      "Dnotitia"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-033",
+    "canonical_name": "디엠티랩스",
+    "aliases": [
+      "DMTLABS"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-034",
+    "canonical_name": "디윅스",
+    "aliases": [
+      "DWEAX"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-035",
+    "canonical_name": "디포그",
+    "aliases": [
+      "DEFOG"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-036",
+    "canonical_name": "딥서치",
+    "aliases": [
+      "DeepSearch,Inc"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-037",
+    "canonical_name": "라이카지오시스템즈코리아",
+    "aliases": [
+      "Leica Geosystems Korea"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-038",
+    "canonical_name": "래블업 주식회사",
+    "aliases": [
+      "Lablup Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-039",
+    "canonical_name": "로터스코리아테크놀로지",
+    "aliases": [
+      "Lotus Korea Technology"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-040",
+    "canonical_name": "리더스시스템즈",
+    "aliases": [
+      "LEADERS SYSTEMS"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-041",
+    "canonical_name": "리드스피커코리아",
+    "aliases": [
+      "ReadSpeaker Korea"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-042",
+    "canonical_name": "링크제니시스",
+    "aliases": [
+      "LINKGENESIS"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-043",
+    "canonical_name": "망고부스트",
+    "aliases": [
+      "MangoBoost"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-044",
+    "canonical_name": "매니코어소프트 주식회사",
+    "aliases": [
+      "ManyCoreSoft Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-045",
+    "canonical_name": "메가존소프트",
+    "aliases": [
+      "MegazoneSoft"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-046",
+    "canonical_name": "몬드리안에이아이(주)",
+    "aliases": [
+      "Mondrian AI Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-047",
+    "canonical_name": "무하유",
+    "aliases": [
+      "MUHAYU"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-048",
+    "canonical_name": "미소정보기술",
+    "aliases": [
+      "Miso Info Tech"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-049",
+    "canonical_name": "백석문화대학교 산학협력단",
+    "aliases": [
+      "Baekseok Culture University Industry-Academic Cooperation Foundation"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-050",
+    "canonical_name": "버즈니",
+    "aliases": [
+      "BUZZNI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-051",
+    "canonical_name": "베슬에이아이",
+    "aliases": [
+      "VESSL AI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-052",
+    "canonical_name": "벡스코",
+    "aliases": [
+      "BEXCO"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-053",
+    "canonical_name": "보다플레이(주)",
+    "aliases": [
+      "BODAPLAY CO., LTD"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-054",
+    "canonical_name": "부산소프트웨어마이스터고등학교",
+    "aliases": [
+      "busansoftwaremeisterhighschool"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-055",
+    "canonical_name": "브이원텍",
+    "aliases": [
+      "V-ONE Tech"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-056",
+    "canonical_name": "블루닷(주)",
+    "aliases": [
+      "bluedot Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-057",
+    "canonical_name": "비아이매트릭스",
+    "aliases": [
+      "BI MATRIX Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-058",
+    "canonical_name": "비큐에이아이",
+    "aliases": [
+      "BECUAI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-059",
+    "canonical_name": "삼인이엔에스",
+    "aliases": [
+      "SAMIN E&S"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-060",
+    "canonical_name": "삼일회계법인",
+    "aliases": [
+      "Samil PricewaterhouseCoopers"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-061",
+    "canonical_name": "솔트웨어",
+    "aliases": [
+      "Saltware"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-062",
+    "canonical_name": "슈어소프트테크(주)",
+    "aliases": [
+      "Suresofttech.Inc"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-063",
+    "canonical_name": "스퀴즈비츠",
+    "aliases": [
+      "SqueezeBits Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-064",
+    "canonical_name": "스토브리코리아",
+    "aliases": [
+      "STAUBLI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-065",
+    "canonical_name": "시마테크놀러지스코리아 유한책임회사",
+    "aliases": [
+      "SiMaai."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-066",
+    "canonical_name": "심플랫폼",
+    "aliases": [
+      "Simplatform"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-067",
+    "canonical_name": "써팀",
+    "aliases": [
+      "SirTEAM"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-068",
+    "canonical_name": "씽크프리",
+    "aliases": [
+      "Thinkfree"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-069",
+    "canonical_name": "아이디비(주)",
+    "aliases": [
+      "IDB Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-070",
+    "canonical_name": "아이티엔제이",
+    "aliases": [
+      "ITNJ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-071",
+    "canonical_name": "알서포트(주)",
+    "aliases": [
+      "RSUPPORT"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-072",
+    "canonical_name": "어니컴 주식회사",
+    "aliases": [
+      "onycom"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-073",
+    "canonical_name": "에버퓨어",
+    "aliases": [
+      "Everpure"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-074",
+    "canonical_name": "에스투더블유",
+    "aliases": [
+      "S2W"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-075",
+    "canonical_name": "에이수스코리아",
+    "aliases": [
+      "ASUS Korea"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-076",
+    "canonical_name": "에이쓰리시큐리티",
+    "aliases": [
+      "A3security"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-077",
+    "canonical_name": "에이아이웍스",
+    "aliases": [
+      "AIWORKX"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-078",
+    "canonical_name": "엑서스",
+    "aliases": [
+      "AIXUS"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-079",
+    "canonical_name": "엑스퍼넷",
+    "aliases": [
+      "EXPERNET.CO.,LTD."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-080",
+    "canonical_name": "올거나이즈",
+    "aliases": [
+      "Allganize"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-081",
+    "canonical_name": "옵트에이아이",
+    "aliases": [
+      "OptAI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-082",
+    "canonical_name": "와이즈스톤",
+    "aliases": [
+      "wisestone"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-083",
+    "canonical_name": "위앤유텍",
+    "aliases": [
+      "WE n YOU TECH"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-084",
+    "canonical_name": "위즈코어 주식회사",
+    "aliases": [
+      "WIZCORE, Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-085",
+    "canonical_name": "윌콘에이아이 주식회사",
+    "aliases": [
+      "WilconAI Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-086",
+    "canonical_name": "유니닥스",
+    "aliases": [
+      "unidocs"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-087",
+    "canonical_name": "유니바",
+    "aliases": [
+      "UNIVA"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-088",
+    "canonical_name": "유클릭",
+    "aliases": [
+      "Uclick"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-089",
+    "canonical_name": "이너웨이브",
+    "aliases": [
+      "Innerwave"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-090",
+    "canonical_name": "이든티앤에스",
+    "aliases": [
+      "EDENTNS"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-091",
+    "canonical_name": "인공지능팩토리",
+    "aliases": [
+      "AIFactory"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-092",
+    "canonical_name": "인스웨이브",
+    "aliases": [
+      "INSWAVE"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-093",
+    "canonical_name": "인이지",
+    "aliases": [
+      "INEEJI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-094",
+    "canonical_name": "인트플로우 주식회사",
+    "aliases": [
+      "intflow inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-095",
+    "canonical_name": "인피닉",
+    "aliases": [
+      "INFINIQ"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-096",
+    "canonical_name": "임팩티브AI",
+    "aliases": [
+      "Impactive AI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-097",
+    "canonical_name": "제네시스랩",
+    "aliases": [
+      "Genesislab"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-098",
+    "canonical_name": "제논",
+    "aliases": [
+      "GenON"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-099",
+    "canonical_name": "주식회사 그룹바이에이치알",
+    "aliases": [
+      "GroupByHR Inc"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-100",
+    "canonical_name": "주식회사 넥스브이",
+    "aliases": [
+      "NexV Co., Ltd"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-101",
+    "canonical_name": "주식회사 뉴엔에이아이",
+    "aliases": [
+      "NEWEN AI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-102",
+    "canonical_name": "주식회사 로이드케이",
+    "aliases": [
+      "LLOYDK Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-103",
+    "canonical_name": "주식회사 리얼리",
+    "aliases": [
+      "REALLY Co., Ltd"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-104",
+    "canonical_name": "주식회사 바로에이아이",
+    "aliases": [
+      "BARO AI INC."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-105",
+    "canonical_name": "주식회사 바이트사이즈",
+    "aliases": [
+      "BYTESIZE Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-106",
+    "canonical_name": "주식회사 벨루가",
+    "aliases": [
+      "Veluga Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-107",
+    "canonical_name": "주식회사 비솔",
+    "aliases": [
+      "VISOL, Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-108",
+    "canonical_name": "주식회사 비씨엠테크",
+    "aliases": [
+      "BCMTech"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-109",
+    "canonical_name": "주식회사 사미텍",
+    "aliases": [
+      "samitech"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-110",
+    "canonical_name": "주식회사 세인티",
+    "aliases": [
+      "SAINTI Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-111",
+    "canonical_name": "주식회사 씨에스리",
+    "aliases": [
+      "CSLEE"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-112",
+    "canonical_name": "주식회사 아이벡스",
+    "aliases": [
+      "AIVEX"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-113",
+    "canonical_name": "주식회사 아이핌",
+    "aliases": [
+      "aipim"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-114",
+    "canonical_name": "주식회사 앱테스트에이아이",
+    "aliases": [
+      "Apptest.ai"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-115",
+    "canonical_name": "주식회사 에너자이",
+    "aliases": [
+      "ENERZAi Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-116",
+    "canonical_name": "주식회사 에이치쓰리솔루션",
+    "aliases": [
+      "H3SOLUTION"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-117",
+    "canonical_name": "주식회사 엔유엘",
+    "aliases": [
+      "NyouL Co.,Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-118",
+    "canonical_name": "주식회사 올빅뎃",
+    "aliases": [
+      "ALLBIGDAT Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-119",
+    "canonical_name": "주식회사 유니버스에이아이",
+    "aliases": [
+      "UNIVERSE AI INC"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-120",
+    "canonical_name": "주식회사 인텔리빅스",
+    "aliases": [
+      "IntelliVIX"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-121",
+    "canonical_name": "주식회사 인포보스",
+    "aliases": [
+      "Infoboss Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-122",
+    "canonical_name": "주식회사 제이앤케이씨",
+    "aliases": [
+      "JNKC COMPANY"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-123",
+    "canonical_name": "주식회사 젠다이브",
+    "aliases": [
+      "gendive"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-124",
+    "canonical_name": "주식회사 지미션",
+    "aliases": [
+      "GMISSION"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-125",
+    "canonical_name": "주식회사 파이헬스케어",
+    "aliases": [
+      "Piehealthcare"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-126",
+    "canonical_name": "주식회사 프로스트",
+    "aliases": [
+      "PROST Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-127",
+    "canonical_name": "주식회사 핑거포스트",
+    "aliases": [
+      "FINGERPOST CO., Ltd"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-128",
+    "canonical_name": "주식회사 하이퍼놀로지",
+    "aliases": [
+      "hypernology lnc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-129",
+    "canonical_name": "주식회사나라원시스템",
+    "aliases": [
+      "Naraone System Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-130",
+    "canonical_name": "주한미국상공회의소",
+    "aliases": [
+      "American Chamber of Commerce in Korea"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-131",
+    "canonical_name": "카페 24 (대행사 (주)모티프커뮤니케이션 )",
+    "aliases": [
+      "motif communication"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-132",
+    "canonical_name": "크라우드웍스",
+    "aliases": [
+      "Crowdworks"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-133",
+    "canonical_name": "크리니티 주식회사",
+    "aliases": [
+      "Crinity Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-134",
+    "canonical_name": "클루닉스",
+    "aliases": [
+      "Clunix"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-135",
+    "canonical_name": "태양3C",
+    "aliases": [
+      "3C TAE YANG CO.,LTD"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-136",
+    "canonical_name": "테이블에이아이",
+    "aliases": [
+      "Table-ai"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-137",
+    "canonical_name": "툴스 포 휴머니티",
+    "aliases": [
+      "Tools for Humanity"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-138",
+    "canonical_name": "티쓰리큐(주)",
+    "aliases": [
+      "T3Q Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-139",
+    "canonical_name": "팀스파르타",
+    "aliases": [
+      "TeamSparta Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-140",
+    "canonical_name": "퍼즐데이터",
+    "aliases": [
+      "PUZZLEDATA"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-141",
+    "canonical_name": "펀진",
+    "aliases": [
+      "Funzin Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-142",
+    "canonical_name": "페다",
+    "aliases": [
+      "FEDA"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-143",
+    "canonical_name": "페르소나에이아이",
+    "aliases": [
+      "PERSONA AI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-144",
+    "canonical_name": "프렌들리에이아이",
+    "aliases": [
+      "FriendliAI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-145",
+    "canonical_name": "플랜바이테크놀로지스",
+    "aliases": [
+      "Planby Technologies"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-146",
+    "canonical_name": "플랜아이",
+    "aliases": [
+      "PLANI"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-147",
+    "canonical_name": "플로우",
+    "aliases": [
+      "flow"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-148",
+    "canonical_name": "한국정보공학(주)",
+    "aliases": [
+      "Korea Information Enginnering Services"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-149",
+    "canonical_name": "한국정보보호산업협회",
+    "aliases": [
+      "kisia"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-150",
+    "canonical_name": "흥인코퍼레이션",
+    "aliases": [
+      "hipeople"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-151",
+    "canonical_name": "(유)슬렉슨",
+    "aliases": [
+      "SLEXN, Inc"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-152",
+    "canonical_name": "(재)포항소재산업진흥원",
+    "aliases": [
+      "POMIA"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-153",
+    "canonical_name": "(주) 시스트란",
+    "aliases": [
+      "SYSTRAN Korea"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-154",
+    "canonical_name": "(주) 지아이비코리아",
+    "aliases": [
+      "GIB Korea Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-155",
+    "canonical_name": "(주)YH데이타베이스",
+    "aliases": [
+      "YHDatabase co.,ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-156",
+    "canonical_name": "(주)네오와인",
+    "aliases": [
+      "NEOWINE CO., LTD."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-157",
+    "canonical_name": "(주)딥브레인에이아이",
+    "aliases": [
+      "DeepBrainAI INC."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-158",
+    "canonical_name": "(주)맨텍솔루션",
+    "aliases": [
+      "ManTechSolution Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-159",
+    "canonical_name": "(주)명인일렉트로닉스",
+    "aliases": [
+      "MYUNGIN ELECTRONICS CO., LTD."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-160",
+    "canonical_name": "(주)미루웨어",
+    "aliases": [
+      "miruware"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-161",
+    "canonical_name": "(주)반야에이아이",
+    "aliases": [
+      "Banya inc"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-162",
+    "canonical_name": "(주)빛과전자",
+    "aliases": [
+      "Lightron Fiber-Optic Devices Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-163",
+    "canonical_name": "(주)사이냅소프트",
+    "aliases": [
+      "Synapsoft Corp."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-164",
+    "canonical_name": "(주)씨디에스",
+    "aliases": [
+      "CDS Co., Ltd"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-165",
+    "canonical_name": "(주)아이티브에이아이",
+    "aliases": [
+      "ITIV AI INC."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-166",
+    "canonical_name": "(주)에이데이타",
+    "aliases": [
+      "A-data Co., Ltd"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-167",
+    "canonical_name": "(주)에이티엠아이앤씨",
+    "aliases": [
+      "ATM, Inc"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-168",
+    "canonical_name": "(주)에이프리카",
+    "aliases": [
+      "AIFRICA"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-169",
+    "canonical_name": "(주)엘리스그룹",
+    "aliases": [
+      "Elice Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-170",
+    "canonical_name": "(주)엠클라우독",
+    "aliases": [
+      "mcloudoc Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-171",
+    "canonical_name": "(주)영재컴퓨터",
+    "aliases": [
+      "Youngjae Computer Co., Ltd"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-172",
+    "canonical_name": "(주)오픈네트웍시스템",
+    "aliases": [
+      "OPEN NETWORK SYSTEM Co., Ltd."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-173",
+    "canonical_name": "(주)오픈메이드컨설팅",
+    "aliases": [
+      "Openmade Consulting"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-174",
+    "canonical_name": "(주)와이즈넛",
+    "aliases": [
+      "WISENUT, Inc"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-175",
+    "canonical_name": "(주)원모어시큐리티",
+    "aliases": [
+      "OneMoreSecurity"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-176",
+    "canonical_name": "(주)유라클",
+    "aliases": [
+      "uracle"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-177",
+    "canonical_name": "(주)이빗",
+    "aliases": [
+      "EBIT"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-178",
+    "canonical_name": "(주)이슬림코리아",
+    "aliases": [
+      "eSlimKorea"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-179",
+    "canonical_name": "(주)이엘온소프트",
+    "aliases": [
+      "ELONSOFT"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-180",
+    "canonical_name": "(주)인포플라",
+    "aliases": [
+      "INFOFLA"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-181",
+    "canonical_name": "(주)케이엘큐브",
+    "aliases": [
+      "klcube"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-182",
+    "canonical_name": "(주)케이티엔에프",
+    "aliases": [
+      "KTNF Co.,Ltd"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-183",
+    "canonical_name": "(주)코난테크놀로지",
+    "aliases": [
+      "Konan Technology Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-184",
+    "canonical_name": "(주)코코링크",
+    "aliases": [
+      "CoCoLink Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-185",
+    "canonical_name": "(주)퀀텀씨엔에스",
+    "aliases": [
+      "QUANTUM C&S Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-186",
+    "canonical_name": "(주)텔레칩스",
+    "aliases": [
+      "Telechips"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-187",
+    "canonical_name": "(주)페블러스",
+    "aliases": [
+      "Pebblous Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-188",
+    "canonical_name": "(주)포스텍",
+    "aliases": [
+      "FOSTEC INC."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-189",
+    "canonical_name": "(주)한국인공지능검증원",
+    "aliases": [
+      "Korea AI Certification"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-190",
+    "canonical_name": "(주)한미마이크로닉스",
+    "aliases": [
+      "Hanmi Micronics Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-191",
+    "canonical_name": "(주)휴인스",
+    "aliases": [
+      "HUINS"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-192",
+    "canonical_name": "DataForce / 데이터포스",
+    "aliases": [
+      "DataForce by TransPerfect"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-193",
+    "canonical_name": "KB금융지주",
+    "aliases": [
+      "KB Financial Group"
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-194",
+    "canonical_name": "NEWMOSHINE ELECTRONICS CO.,LTD",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-195",
+    "canonical_name": "STA테스팅컨설팅",
+    "aliases": [
+      "STA Testing Consulting Inc."
+    ],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-196",
+    "canonical_name": "2027 AI EXPO TOKYO",
+    "aliases": [],
+    "label": null
+  },
+  {
+    "roster_id": "p6_navercloud_aiexpo-197",
+    "canonical_name": "4S Mapper",
+    "aliases": [],
+    "label": null
+  }
+]

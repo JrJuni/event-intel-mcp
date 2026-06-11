@@ -1,0 +1,274 @@
+{
+  "pair": "p6_navercloud_aiexpo",
+  "labels": {
+    "주식회사 벨루가": "target",
+    "주한미국상공회의소": "neutral",
+    "주식회사 씨에스리": "neutral",
+    "티쓰리큐(주)": "competitor",
+    "경북소프트웨어마이스터고등학교": "neutral",
+    "윌콘에이아이 주식회사": "target",
+    "주식회사 에너자이": "bad_fit",
+    "엠키스코어": "neutral",
+    "Aqrose Technology": "neutral",
+    "이스트소프트": "target",
+    "하이퍼엑셀": "neutral",
+    "야놀자": "target",
+    "MinIO": "neutral",
+    "주식회사 그룹바이에이치알": "target",
+    "한국딥러닝": "target",
+    "크라우드웍스": "target",
+    "아이티센클로잇": "target",
+    "Supermicro Computer Inc. Taiwan": "neutral",
+    "에스투더블유": "neutral",
+    "아이크래프트": "neutral"
+  },
+  "sha": "1adfc410a98675003f9ae470d015d8623eaa212043214bf50a7a5aced63dfed8",
+  "packet_sha": "6eba16ac558d639187a4384456163d044bb8f282ef0c9ec882b5e6f4d1d4ab04",
+  "grades": {
+    "주식회사 벨루가": "gold",
+    "주한미국상공회의소": "gold",
+    "주식회사 씨에스리": "gold",
+    "티쓰리큐(주)": "gold",
+    "경북소프트웨어마이스터고등학교": "gold",
+    "윌콘에이아이 주식회사": "gold",
+    "주식회사 에너자이": "gold",
+    "엠키스코어": "gold",
+    "Aqrose Technology": "gold",
+    "이스트소프트": "gold",
+    "하이퍼엑셀": "gold",
+    "야놀자": "gold",
+    "MinIO": "gold",
+    "주식회사 그룹바이에이치알": "gold",
+    "한국딥러닝": "gold",
+    "크라우드웍스": "gold",
+    "아이티센클로잇": "gold",
+    "Supermicro Computer Inc. Taiwan": "gold",
+    "에스투더블유": "gold",
+    "아이크래프트": "gold"
+  },
+  "provenance": {
+    "주식회사 벨루가": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://veluga.io/",
+        "https://www.aitimes.kr/news/articleView.html?idxno=34871"
+      ],
+      "refine_note": "LLM/RAG 기반 문서 챗봇 빌더(B2B 15건+) — LLM API의 직접 구매 프로필."
+    },
+    "주한미국상공회의소": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "주식회사 씨에스리": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "티쓰리큐(주)": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://t3q.com/en/",
+        "http://www.hitech.co.kr/news/articleView.html?idxno=35877"
+      ],
+      "refine_note": "프라이빗 LLM 구축 사업 + 카드 경쟁사 업스테이지(솔라) 공식 리셀러 — 경쟁 채널."
+    },
+    "경북소프트웨어마이스터고등학교": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://school.gyo6.net/gbsw"
+      ],
+      "refine_note": "교육기관(인재양성 부스) — 엔터프라이즈 BD 타깃 아님."
+    },
+    "윌콘에이아이 주식회사": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://wilcon.ai/",
+        "https://www.aitimes.kr/news/articleView.html?idxno=34917"
+      ],
+      "refine_note": "멀티에이전트 AI 챗봇 플랫폼(공공 구축 실적) — LLM API 활용 빌더."
+    },
+    "주식회사 에너자이": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://enerzai.com/"
+      ],
+      "refine_note": "온디바이스 AI 최적화 벤더 — 카드 bad_fit '온디바이스 전용' 영역과 일치."
+    },
+    "엠키스코어": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "Aqrose Technology": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.aqrose.com/"
+      ],
+      "refine_note": "중국 산업 머신비전 AI — 한국어 LLM 수요 없음. 단 카드 bad_fit 사유(해외전용/LLM벤더/극소규모/온디바이스)와도 불일치 → neutral."
+    },
+    "이스트소프트": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "하이퍼엑셀": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "야놀자": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "MinIO": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "주식회사 그룹바이에이치알": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://groupby.kr/"
+      ],
+      "refine_note": "한국어 HR SaaS — 대고객 한국어 AI 수요(채용 문서/상담) 프로필."
+    },
+    "한국딥러닝": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://koreadeep.com/"
+      ],
+      "refine_note": "문서 AI/OCR 빌더 — LLM 결합 제품군으로 확장 중인 활용 기업."
+    },
+    "크라우드웍스": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.crowdworks.kr/"
+      ],
+      "refine_note": "AI 학습데이터 1위 + LLM 응용 서비스 — 생태계 파트너/활용 기업."
+    },
+    "아이티센클로잇": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "Supermicro Computer Inc. Taiwan": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "에스투더블유": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "c9154894e6b91211de273b82a8be58bce63cc0d8cc6ffbf1472d358eee0ab60c",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "아이크래프트": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.icraft.co.kr/"
+      ],
+      "refine_note": "네트워크/IT 인프라 상장사 — LLM 플랫폼 구매 개연성 낮음."
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "_schema": "revenue-tiers/v1",
+  "_note": "Claude host judgment with web grounding (2026-06-11). true = est. annual revenue >= $10M.",
+  "tiers": {
+    "야놀자": true,
+    "이스트소프트": true,
+    "Supermicro Computer Inc. Taiwan": true,
+    "MinIO": true,
+    "크라우드웍스": true,
+    "아이티센클로잇": true,
+    "티쓰리큐(주)": true,
+    "아이크래프트": true,
+    "엠키스코어": true,
+    "주한미국상공회의소": false,
+    "주식회사 벨루가": false,
+    "주식회사 씨에스리": false,
+    "경북소프트웨어마이스터고등학교": false,
+    "윌콘에이아이 주식회사": false,
+    "주식회사 에너자이": false,
+    "Aqrose Technology": false,
+    "하이퍼엑셀": false,
+    "주식회사 그룹바이에이치알": false,
+    "한국딥러닝": false,
+    "에스투더블유": false
+  }
+}
