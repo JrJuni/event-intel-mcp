@@ -28,9 +28,15 @@ def main() -> int:
     # The campaign measures the KEYLESS lanes (failure patterns for the retry
     # playbook) and must not burn the free Brave quota — pin provider=ddgs
     # regardless of the machine's BRAVE_API_KEY (default is now `auto`).
+    # capability_fit_mode is pinned to cosine (Y1D D1 flipped the default to
+    # llm): R2 measures COLLECTION failure shapes, not fit quality — ~30 extra
+    # OAuth fit calls per build would add latency + rate-limit noise for zero
+    # diagnostic value here.
     keyless_cfg = LOG_DIR / "r2_keyless_config.yaml"
     keyless_cfg.write_text(
-        "llm:\n  provider: chatgpt_oauth\nsearch:\n  provider: ddgs\n",
+        "llm:\n  provider: chatgpt_oauth\n"
+        "search:\n  provider: ddgs\n"
+        "scoring:\n  capability_fit_mode: cosine\n",
         encoding="utf-8",
     )
     env = {**__import__("os").environ, "EVENT_INTEL_CONFIG": str(keyless_cfg)}
