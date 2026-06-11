@@ -83,7 +83,7 @@
 - Brave 결과는 publisher 직접 URL이라 본문 fetch도 정상(161 ok / 41 봇월 에러 — 키리스와 동일한 봇월 비율).
 - **운영 권고**: zero-config 기본은 키리스 유지(무료 약속), 단 **무료 Brave 키(월 2k 쿼리)를 "품질 업그레이드" 경로로 문서화** — config 한 줄(`search.provider: brave`)로 이미 전환 가능. 키리스 lane의 다음 카드: Bing-first(#99, 측정 대기) + GDELT lane.
 
-## 3.6 LLM extraction lane (D3에서 코드 반영, 2026-06-12)
+## 3.6 LLM extraction lane (D3에서 코드 반영, 2026-06-11)
 
 | 실패 형태 | 대응 | 근거 |
 |---|---|---|
