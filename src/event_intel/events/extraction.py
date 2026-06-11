@@ -25,12 +25,18 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from event_intel.errors import ErrorCode, MCPError, Stage
 
 _log = logging.getLogger(__name__)
+
+# One transient retry per chunk: a single flaky LLM call must not discard the
+# work of every chunk already extracted (observed: 64-chunk run dying at chunk
+# 39 after ~75 min). Constant is PROVISIONAL (docs/retry-playbook.md).
+_CHUNK_RETRY_SLEEP_SECONDS = 5.0
 
 # plan v3 R6: known wrapping keys an LLM may use to envelope the candidate list.
 # When the response is a dict (instead of the requested top-level list), unwrap
@@ -364,21 +370,31 @@ def extract_exhibitors(
             "---\n\n"
             "Return the JSON array now."
         )
-        try:
-            resp = llm_provider.chat_once(
-                system=system_prompt,
-                user=user,
-                max_tokens=chosen_max_tokens,
-                temperature=0.0,
-            )
-        except Exception as exc:
-            raise MCPError(
-                error_code=ErrorCode.UPSTREAM_ERROR,
-                stage=Stage.EXTRACTION,
-                message=f"LLM extraction call failed on chunk {i}: {exc}",
-                hint={"chunk_index": i, "chunks_total": len(chunks)},
-                retryable=True,
-            ) from exc
+        resp = None
+        for attempt in (0, 1):
+            try:
+                resp = llm_provider.chat_once(
+                    system=system_prompt,
+                    user=user,
+                    max_tokens=chosen_max_tokens,
+                    temperature=0.0,
+                )
+                break
+            except Exception as exc:
+                if attempt == 0:
+                    _log.warning("extraction chunk %d failed once (%s); retrying", i, exc)
+                    warnings.append(
+                        f"extraction: chunk {i} LLM call failed once; retried ({exc})"
+                    )
+                    time.sleep(_CHUNK_RETRY_SLEEP_SECONDS)
+                    continue
+                raise MCPError(
+                    error_code=ErrorCode.UPSTREAM_ERROR,
+                    stage=Stage.EXTRACTION,
+                    message=f"LLM extraction call failed on chunk {i} (after 1 retry): {exc}",
+                    hint={"chunk_index": i, "chunks_total": len(chunks)},
+                    retryable=True,
+                ) from exc
         usage_acc["input_tokens"] += int(resp.usage.get("input_tokens", 0) or 0)
         usage_acc["output_tokens"] += int(resp.usage.get("output_tokens", 0) or 0)
         all_rows.extend(_parse_llm_chunk(resp.text, chunk_index=i))

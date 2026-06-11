@@ -299,19 +299,59 @@ def test_multi_key_dict_without_list_value_returns_empty():
 
 
 def test_llm_failure_surfaces_as_upstream_error(monkeypatch):
+    monkeypatch.setattr(_extraction, "_CHUNK_RETRY_SLEEP_SECONDS", 0)
     capture = SourceCapture(text="S" * 500, kind="text", source_ref="<x>")
 
     class BadLLM:
+        def __init__(self):
+            self.calls = 0
+
         def chat_once(self, **_):
+            self.calls += 1
             raise RuntimeError("anthropic 429 boom")
 
+    bad = BadLLM()
     with pytest.raises(MCPError) as exc_info:
         extract_exhibitors(
-            capture=capture, lang="en", llm_provider=BadLLM(),
+            capture=capture, lang="en", llm_provider=bad,
             config=_config(max_chars_per_chunk=10000),
         )
     assert exc_info.value.error_code == ErrorCode.UPSTREAM_ERROR
     assert exc_info.value.retryable is True
+    # one transient retry happened before giving up
+    assert bad.calls == 2
+    assert "after 1 retry" in exc_info.value.message
+
+
+def test_llm_transient_failure_recovers_on_chunk_retry(monkeypatch):
+    """One flaky call must NOT discard the whole extraction run (observed:
+    64-chunk build dying at chunk 39 after ~75 min). Second attempt succeeds →
+    full result + a warning recording the retry."""
+    monkeypatch.setattr(_extraction, "_CHUNK_RETRY_SLEEP_SECONDS", 0)
+    capture = SourceCapture(text="S" * 500, kind="text", source_ref="<x>")
+
+    class FlakyLLM:
+        def __init__(self):
+            self.calls = 0
+
+        def chat_once(self, **_):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("transient 500")
+            return _LLMResp(
+                text='[{"name": "Mobius Labs", "source_snippet": "'
+                     + "x" * 30 + '", "confidence": 0.9}]',
+                usage={"input_tokens": 10, "output_tokens": 5},
+            )
+
+    flaky = FlakyLLM()
+    result = extract_exhibitors(
+        capture=capture, lang="en", llm_provider=flaky,
+        config=_config(max_chars_per_chunk=10000),
+    )
+    assert flaky.calls == 2
+    assert [c.name for c in result.candidates] == ["Mobius Labs"]
+    assert any("failed once; retried" in w for w in result.warnings)
 
 
 # ---------- module-reference import smoke (project DO NOT rule) ----------
