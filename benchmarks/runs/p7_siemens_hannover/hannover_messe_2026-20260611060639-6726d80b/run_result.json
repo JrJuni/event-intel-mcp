@@ -1,0 +1,643 @@
+{
+  "pair": "p7_siemens_hannover",
+  "run_id": "hannover_messe_2026-20260611060639-6726d80b",
+  "run_fingerprint": "08544ff56dc02ec6e10d0d271bad051706aa8a02d4e2ac31987a75d65b09f61f",
+  "run_summary": {
+    "run_id": "hannover_messe_2026-20260611060639-6726d80b",
+    "run_fingerprint": "08544ff56dc02ec6e10d0d271bad051706aa8a02d4e2ac31987a75d65b09f61f",
+    "git_commit_sha": "b61207ebde0791d531baacc886c7b12d53f8b495",
+    "config_fp": "3ca9704c105718f4a18c1278d929f4d8974b8af8672dae83e17116f58c170fed",
+    "cards_fingerprint": "50a3639102d32f26b664b35eb64756818700c33a0f9f723fe037af56c7fafa73",
+    "source_sha256": "c183cae6ad3d98af0e728038732370e054a7a76e6f3101c8da3002be6944a4bb",
+    "provider": "chatgpt_oauth",
+    "model_ids": {
+      "extract": "claude-sonnet-4-6",
+      "rationale": "claude-sonnet-4-6",
+      "embedding": "bge-m3"
+    },
+    "reference_timestamp": "2026-06-11T06:06:39.921968+00:00",
+    "target_mode": "customer",
+    "max_companies": null,
+    "max_chunks_per_event": 12,
+    "refresh": false,
+    "cache_hits": 0,
+    "cache_misses": 120,
+    "skipped_from_resume": 0,
+    "search_calls": 120,
+    "extracted": 780,
+    "enriched": 30,
+    "scored": 30,
+    "extraction_coverage": null,
+    "stages": [
+      {
+        "stage": "source_capture",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "extraction",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "enrichment",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "retrieval",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "scoring",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "report",
+        "ok": true,
+        "error_code": null
+      }
+    ],
+    "companies": [
+      {
+        "name": "yet industrial it security",
+        "tier": "C",
+        "final_score": 1.9907641267776488,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4999725818634033,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5697581768035889,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.99 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "1 1 versatel",
+        "tier": "C",
+        "final_score": 3.6163209382463855,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4671918948491414,
+          "source_confidence": 0.99,
+          "buying_signal": 0.618041346322786,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5563762187957764,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.62 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "1ot",
+        "tier": "B",
+        "final_score": 4.096812663078308,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.38727088769276935,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.10 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "21unity",
+        "tier": "C",
+        "final_score": 1.945846692323685,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4673650066057841,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.554642379283905,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.95 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "24 vision",
+        "tier": "B",
+        "final_score": 4.427850328835488,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4397050738334656,
+          "source_confidence": 0.99,
+          "buying_signal": 0.899946694475174,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.5289099812507629,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.43 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "24flow",
+        "tier": "C",
+        "final_score": 1.8384389883279804,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.45123839378356934,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5715074837207794,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.84 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "2neuron solucoes em inteligencia artific",
+        "tier": "C",
+        "final_score": 1.9080667054653166,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4407394528388977,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.542614758014679,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.91 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "3035 tech",
+        "tier": "C",
+        "final_score": 1.8570972836017605,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.48082302014033,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5915347933769226,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.86 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "36zero vision",
+        "tier": "C",
+        "final_score": 1.847362742424011,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4798510471979777,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5934829711914062,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.85 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "3d werk black forest",
+        "tier": "C",
+        "final_score": 2.8474909381676383,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4242730140686035,
+          "source_confidence": 0.99,
+          "buying_signal": 0.6954101331107265,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5581266582012177,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.85 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "3x motion technologies",
+        "tier": "C",
+        "final_score": 1.8459196096658703,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.47602981328964233,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5906199514865875,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.85 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "42q a sanmina division",
+        "tier": "C",
+        "final_score": 1.8952124720811838,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4553985595703125,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.558852344751358,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.90 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "4d1",
+        "tier": "C",
+        "final_score": 3.4586128797976983,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4867446819941203,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8908952607611024,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5208468735218048,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.46 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "4dock",
+        "tier": "C",
+        "final_score": 3.180318830013275,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4336753487586975,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5159163475036621,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.18 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "4s4 lighting",
+        "tier": "C",
+        "final_score": 1.8121840214729312,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4448476831118266,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5735311508178711,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.81 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "593ican solucoes em impressao 3d",
+        "tier": "C",
+        "final_score": 1.9674025481939315,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4604794383049011,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5425816476345062,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.97 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "5g acia",
+        "tier": "C",
+        "final_score": 3.160874891877174,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.5029759109020233,
+          "source_confidence": 0.99,
+          "buying_signal": 0.2,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5380150973796844,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.16 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "5g und industrial wireless arena",
+        "tier": "C",
+        "final_score": 1.959860236048698,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4662821690241496,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5497103631496429,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.96 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "7d kinematic metrology",
+        "tier": "C",
+        "final_score": 1.9701607680320734,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.47519634167353314,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.554408073425293,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.97 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "8com",
+        "tier": "C",
+        "final_score": 1.8307657396793362,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4745436708132426,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5936757922172546,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.83 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "8ra green twin",
+        "tier": "C",
+        "final_score": 1.796248824000358,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4594858189423879,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5906310379505157,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.80 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "a star",
+        "tier": "B",
+        "final_score": 4.811716554164886,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.37557218472162884,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.81 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "aashirwad press tools",
+        "tier": "C",
+        "final_score": 1.8599197423458094,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.47169233361879986,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5829020738601685,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.86 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "abat",
+        "tier": "B",
+        "final_score": 4.116561932264926,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4474335312843323,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8976969104999719,
+          "website_verification": 1.0,
+          "category_fit": 0.6666666666666666,
+          "competitor_penalty": 0.5877954363822937,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.12 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "abb",
+        "tier": "C",
+        "final_score": 3.304664013385772,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.5109634399414062,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.7073503732681274,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.30 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "abbey seals international",
+        "tier": "C",
+        "final_score": 1.7188536232709881,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.42445788780848187,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.582720011472702,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.72 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "abeam consulting",
+        "tier": "C",
+        "final_score": 2.501387121167781,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.46656384070714313,
+          "source_confidence": 0.99,
+          "buying_signal": 0.4180416373988011,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5743905305862427,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.50 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "abilex",
+        "tier": "C",
+        "final_score": 1.6546958988904947,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4537201126416524,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6261326968669891,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.65 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "abilis",
+        "tier": "B",
+        "final_score": 5.075942779327523,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.41707388559977215,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8931474150188043,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.08 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "abinc brazilian iot association",
+        "tier": "C",
+        "final_score": 1.725682914853096,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.42870567242304486,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5844097435474396,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.73 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      }
+    ],
+    "warnings": [
+      "source produced 43 chunks; head-truncating to 12 per max_chunks_per_event cap (set extraction.max_chunks_per_event in config to override)",
+      "capped enrichment at 30/780 exhibitors (set enrichment.max_companies in config to raise)"
+    ],
+    "pair": null,
+    "source_index_fingerprint": null
+  },
+  "top10_evidence": []
+}

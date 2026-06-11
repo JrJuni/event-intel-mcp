@@ -1,0 +1,279 @@
+{
+  "pair": "p7_siemens_hannover",
+  "labels": {
+    "machinemaze gmbh": "target",
+    "precision resource canada": "target",
+    "ming tai industrial": "target",
+    "rptu kaiserslautern landau": "neutral",
+    "abilis": "bad_fit",
+    "in time solutions": "neutral",
+    "nara drive": "neutral",
+    "24 vision": "neutral",
+    "abat": "bad_fit",
+    "5g acia": "neutral",
+    "1 1 versatel": "neutral",
+    "abb": "competitor",
+    "1ot": "neutral",
+    "konrad adenauer stiftung": "neutral",
+    "4d1": "neutral",
+    "puma industrial": "target",
+    "4dock": "neutral",
+    "a star": "neutral",
+    "hamma armin": "neutral",
+    "aras": "competitor"
+  },
+  "sha": "9191c102210782f1b252f7735b300c97ff6e7470b2609cc3fcfa91c8e2f01793",
+  "packet_sha": "d7f94b7fe04fe9a9c7e981b1710557550a1990616068df3b48bf7f16aa40bb5f",
+  "grades": {
+    "machinemaze gmbh": "gold",
+    "precision resource canada": "gold",
+    "ming tai industrial": "gold",
+    "rptu kaiserslautern landau": "gold",
+    "abilis": "gold",
+    "in time solutions": "gold",
+    "nara drive": "gold",
+    "24 vision": "gold",
+    "abat": "gold",
+    "5g acia": "gold",
+    "1 1 versatel": "gold",
+    "abb": "gold",
+    "1ot": "gold",
+    "konrad adenauer stiftung": "gold",
+    "4d1": "gold",
+    "puma industrial": "gold",
+    "4dock": "gold",
+    "a star": "gold",
+    "hamma armin": "gold",
+    "aras": "gold"
+  },
+  "provenance": {
+    "machinemaze gmbh": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://machinemaze.com/blogs/"
+      ],
+      "refine_note": "Manufacturing-as-a-Service platform connecting OEMs to Indian SME manufacturers - digital-manufacturing ecosystem prospect."
+    },
+    "precision resource canada": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "ming tai industrial": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "rptu kaiserslautern landau": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://rptu.de/"
+      ],
+      "refine_note": "University - not a card bad_fit reason (research/academia, not 'pure IT company'); not an enterprise BD target either."
+    },
+    "abilis": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.abilis.de/"
+      ],
+      "refine_note": "SAP/IT consultancy without physical production - exact card bad_fit reason."
+    },
+    "in time solutions": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "nara drive": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "24 vision": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "abat": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.abat.de/"
+      ],
+      "refine_note": "SAP consultancy (automotive IT services) - card bad_fit 'pure software/IT, no production'."
+    },
+    "5g acia": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "1 1 versatel": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.1und1-versatel.de/"
+      ],
+      "refine_note": "B2B telecom/fiber operator - owns network OT, not a card bad_fit reason; weak automation-buyer profile -> neutral."
+    },
+    "abb": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "1ot": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "konrad adenauer stiftung": {
+      "source": "search_refine",
+      "adjudicators": [
+        "claude_search"
+      ],
+      "search_evidence": [
+        "https://www.kas.de/"
+      ],
+      "refine_note": "Political foundation - outside the BD universe entirely; neutral (bad_fit reserved for card-reason matches)."
+    },
+    "4d1": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "puma industrial": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "4dock": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "a star": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "hamma armin": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    },
+    "aras": {
+      "source": "cross_agree",
+      "adjudicators": [
+        "gpt_draft",
+        "claude_independent"
+      ],
+      "independence": {
+        "independent_input_sha": "7bae8cc64565181c4b4c3f46f610848e9943db41ea1e2df29eec30096e27b2e9",
+        "prompt_sha": "",
+        "model_id": "claude"
+      }
+    }
+  }
+}
