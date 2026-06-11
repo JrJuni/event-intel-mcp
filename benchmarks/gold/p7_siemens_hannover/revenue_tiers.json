@@ -1,0 +1,26 @@
+{
+  "_schema": "revenue-tiers/v1",
+  "_note": "Claude host judgment with web grounding (2026-06-11). true = est. annual revenue >= $10M.",
+  "tiers": {
+    "abb": true,
+    "aras": true,
+    "1 1 versatel": true,
+    "precision resource canada": true,
+    "ming tai industrial": true,
+    "puma industrial": true,
+    "abat": true,
+    "abilis": true,
+    "a star": true,
+    "rptu kaiserslautern landau": false,
+    "konrad adenauer stiftung": false,
+    "5g acia": false,
+    "machinemaze gmbh": false,
+    "in time solutions": false,
+    "nara drive": false,
+    "24 vision": false,
+    "1ot": false,
+    "4d1": false,
+    "4dock": false,
+    "hamma armin": false
+  }
+}

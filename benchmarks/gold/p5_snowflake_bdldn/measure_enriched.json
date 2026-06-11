@@ -1,0 +1,402 @@
+{
+  "pair": "p5_snowflake_bdldn",
+  "run_id": "big_data_ldn_2026-20260611051840-2def51b3",
+  "run_fingerprint": "a3cc15cba126aec250af04845f947a1c4c104f0683e4d7b0106cce81e68523f5",
+  "target_mode": "customer",
+  "metrics": {
+    "extraction_coverage": {
+      "value": 0.16759776536312848,
+      "status": "ok",
+      "n": 179
+    },
+    "mention_coverage": {
+      "value": 0.16759776536312848,
+      "status": "ok",
+      "n": 179
+    },
+    "precision_at_10": {
+      "value": 0.5,
+      "status": "ok",
+      "n": 10
+    },
+    "end_to_end_competitor_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 3
+    },
+    "conditional_competitor_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 2
+    },
+    "competitor_extraction_coverage": {
+      "value": 0.6666666666666666,
+      "status": "ok",
+      "n": 3
+    },
+    "end_to_end_bad_fit_selection_rate": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "conditional_bad_fit_leakage_rate": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "bad_fit_extraction_coverage": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "evidence_precision": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "evidence_yield": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "auc": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  },
+  "gates": [
+    {
+      "name": "extraction_coverage",
+      "threshold": 0.8,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.16759776536312848,
+      "status": "ok",
+      "n": 179
+    },
+    {
+      "name": "precision_at_10",
+      "threshold": 0.6,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.5,
+      "status": "ok",
+      "n": 10
+    },
+    {
+      "name": "conditional_competitor_leakage_rate",
+      "threshold": 0.1,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 2
+    },
+    {
+      "name": "conditional_bad_fit_leakage_rate",
+      "threshold": 0.05,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    {
+      "name": "evidence_precision",
+      "threshold": 0.85,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  ],
+  "eligibility": "fail",
+  "passed": false,
+  "news_capture": {
+    "schema": "news-capture/v1",
+    "grade": "advisory",
+    "thresholds": {
+      ">=10M": 10,
+      "<10M": 3
+    },
+    "companies": [
+      {
+        "name": "microsoft limited",
+        "revenue_tier": ">=10M",
+        "bodied_news": 8,
+        "listed_news": 12,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "rackspace technology",
+        "revenue_tier": ">=10M",
+        "bodied_news": 12,
+        "listed_news": 12,
+        "threshold": 10,
+        "met": true
+      },
+      {
+        "name": "uptitude",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "euno",
+        "revenue_tier": "<10M",
+        "bodied_news": 1,
+        "listed_news": 12,
+        "threshold": 3,
+        "met": false
+      },
+      {
+        "name": "women in data",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 2,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "google cloud",
+        "revenue_tier": ">=10M",
+        "bodied_news": 10,
+        "listed_news": 12,
+        "threshold": 10,
+        "met": true
+      },
+      {
+        "name": "oakland everything data",
+        "revenue_tier": null,
+        "bodied_news": 2,
+        "listed_news": 9,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "redpanda data inc",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 2,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "alteryx uk ltd",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "bigeye",
+        "revenue_tier": null,
+        "bodied_news": 2,
+        "listed_news": 12,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "servicenow",
+        "revenue_tier": ">=10M",
+        "bodied_news": 6,
+        "listed_news": 10,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "apgar group",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 1,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "onix",
+        "revenue_tier": ">=10M",
+        "bodied_news": 6,
+        "listed_news": 12,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "snowflake",
+        "revenue_tier": ">=10M",
+        "bodied_news": 0,
+        "listed_news": 12,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "simpson associates",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 3,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "qerent revenue diagnostics",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "yuki",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 10,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "precisely software limited",
+        "revenue_tier": ">=10M",
+        "bodied_news": 1,
+        "listed_news": 1,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "secoda",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 1,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "caci ltd",
+        "revenue_tier": null,
+        "bodied_news": 2,
+        "listed_news": 9,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "airbyte",
+        "revenue_tier": null,
+        "bodied_news": 2,
+        "listed_news": 12,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "fidra analytics",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "7dxperts",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "e6data inc",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "domo",
+        "revenue_tier": ">=10M",
+        "bodied_news": 6,
+        "listed_news": 11,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "celebal technologies",
+        "revenue_tier": ">=10M",
+        "bodied_news": 1,
+        "listed_news": 3,
+        "threshold": 10,
+        "met": false
+      },
+      {
+        "name": "datavault builder ag",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "dataiq",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 2,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "eden smith limited",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "quest software",
+        "revenue_tier": ">=10M",
+        "bodied_news": 2,
+        "listed_news": 12,
+        "threshold": 10,
+        "met": false
+      }
+    ],
+    "summary": {
+      "total": 30,
+      "unknown_tier": 19,
+      "big": {
+        "total": 10,
+        "met": 2,
+        "met_rate": 0.2
+      },
+      "small": {
+        "total": 1,
+        "met": 0,
+        "met_rate": 0.0
+      },
+      "overall_met_rate": 0.182
+    }
+  }
+}
