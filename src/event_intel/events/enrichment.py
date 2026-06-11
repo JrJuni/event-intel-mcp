@@ -105,6 +105,8 @@ def _config_fingerprint(enrichment_cfg: dict, *, provider_sig: str = "") -> str:
         "news_body": enrichment_cfg.get("news_body", {}) or {},
         # C2 — the entity gate changes which news survive to evidence.
         "news_entity_gate": enrichment_cfg.get("news_entity_gate", {}) or {},
+        # N4 — query rescue changes what we fetch for blocked-and-empty rows.
+        "query_rescue": enrichment_cfg.get("query_rescue", {}) or {},
     }
     blob = json.dumps(relevant, sort_keys=True, default=str)
     return hashlib.sha1(blob.encode()).hexdigest()[:16]
@@ -130,6 +132,57 @@ _NON_ARTICLE_PATH_RE = re.compile(
 
 def _is_article_like(url: str) -> bool:
     return not _NON_ARTICLE_PATH_RE.search(url or "")
+
+
+# ---------- N4 query-rescue helpers (LLM proposes queries only) ----------
+
+_RESCUE_SYSTEM = (
+    "You are a search-query strategist. Reply with ONLY a JSON array of "
+    "query strings, nothing else."
+)
+
+
+def _load_rescue_prompt(lang: str) -> str:
+    """Load prompts/{lang}/query_rescue.txt with an en fallback (analyzer
+    pattern). Placeholders are substituted via str.replace (brace-safe — the
+    template contains JSON examples).
+    """
+    here = Path(__file__).resolve().parents[1]  # src/event_intel
+    path = here / "prompts" / lang / "query_rescue.txt"
+    if not path.is_file():
+        path = here / "prompts" / "en" / "query_rescue.txt"
+    return path.read_text(encoding="utf-8")
+
+
+def _parse_rescue_queries(text: str | None, *, max_queries: int) -> list[str]:
+    """Defensive parse of the LLM's JSON array (extraction.py discipline):
+    tolerate fenced/embedded JSON, drop non-strings, dedupe case-insensitively,
+    cap at max_queries. Anything unparseable → [] (caller warns + skips).
+    """
+    if not text:
+        return []
+    s = text.strip()
+    start, end = s.find("["), s.rfind("]")
+    if start == -1 or end <= start:
+        return []
+    try:
+        arr = json.loads(s[start : end + 1])
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(arr, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for q in arr:
+        if not isinstance(q, str):
+            continue
+        q = q.strip()
+        if q and q.lower() not in seen:
+            seen.add(q.lower())
+            out.append(q)
+        if len(out) >= max_queries:
+            break
+    return out
 
 
 # ---------- public dataclasses ----------
@@ -502,6 +555,7 @@ def enrich_exhibitors(
     resume_path: Path | None = None,
     failure_log_path: Path | None = None,
     body_fetcher: object | None = None,
+    llm_provider: object | None = None,
     max_companies: int | None = None,
     refresh: bool = False,
     now: datetime | None = None,
@@ -584,6 +638,13 @@ def enrich_exhibitors(
     entity_gate = bool(
         (enrichment_cfg.get("news_entity_gate", {}) or {}).get("enabled", False)
     )
+    # N4 — LLM query-rescue (absent key = off; defaults.yaml on). Needs an
+    # injected llm_provider — the LLM proposes queries only, never fetches.
+    rescue_cfg = enrichment_cfg.get("query_rescue", {}) or {}
+    rescue_enabled = bool(rescue_cfg.get("enabled", False)) and llm_provider is not None
+    rescue_max_companies = int(rescue_cfg.get("max_companies", 5))
+    rescue_max_queries = int(rescue_cfg.get("max_queries", 3))
+    rescued_companies = 0
     # B1 — article body fetch lane. Built only when config enables it (absent
     # key = off, like evidence_queries, so existing callers/tests keep their
     # exact network behaviour); tests inject a fake via the body_fetcher param.
@@ -727,6 +788,90 @@ def enrich_exhibitors(
                     published_at=hit.published_at.isoformat() if hit.published_at else None,
                 )
             )
+
+        # 2b) N4 — LLM query-rescue (last resort): NO official URL, NO news,
+        #     AND at least one query degraded → we likely MISSED this company
+        #     due to blocking/name-variant mismatch, not absence. The LLM only
+        #     PROPOSES alternate queries (native spellings, legal-entity
+        #     variants, name+industry); fetching re-runs the same deterministic
+        #     cached lanes, so N1 non-stick / N3 fallback / evidence gating all
+        #     apply to the rescued results. Genuine-empty companies (not
+        #     degraded) are never rescued.
+        if (
+            rescue_enabled
+            and rescued_companies < rescue_max_companies
+            and row.official_url is None
+            and not row.news_signals
+            and row.degraded
+        ):
+            rescued_companies += 1
+            try:
+                prompt = (
+                    _load_rescue_prompt(lang)
+                    .replace("{name}", cand.name)
+                    .replace(
+                        "{snippet}",
+                        f"{cand.source_snippet or ''} {cand.description or ''}".strip(),
+                    )
+                    .replace("{max_queries}", str(rescue_max_queries))
+                )
+                resp = llm_provider.chat_once(
+                    system=_RESCUE_SYSTEM, user=prompt,
+                    max_tokens=256, temperature=0.0,
+                )
+                rescue_queries = _parse_rescue_queries(
+                    resp.text, max_queries=rescue_max_queries
+                )
+            except Exception as exc:  # rescue is auxiliary — never fail a build
+                rescue_queries = []
+                row.enrichment_warnings.append(
+                    f"query_rescue: LLM proposal failed ({type(exc).__name__})"
+                )
+            for q in rescue_queries:
+                if row.official_url is None:
+                    web2 = _search_with_cache(
+                        cache=cache, cache_enabled=cache_enabled,
+                        search_provider=search_provider,
+                        query=f'"{q}" official site',
+                        kind="web", count=count_web, lang=lang,
+                        hits_counter=(lambda hit: None),
+                        now=now, refresh=refresh, failure_log=failure_log,
+                    )
+                    _tally(web2, row)
+                    # Score against BOTH the original name and the rescue query —
+                    # a native-language alias never token-matches a Latin host.
+                    row.official_url = (
+                        _pick_official_url(cand.name, web2["results"], threshold=url_threshold)
+                        or _pick_official_url(q, web2["results"], threshold=url_threshold)
+                    )
+                news2 = _search_with_cache(
+                    cache=cache, cache_enabled=cache_enabled,
+                    search_provider=search_provider, query=f'"{q}"',
+                    kind="news", count=count_news, lang=lang, days=news_days,
+                    hits_counter=(lambda hit: None),
+                    now=now, refresh=refresh, failure_log=failure_log,
+                )
+                _tally(news2, row)
+                seen_urls = {n.url for n in row.news_signals}
+                for hit in news2["results"]:
+                    if not _is_article_like(hit.url) or hit.url in seen_urls:
+                        continue
+                    seen_urls.add(hit.url)
+                    row.news_signals.append(
+                        NewsSignal(
+                            title=hit.title, url=hit.url, snippet=hit.snippet,
+                            source=hit.source,
+                            published_at=hit.published_at.isoformat()
+                            if hit.published_at else None,
+                        )
+                    )
+            if rescue_queries and (row.official_url or row.news_signals):
+                # Recovered — the rescued evidence is final and the resume row
+                # becomes reusable (still-degraded companies retry next run).
+                row.degraded = False
+                row.enrichment_warnings.append(
+                    "query_rescue: recovered evidence via alternate queries"
+                )
 
         # 3) Typed evidence (Phase 18V item 1): classify official_url + news,
         #    optionally enrich with budgeted product/partner/press queries, then

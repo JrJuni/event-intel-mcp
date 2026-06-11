@@ -31,6 +31,10 @@ enrichment:
     cache_ttl_days: 14             # fetched bodies reused across runs (URL-keyed)
   news_entity_gate:                # C2 — homonym disambiguation (Dust/Ramp/Chroma false positives)
     enabled: true                  # ambiguous single-common-word names require ctx-term co-occurrence; fail-open without context
+  query_rescue:                    # N4 — LLM proposes alternate queries for blocked-and-empty companies (fetch stays deterministic)
+    enabled: true
+    max_companies: 5               # max LLM proposal calls per event
+    max_queries: 3                 # max alternate queries per company
   fetch_timeout_seconds: 10
   fetch_body_max_chars: 2000
   cache_enabled: true              # Cache search responses per (provider, query, kind) hash

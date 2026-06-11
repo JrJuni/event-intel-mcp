@@ -229,6 +229,9 @@ def build_event_tier_list(
                 resume_path=resume_path,
                 max_companies=max_companies,
                 refresh=refresh,
+                # N4 query-rescue: reuse the extraction LLM (proposes alternate
+                # queries for blocked-and-empty companies; never fetches).
+                llm_provider=extract_llm,
             )
             enriched_rows = enrich_result.rows
         else:
