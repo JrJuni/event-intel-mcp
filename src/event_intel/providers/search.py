@@ -907,7 +907,10 @@ def make_search_provider(config: dict) -> SearchProvider:
             max_retries=int(search_cfg.get("max_retries", 5)),
             backend=str(search_cfg.get("ddgs_backend", "auto") or "auto"),
         )
-        fallback = search_cfg.get("news_fallback", "google_news_rss") or "none"
+        # Bing first by default: direct publisher URLs feed the body lane;
+        # Google's /rss/articles/ wrappers are robots-denied for body fetch
+        # (30/30 measured 2026-06-11 — retry-playbook §2).
+        fallback = search_cfg.get("news_fallback", "bing_news_rss") or "none"
         if fallback == "none":
             return ddgs
         if fallback not in _NEWS_LANES:
@@ -920,7 +923,7 @@ def make_search_provider(config: dict) -> SearchProvider:
             )
         extra_names = [
             n.strip()
-            for n in str(search_cfg.get("news_extra_lanes", "bing_news_rss")).split(",")
+            for n in str(search_cfg.get("news_extra_lanes", "google_news_rss")).split(",")
             if n.strip() and n.strip() != fallback
         ]
         bad = [n for n in extra_names if n not in _NEWS_LANES]

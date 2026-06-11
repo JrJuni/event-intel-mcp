@@ -57,6 +57,7 @@
 | **429 / 5xx / transport 오류** | **1회 재시도 (2s 대기)** 후 강등 | 429 실측 2건 — 일시 형태 존재. 빈도(<1%)상 1회면 충분 — **CONFIRMED(소표본)** |
 | robots 거부 | 재시도 없음 (정책 준수); 미캐시(5xx-deny는 일시일 수 있음) | 설계 원칙 |
 | too_short | 부정 판정 캐시 (재fetch 안 함) | 결정적 콘텐츠 속성 — **CONFIRMED** |
+| **Google News `/rss/articles/` 래퍼 URL** | **본문 fetch 불가 — robots 차단 30/30 (2026-06-11 실측).** listed 뉴스로는 유효하나 기준 ①에 기여 못 함 → **Bing RSS(publisher 직접 URL)를 1순위 lane으로** (defaults 반영) | **CONFIRMED** |
 
 ## 3. 사이트 형태별 (acquisition — G1 실측)
 
