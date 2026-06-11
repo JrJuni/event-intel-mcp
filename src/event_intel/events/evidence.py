@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 OFFICIAL_URL = "official_url"
@@ -178,6 +179,109 @@ def mentions_name(text: str | None, tokens: list[str]) -> bool:
     if distinctive:
         return any(t in hay for t in distinctive)
     return all(t in hay for t in tokens)
+
+
+# ---------- entity-relevance gate (news plan C1) ----------
+#
+# Wrong-entity news ("Dust" the company vs "dust storm" the article) passes the
+# whole-token mentions_name gate because the token IS in the text. The risk
+# shape is a name whose distinctive tokens reduce to ONE ordinary English word.
+# For those names only, is_relevant_news additionally requires >=1 of the
+# company's own context terms (from its source_snippet/description) to co-occur
+# in the text. Deterministic, fail-open when no context exists. Call sites are
+# wired in C2 / the B-lane; C1 keeps these pure and unconnected.
+
+# Small stopword set for context_terms — function words that would make the
+# co-occurrence check trivially true.
+_CONTEXT_STOPWORDS = {
+    "the", "and", "for", "with", "that", "this", "from", "are", "was", "has",
+    "have", "its", "their", "our", "your", "into", "over", "under", "about",
+    "more", "most", "all", "any", "can", "will", "not", "but", "you", "they",
+    "than", "then", "when", "where", "which", "who", "how", "what", "why",
+    "also", "been", "being", "were", "had", "his", "her", "she", "him", "out",
+    "new", "use", "used", "using", "via", "per", "such", "other", "based",
+}
+
+_COMMON_WORDS_CACHE: frozenset[str] | None = None
+
+
+def _common_words() -> frozenset[str]:
+    """Lazy frozenset of frequent English words (bundled data file; see its
+    header for provenance). Import stays stdlib-cold; the file is read once on
+    first use. Missing/unreadable file fails OPEN (nothing is "ambiguous").
+    """
+    global _COMMON_WORDS_CACHE
+    if _COMMON_WORDS_CACHE is None:
+        path = Path(__file__).resolve().parent / "data" / "common_words.txt"
+        words: set[str] = set()
+        try:
+            with path.open(encoding="utf-8") as f:
+                for line in f:
+                    w = line.strip().lower()
+                    if w and not w.startswith("#"):
+                        words.add(w)
+        except OSError:
+            words = set()
+        _COMMON_WORDS_CACHE = frozenset(words)
+    return _COMMON_WORDS_CACHE
+
+
+def name_is_ambiguous(name: str | None) -> bool:
+    """True iff the name's DISTINCTIVE tokens reduce to exactly one ordinary
+    English word — the homonym-risk shape ("Dust", "Ramp", "Chroma").
+    Multi-token names ("LangChain Labs") and coined words ("Baseten") are not
+    ambiguous; all-generic names ("Data Cloud") are handled by mentions_name's
+    phrase rule instead.
+    """
+    distinctive = [t for t in name_tokens(name) if t not in _GENERIC_NAME_TOKENS]
+    if len(distinctive) != 1:
+        return False
+    return distinctive[0] in _common_words()
+
+
+def context_terms(text: str | None) -> set[str]:
+    """Content tokens of a company's own snippet/description — its
+    disambiguation context ("Dust" + {agents, enterprise, grounded, ...}).
+    Stopwords and generic company-name words are excluded so the co-occurrence
+    check can't be satisfied by filler.
+    """
+    if not text:
+        return set()
+    toks = {t for t in _NAME_TOKEN_RE.split(text.lower()) if len(t) >= 3}
+    return {
+        t for t in toks
+        if t not in _CONTEXT_STOPWORDS and t not in _GENERIC_NAME_TOKENS
+    }
+
+
+def is_relevant_news(
+    text: str | None,
+    *,
+    name: str | None,
+    ctx_terms: set[str] | None = None,
+    news_domain: str | None = None,
+    official_domain: str | None = None,
+) -> bool:
+    """Entity-relevance gate for one news item (C1; consumers wired in C2/B2).
+
+    1. Same-site as the official domain → relevant (unchanged behavior).
+    2. Otherwise the text must mention the name (whole-token, generic-aware).
+    3. For AMBIGUOUS names only (single common-word distinctive token), the
+       text must additionally co-mention >=1 of the company's ``ctx_terms``.
+       Empty/None ctx_terms → fail-open (no context to disambiguate with —
+       over-filtering a sparse-snippet company would cost real recall).
+    """
+    if official_domain and news_domain and same_site(news_domain, official_domain):
+        return True
+    if not mentions_name(text, name_tokens(name)):
+        return False
+    if not name_is_ambiguous(name):
+        return True
+    terms = ctx_terms or set()
+    if not terms:
+        return True
+    hay = {t for t in _NAME_TOKEN_RE.split((text or "").lower()) if t}
+    return bool(hay & terms)
 
 
 def canonical_url(url: str) -> str:
