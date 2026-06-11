@@ -10,7 +10,7 @@ extraction:
   extraction_confidence_min: 0.6   # Below this, candidate flagged needs_review
 
 search:
-  provider: ddgs                   # ddgs (keyless zero-config default) | searxng | brave
+  provider: auto                   # auto (FREE Brave key if set → brave, else keyless ddgs+RSS pool — Brave control 2026-06-11: big-co met 7/10 vs keyless 1–3/10) | ddgs | searxng | brave
   searxng_url: ""                  # required when provider=searxng (configured in a later slice)
   min_interval_ms: 1100            # ddgs: process-wide min gap between requests (DDG rate-limits ~20-30/min)
   max_retries: 5                   # ddgs: backoff attempts before degrading. PROVISIONAL (R3): 0 rate-limits in ~900 queries at this throttle — ceiling untested, kept as safety net (retry-playbook §1)

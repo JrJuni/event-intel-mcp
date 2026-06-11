@@ -25,13 +25,23 @@ def main() -> int:
     stamp = time.strftime("%Y%m%d-%H%M%S")
     log_path = LOG_DIR / "r2_smoke.log"
 
+    # The campaign measures the KEYLESS lanes (failure patterns for the retry
+    # playbook) and must not burn the free Brave quota — pin provider=ddgs
+    # regardless of the machine's BRAVE_API_KEY (default is now `auto`).
+    keyless_cfg = LOG_DIR / "r2_keyless_config.yaml"
+    keyless_cfg.write_text(
+        "llm:\n  provider: chatgpt_oauth\nsearch:\n  provider: ddgs\n",
+        encoding="utf-8",
+    )
+    env = {**__import__("os").environ, "EVENT_INTEL_CONFIG": str(keyless_cfg)}
+
     def run(args: list[str]) -> int:
         with log_path.open("a", encoding="utf-8") as log:
             log.write(f"\n=== {stamp} $ {' '.join(args)}\n")
             log.flush()
             proc = subprocess.run(  # noqa: S603 — fixed argv, no shell
                 [sys.executable, "-m", "event_intel.cli", *args],
-                cwd=REPO, stdout=log, stderr=subprocess.STDOUT,
+                cwd=REPO, stdout=log, stderr=subprocess.STDOUT, env=env,
             )
             log.write(f"=== exit {proc.returncode}\n")
             return proc.returncode
