@@ -101,6 +101,8 @@ def _config_fingerprint(enrichment_cfg: dict, *, provider_sig: str = "") -> str:
             "official_url_levenshtein_threshold"
         ),
         "evidence_queries": enrichment_cfg.get("evidence_queries", {}) or {},
+        # B1 — body-lane settings change what evidence a row carries.
+        "news_body": enrichment_cfg.get("news_body", {}) or {},
     }
     blob = json.dumps(relevant, sort_keys=True, default=str)
     return hashlib.sha1(blob.encode()).hexdigest()[:16]
@@ -138,6 +140,11 @@ class NewsSignal:
     snippet: str
     source: str | None = None
     published_at: str | None = None       # ISO 8601 string, best-effort
+    # B1 — article body metadata. The body TEXT lives in the news-body cache
+    # (URL-keyed file, see events/news_body.py); rows carry only sha + length so
+    # resume/cache JSONL stays small. body_sha None = snippet-only evidence.
+    body_sha: str | None = None
+    body_chars: int = 0
 
 
 @dataclass
@@ -391,7 +398,8 @@ def _to_dict(
         "description": row.description,
         "news_signals": [
             {"title": n.title, "url": n.url, "snippet": n.snippet,
-             "source": n.source, "published_at": n.published_at}
+             "source": n.source, "published_at": n.published_at,
+             "body_sha": n.body_sha, "body_chars": n.body_chars}
             for n in row.news_signals
         ],
         "evidence": [
@@ -423,6 +431,8 @@ def _from_dict(d: dict) -> EnrichedExhibitor:
                 snippet=n.get("snippet", ""),
                 source=n.get("source"),
                 published_at=n.get("published_at"),
+                body_sha=n.get("body_sha"),
+                body_chars=int(n.get("body_chars", 0) or 0),
             )
             for n in d.get("news_signals", [])
         ],
@@ -489,6 +499,7 @@ def enrich_exhibitors(
     cache_dir: Path | None = None,
     resume_path: Path | None = None,
     failure_log_path: Path | None = None,
+    body_fetcher: object | None = None,
     max_companies: int | None = None,
     refresh: bool = False,
     now: datetime | None = None,
@@ -565,6 +576,22 @@ def enrich_exhibitors(
         failure_log_path or (home / "diagnostics" / workspace_id / "search_failures.jsonl"),
         base_fields={"workspace": workspace_id},
     )
+    # B1 — article body fetch lane. Built only when config enables it (absent
+    # key = off, like evidence_queries, so existing callers/tests keep their
+    # exact network behaviour); tests inject a fake via the body_fetcher param.
+    news_body_cfg = enrichment_cfg.get("news_body", {}) or {}
+    if body_fetcher is None and bool(news_body_cfg.get("enabled", False)):
+        from event_intel.events import news_body as _news_body
+
+        body_fetcher = _news_body.NewsBodyFetcher(
+            cfg=_news_body.NewsBodyConfig.from_dict(news_body_cfg),
+            cache_dir=home / "cache" / "news_body",
+            failure_log=FailureLog(
+                home / "diagnostics" / workspace_id / "fetch_failures.jsonl",
+                base_fields={"workspace": workspace_id},
+            ),
+            now=now,
+        )
 
     # refresh bypasses resume entirely; otherwise reuse is gated per-candidate
     # below (input_fp match AND TTL fresh).
@@ -733,16 +760,16 @@ def enrich_exhibitors(
                     source_domain=domain_of(row.official_url),
                 )
             )
-        for n in row.news_signals:
-            # Gate news → floor evidence by relevance too (review round-2 #1):
-            # the news query is name-quoted but Brave isn't exact, so an
-            # off-topic article shouldn't let official_url + 1 article reach
-            # floor 2. news_signals still feed buying_signal (soft-downweighted).
-            if not (
-                mentions_name(f"{n.title or ''} {n.snippet or ''}", cand_name_tokens)
-                or (official_domain and same_site(domain_of(n.url), official_domain))
-            ):
-                continue
+        # Gate news → floor evidence by relevance too (review round-2 #1): the
+        # news query is name-quoted but search engines aren't exact, so an
+        # off-topic article shouldn't let official_url + 1 article reach
+        # floor 2. news_signals still feed buying_signal (soft-downweighted).
+        gated_news = [
+            n for n in row.news_signals
+            if mentions_name(f"{n.title or ''} {n.snippet or ''}", cand_name_tokens)
+            or (official_domain and same_site(domain_of(n.url), official_domain))
+        ]
+        for n in gated_news:
             raw_ev.append(
                 EvidenceItem(
                     type=classify_url_type(n.url, from_news=True),
@@ -751,6 +778,11 @@ def enrich_exhibitors(
                     published_at=n.published_at,
                 )
             )
+        # B1 — fetch article bodies for the GATED news only (budget goes to
+        # plausibly-relevant items). Never raises; failures leave the signal as
+        # snippet-only evidence and log to fetch_failures.jsonl.
+        if body_fetcher is not None and gated_news:
+            body_fetcher.attach_bodies(gated_news)
         # Extra evidence queries are allocated round-robin up front (P2-2) so the
         # event-wide budget is shared fairly, not consumed by early companies.
         for suffix in assigned_queries.get(cand.name, []):
