@@ -120,6 +120,46 @@ def test_empty_context_fails_open_for_ambiguous_name():
     assert E.is_relevant_news(text, name="Dust", ctx_terms=None) is True
 
 
+def test_own_name_token_in_context_cannot_satisfy_the_gate():
+    """Live AIEWF bug (2026-06-11): snippets shaped 'company: Dust |
+    description: ...' put 'dust' into ctx_terms — every dust-storm article
+    then trivially co-mentioned a 'context' term. The name token must not
+    count as disambiguating context."""
+    scaffolded = "company: Dust | description: " + DUST_SNIPPET
+    ctx = E.context_terms(scaffolded)
+    assert "dust" in ctx  # extraction keeps it…
+    storm = "Massive dust storm swallows Rajasthan in minutes as skies darken"
+    assert E.is_relevant_news(storm, name="Dust", ctx_terms=ctx) is False  # …but it can't satisfy the gate
+    real = "Dust launches enterprise agents grounded in internal knowledge."
+    assert E.is_relevant_news(real, name="Dust", ctx_terms=ctx) is True
+
+
+def test_name_only_context_falls_back_to_fail_open():
+    """If ctx reduces to NOTHING but the name token, treat it as no context
+    (fail-open) rather than dropping every article."""
+    text = "Dust is mentioned in an article with zero snippet overlap."
+    assert E.is_relevant_news(text, name="Dust", ctx_terms={"dust"}) is True
+
+
+def test_scaffold_words_are_not_context():
+    ctx = E.context_terms("company: Ramp | description: exhibitor booth overview")
+    assert not ({"description", "exhibitor", "booth", "overview"} & ctx)
+
+
+def test_full_multi_token_name_is_phrase_strength():
+    """'Together AI' is ambiguous-shaped (distinctive token 'together'), but an
+    article containing the FULL name needs no extra context; an article with
+    only the bare common word still does."""
+    assert E.name_is_ambiguous("Together AI") is True
+    full = "Together AI announces a new inference platform this week."
+    assert E.is_relevant_news(full, name="Together AI", ctx_terms={"inference"}) is True
+    assert E.is_relevant_news(full, name="Together AI", ctx_terms=set()) is True
+    bare = "We walked together through the market; nothing else relevant."
+    assert E.is_relevant_news(
+        bare, name="Together AI", ctx_terms={"inference", "platform"}
+    ) is False
+
+
 def test_missing_wordlist_fails_open(monkeypatch):
     monkeypatch.setattr(E, "_COMMON_WORDS_CACHE", frozenset())
     # With an empty list nothing is ambiguous → gate never strengthens.

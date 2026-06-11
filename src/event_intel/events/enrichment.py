@@ -57,7 +57,10 @@ if TYPE_CHECKING:
 #        empty results are not cached and resume rows carry `degraded` (never
 #        reused). The bump flushes pre-N1 poisoned empty caches + un-flagged
 #        resume rows that may hide degraded empties.
-ENRICH_CACHE_VERSION = 6
+#   v7 → entity-gate self-token fix (live AIEWF): ctx co-occurrence no longer
+#        satisfiable by the company's own name token, so v6 rows gated with the
+#        broken predicate (wrong-entity news in evidence) must re-enrich.
+ENRICH_CACHE_VERSION = 7
 
 
 def _is_fresh(timestamp_raw: str | None, *, now: datetime, ttl_days: int | None) -> bool:
