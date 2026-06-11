@@ -47,7 +47,12 @@ class HttpxTrafilaturaFetchProvider(FetchProvider):
                     return FetchResult(
                         url=url, body=None, status_code=resp.status_code, error=f"HTTP {resp.status_code}"
                     )
-                body = self._extract(resp.text)
+                from event_intel.textenc import decode_html
+
+                # Header charset > meta sniff > utf-8 (not resp.text, which
+                # can't distinguish a declared charset from httpx's default).
+                html = decode_html(resp.content, header_charset=resp.charset_encoding)
+                body = self._extract(html)
                 return FetchResult(url=url, body=body, status_code=resp.status_code)
         except Exception as e:
             return FetchResult(url=url, body=None, status_code=None, error=str(e))
