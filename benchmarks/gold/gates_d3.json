@@ -1,0 +1,8 @@
+[
+  ["target_extraction_coverage", ">=", 0.80, "required"],
+  ["extraction_coverage", ">=", 0.80, "optional"],
+  ["precision_at_10", ">=", 0.60, "required"],
+  ["conditional_competitor_leakage_rate", "<=", 0.10, "required"],
+  ["conditional_bad_fit_leakage_rate", "<=", 0.05, "required"],
+  ["evidence_precision", ">=", 0.85, "required"]
+]

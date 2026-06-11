@@ -1,0 +1,43 @@
+{
+  "gates": [
+    [
+      "target_extraction_coverage",
+      ">=",
+      0.8,
+      "required"
+    ],
+    [
+      "extraction_coverage",
+      ">=",
+      0.8,
+      "optional"
+    ],
+    [
+      "precision_at_10",
+      ">=",
+      0.6,
+      "required"
+    ],
+    [
+      "conditional_competitor_leakage_rate",
+      "<=",
+      0.1,
+      "required"
+    ],
+    [
+      "conditional_bad_fit_leakage_rate",
+      "<=",
+      0.05,
+      "required"
+    ],
+    [
+      "evidence_precision",
+      ">=",
+      0.85,
+      "required"
+    ]
+  ],
+  "universe": {},
+  "sha": "0deb5acb4822a56761850da9352e8da10d929eb1b92f4cad5eca2aaa169f0833",
+  "frozen_at": "2026-06-11T12:29:16.775908+00:00"
+}
