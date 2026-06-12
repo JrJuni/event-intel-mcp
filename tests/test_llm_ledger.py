@@ -119,6 +119,63 @@ def test_cost_conversion_none_pricing():
     assert s["reference_costs_usd"] == {}
 
 
+# ---------- blended cost (schema v2, #16-④ right-sizing) ----------
+
+BLEND_PRICING = {
+    "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},
+    "claude-haiku-4-5": {"input": 1.00, "output": 5.00},
+}
+
+
+def test_blended_cost_prices_each_stage_by_its_recorded_model():
+    led = LlmUsageLedger()
+    led.record("extraction", "claude-sonnet-4-6",
+               {"input_tokens": 1_000_000, "output_tokens": 200_000})
+    led.record("triage", "claude-haiku-4-5",
+               {"input_tokens": 1_000_000, "output_tokens": 200_000})
+    s = led.summary(BLEND_PRICING)
+    blended = s["blended_cost_usd"]
+    assert s["schema"] == "llm-usage/v2"
+    # sonnet: 1M*3 + 0.2M*15 = 6.0 ; haiku: 1M*1 + 0.2M*5 = 2.0
+    assert blended["stages"] == {"extraction": 6.0, "triage": 2.0}
+    assert blended["total_usd"] == 8.0
+    assert blended["unpriced_stages"] == []
+    # reference conversion (all-on-one-model) is unchanged by blending
+    assert s["reference_costs_usd"]["claude-sonnet-4-6"]["total_usd"] == 12.0
+
+
+def test_blended_cost_unknown_model_lands_in_unpriced():
+    led = LlmUsageLedger()
+    led.record("extraction", "gpt-5.5", {"input_tokens": 100, "output_tokens": 10})
+    led.record("rationale", "claude-haiku-4-5",
+               {"input_tokens": 1_000_000, "output_tokens": 0})
+    blended = led.summary(BLEND_PRICING)["blended_cost_usd"]
+    assert blended["unpriced_stages"] == ["extraction"]
+    assert blended["stages"] == {"rationale": 1.0}
+    assert blended["total_usd"] == 1.0
+
+
+def test_blended_cost_mixed_model_stage_is_unpriced_not_mispriced():
+    led = LlmUsageLedger()
+    led.record("llm_fit", "claude-haiku-4-5", {"input_tokens": 100, "output_tokens": 10})
+    led.record("llm_fit", "claude-sonnet-4-6", {"input_tokens": 100, "output_tokens": 10})
+    blended = led.summary(BLEND_PRICING)["blended_cost_usd"]
+    assert blended["unpriced_stages"] == ["llm_fit"]
+    assert blended["stages"] == {}
+
+
+def test_blended_cost_zero_token_and_empty_stages_skipped():
+    led = LlmUsageLedger()
+    led.record("extraction", "claude-sonnet-4-6",
+               {"input_tokens": 0, "output_tokens": 0}, calls=0)  # CSV short-circuit shape
+    s = led.summary(BLEND_PRICING)
+    assert s["blended_cost_usd"] == {
+        "stages": {}, "total_usd": 0.0, "unpriced_stages": [],
+    }
+    empty = LlmUsageLedger().summary(BLEND_PRICING)
+    assert empty["blended_cost_usd"]["total_usd"] == 0.0
+
+
 # ---------- run_summary carries the block; ledger seams default to None ----------
 
 

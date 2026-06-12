@@ -528,6 +528,95 @@ def test_build_ledger_records_actual_extraction_model_not_config_string(
     assert "fake-sonnet" not in models
 
 
+# ---------- #16-④: per-stage model right-sizing ----------
+
+
+def test_build_stage_models_right_sized(all_fakes, monkeypatch, repo_root):
+    """llm.triage_model / llm.fit_model pin a cheaper model for those stages;
+    extraction stays on the extract model. Blended cost prices each stage by
+    its own model (schema v2)."""
+    import copy
+    import json as _json
+
+    cfg = copy.deepcopy(_MIN_CONFIG)
+    cfg["enrichment"]["triage"] = {"enabled": True, "batch_size": 120}
+    cfg["llm"]["triage_model"] = "fake-haiku"
+    cfg["llm"]["fit_model"] = "fake-haiku"
+    cfg["llm"]["reference_pricing"] = {
+        "fake-sonnet": {"input": 3.00, "output": 15.00},
+        "fake-haiku": {"input": 1.00, "output": 5.00},
+    }
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: cfg)
+    _write_sample_cards(repo_root)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_rightsize",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        max_companies=2, run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    stages = rs["llm_usage"]["stages"]
+    assert stages["extraction"]["models"] == ["fake-sonnet"]
+    assert stages["triage"]["models"] == ["fake-haiku"]
+    assert stages["llm_fit"]["models"] == ["fake-haiku"]
+    blended = rs["llm_usage"]["blended_cost_usd"]
+    assert blended["unpriced_stages"] == []
+    assert set(blended["stages"]) >= {"extraction", "triage", "llm_fit"}
+    assert blended["total_usd"] == round(sum(blended["stages"].values()), 6)
+    assert not any("right-sizing skipped" in w for w in out["warnings"])
+
+
+def test_build_stage_model_keys_absent_behaviour_unchanged(all_fakes, monkeypatch, repo_root):
+    """No triage_model / fit_model keys (legacy config) → every stage runs on
+    the extraction provider exactly as before."""
+    import copy
+    import json as _json
+
+    cfg = copy.deepcopy(_MIN_CONFIG)
+    cfg["enrichment"]["triage"] = {"enabled": True, "batch_size": 120}
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: cfg)
+    _write_sample_cards(repo_root)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_norightsize",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        max_companies=2, run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    stages = rs["llm_usage"]["stages"]
+    for stage in ("extraction", "triage", "llm_fit"):
+        assert stages[stage]["models"] == ["fake-sonnet"], (stage, stages[stage])
+
+
+def test_build_oauth_stage_models_are_noop_with_warning(all_fakes, monkeypatch, repo_root):
+    """chatgpt_oauth pins one OAuth model — per-stage keys must not crash the
+    build, must be ignored, and must surface a single explicit warning."""
+    import copy
+    import json as _json
+
+    cfg = copy.deepcopy(_MIN_CONFIG)
+    cfg["llm"]["provider"] = "chatgpt_oauth"
+    cfg["llm"]["chatgpt_oauth_model"] = "fake-oauth-mini"
+    cfg["llm"]["triage_model"] = "claude-haiku-4-5"
+    cfg["llm"]["fit_model"] = "claude-haiku-4-5"
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: cfg)
+    monkeypatch.setattr(_llm, "ChatGPTOAuthProvider", _FakeLLM)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_oauth_noop",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    noop_warnings = [w for w in out["warnings"] if "right-sizing skipped" in w]
+    assert len(noop_warnings) == 1
+    assert "triage_model" in noop_warnings[0] and "fit_model" in noop_warnings[0]
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    assert rs["llm_usage"]["stages"]["llm_fit"]["models"] == ["fake-oauth-mini"]
+
+
 # ---------- Y1D D2: LLM roster triage (over-cap selection) ----------
 
 
