@@ -139,9 +139,14 @@ llm:
     # not exist; gpt-5.4-mini is the current mini tier).
     claude-sonnet-4-6: {input: 3.00, output: 15.00}
     gpt-5.4-mini:      {input: 0.75, output: 4.50}
+    claude-haiku-4-5:  {input: 1.00, output: 5.00}   # verified 2026-06-11, official pricing page
   draft_cards_model: claude-sonnet-4-6
   extract_exhibitors_model: claude-sonnet-4-6
   rationale_model: claude-sonnet-4-6
+  triage_model: claude-haiku-4-5     # #16-④ right-sizing. PROVISIONAL — quality unverified (offline-only phase);
+                                     # bounded relevance scoring, not generation. Absent key = extraction model.
+  fit_model: claude-haiku-4-5        # #16-④ right-sizing. PROVISIONAL — same caveat. Absent key = extraction model.
+                                     # NOTE: both are no-ops under provider=chatgpt_oauth (single OAuth model).
   draft_cards_max_tokens: 4096
   extract_max_tokens: 4096
   rationale_max_tokens: 256

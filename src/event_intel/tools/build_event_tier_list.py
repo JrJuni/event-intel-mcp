@@ -224,6 +224,37 @@ def build_event_tier_list(
             calls=extraction.chunks_processed,
         )
 
+        # 4.4. Per-stage model right-sizing (#16-④): triage and llm_fit are
+        #      bounded classification judgments — config may pin a cheaper
+        #      model per stage (llm.triage_model / llm.fit_model). Absent keys
+        #      → the extraction provider, identical to pre-rightsizing
+        #      behaviour. chatgpt_oauth pins llm.chatgpt_oauth_model and the
+        #      factory ignores the model param, so right-sizing is a no-op
+        #      there — surfaced as one warning instead of silently.
+        stage_model_warnings: list[str] = []
+        _llm_cfg = config.get("llm", {}) or {}
+        _is_oauth = _llm_cfg.get("provider", "anthropic") == "chatgpt_oauth"
+        _oauth_noop_keys = [
+            k for k in ("triage_model", "fit_model") if _is_oauth and _llm_cfg.get(k)
+        ]
+        if _oauth_noop_keys:
+            stage_model_warnings.append(
+                f"llm.{' / llm.'.join(_oauth_noop_keys)} have no effect under "
+                "provider=chatgpt_oauth (the OAuth lane pins "
+                "llm.chatgpt_oauth_model) — per-stage right-sizing skipped"
+            )
+
+        def _stage_llm(config_key: str) -> object:
+            stage_model = _llm_cfg.get(config_key)
+            if not stage_model or _is_oauth:
+                return extract_llm
+            if stage_model == getattr(extract_llm, "model", None):
+                return extract_llm
+            return _llm.make_llm_provider(config, model=stage_model)
+
+        triage_llm = _stage_llm("triage_model")
+        fit_llm = _stage_llm("fit_model")
+
         # 4.5. Roster triage (Y1D D2) — when the roster exceeds the enrichment
         #      cap, pick WHICH companies get the slots by LLM product-domain
         #      relevance instead of "the first N in page order". Enrichment's
@@ -243,7 +274,7 @@ def build_event_tier_list(
             triage_result = _triage.triage_roster(
                 extraction.candidates,
                 _triage.build_capability_digest(cards),
-                extract_llm,
+                triage_llm,
                 max_companies=_enrich_cap,
                 batch_size=int(_triage_cfg.get("batch_size", 120)),
                 lang=lang,
@@ -328,7 +359,7 @@ def build_event_tier_list(
         if fit_mode == "llm" and fit_results:
             llm_fit_warnings += _llm_fit.apply_llm_capability_fit(
                 rows=enriched_rows, fit_results=fit_results,
-                llm_provider=extract_llm, lang=lang, ledger=usage_ledger,
+                llm_provider=fit_llm, lang=lang, ledger=usage_ledger,
             )
 
         # 7. Scoring + tier decision + optional rationale (S4). cards +
@@ -554,6 +585,7 @@ def build_event_tier_list(
                 ],
                 warnings=(
                     list(extraction.warnings)
+                    + stage_model_warnings
                     + triage_warnings
                     + list(enrich_result.warnings)
                     + llm_fit_warnings
@@ -584,6 +616,7 @@ def build_event_tier_list(
             "skipped_from_resume": enrich_result.skipped_from_resume,
             "warnings": (
                 list(extraction.warnings)
+                + stage_model_warnings
                 + triage_warnings
                 + list(enrich_result.warnings)
                 + llm_fit_warnings
