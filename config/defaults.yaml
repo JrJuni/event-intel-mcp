@@ -8,6 +8,8 @@ extraction:
   max_chars_per_chunk: 8000        # ~2k tokens per chunk
   source_snippet_min_chars: 20     # Below this, candidate is dropped (review R2-#2)
   extraction_confidence_min: 0.6   # Below this, candidate flagged needs_review
+  csv_short_circuit: true          # #16-①: CSV with a detectable name column converts rows directly (0 LLM calls);
+                                   # detection failure falls back to chunked LLM extraction. false = always LLM.
 
 search:
   provider: auto                   # auto (FREE Brave key if set → brave, else keyless ddgs+RSS pool — Brave control 2026-06-11: big-co met 7/10 vs keyless 1–3/10) | ddgs | searxng | brave
