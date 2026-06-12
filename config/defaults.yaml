@@ -10,6 +10,10 @@ extraction:
   extraction_confidence_min: 0.6   # Below this, candidate flagged needs_review
   csv_short_circuit: true          # #16-①: CSV with a detectable name column converts rows directly (0 LLM calls);
                                    # detection failure falls back to chunked LLM extraction. false = always LLM.
+  llm_cache:                       # #16-⑤: per-chunk LLM response disk cache (~/.event-intel/cache/llm/).
+    enabled: true                  # Root fix for the "75-min run dies at chunk 39" loss (retry-playbook §3.6):
+    ttl_days: 14                   # a re-run replays finished chunks at $0. Absent block = off; build refresh=true
+                                   # bypasses reads. ttl_days PROVISIONAL; null = never expire, 0 = always stale.
 
 search:
   provider: auto                   # auto (FREE Brave key if set → brave, else keyless ddgs+RSS pool — Brave control 2026-06-11: big-co met 7/10 vs keyless 1–3/10) | ddgs | searxng | brave

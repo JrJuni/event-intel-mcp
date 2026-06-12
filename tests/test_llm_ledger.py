@@ -32,10 +32,13 @@ def test_ledger_accumulates_per_stage_and_totals():
     led.record("rationale", "m2", {"input_tokens": 50, "output_tokens": 5})
     s = led.summary()
     assert s["stages"]["extraction"] == {
-        "calls": 2, "input_tokens": 300, "output_tokens": 30, "models": ["m1"],
+        "calls": 2, "calls_cached": 0, "input_tokens": 300, "output_tokens": 30,
+        "models": ["m1"],
     }
     assert s["stages"]["rationale"]["calls"] == 1
-    assert s["totals"] == {"calls": 3, "input_tokens": 350, "output_tokens": 35}
+    assert s["totals"] == {
+        "calls": 3, "calls_cached": 0, "input_tokens": 350, "output_tokens": 35,
+    }
 
 
 def test_ledger_tolerates_malformed_usage():
@@ -62,9 +65,46 @@ def test_ledger_preaggregated_calls_and_empty_model():
     assert s["stages"]["extraction"]["models"] == ["m"]
 
 
+def test_ledger_record_cached_separate_from_calls_and_tokens():
+    # #16-⑤: cached calls count in calls_cached only — calls/tokens/cost untouched.
+    led = LlmUsageLedger()
+    led.record("extraction", "m", {"input_tokens": 100, "output_tokens": 10}, calls=2)
+    led.record_cached("extraction", calls=5)
+    led.record_cached("extraction")  # default calls=1
+    s = led.summary(PRICING)
+    e = s["stages"]["extraction"]
+    assert e["calls"] == 2
+    assert e["calls_cached"] == 6
+    assert e["input_tokens"] == 100 and e["output_tokens"] == 10
+    assert s["totals"]["calls_cached"] == 6
+    expected_usd = round(100 / 1e6 * 3.00 + 10 / 1e6 * 15.00, 6)
+    assert s["reference_costs_usd"]["claude-sonnet-4-6"]["total_usd"] == expected_usd
+
+
+def test_ledger_cached_only_stage_is_costless_not_unpriced():
+    led = LlmUsageLedger()
+    led.record_cached("extraction", calls=12)
+    s = led.summary(PRICING)
+    assert s["stages"]["extraction"] == {
+        "calls": 0, "calls_cached": 12, "input_tokens": 0, "output_tokens": 0,
+        "models": [],
+    }
+    # zero-token stage: skipped from blended pricing, NOT flagged unpriced
+    assert s["blended_cost_usd"]["stages"] == {}
+    assert s["blended_cost_usd"]["unpriced_stages"] == []
+
+
+def test_ledger_record_cached_negative_clamped():
+    led = LlmUsageLedger()
+    led.record_cached("x", calls=-3)
+    assert led.summary()["stages"]["x"]["calls_cached"] == 0
+
+
 def test_ledger_empty_summary_is_graceful():
     s = LlmUsageLedger().summary(PRICING)
-    assert s["totals"] == {"calls": 0, "input_tokens": 0, "output_tokens": 0}
+    assert s["totals"] == {
+        "calls": 0, "calls_cached": 0, "input_tokens": 0, "output_tokens": 0,
+    }
     assert s["reference_costs_usd"]["claude-sonnet-4-6"]["total_usd"] == 0.0
     assert "pricing_warnings" not in s
 
@@ -83,7 +123,7 @@ def test_ledger_concurrent_recording_is_exact():
         t.join()
     s = led.summary()
     assert s["totals"] == {
-        "calls": 1600, "input_tokens": 1600, "output_tokens": 3200,
+        "calls": 1600, "calls_cached": 0, "input_tokens": 1600, "output_tokens": 3200,
     }
 
 

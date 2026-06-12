@@ -66,6 +66,18 @@ class LlmUsageLedger:
             if model:
                 entry["models"].add(str(model))
 
+    def record_cached(self, stage: str, *, calls: int = 1) -> None:
+        """#16-⑤: count calls served from a disk cache. Tokens are NOT summed —
+        nothing was spent, and folding stored token counts in would corrupt
+        every cost conversion. ``calls_cached`` stays separate from ``calls``.
+        """
+        with self._lock:
+            entry = self._stages.setdefault(
+                stage,
+                {"calls": 0, "input_tokens": 0, "output_tokens": 0, "models": set()},
+            )
+            entry["calls_cached"] = entry.get("calls_cached", 0) + max(0, int(calls))
+
     def summary(self, reference_pricing: dict | None = None) -> dict:
         """Snapshot: per-stage usage + totals + reference-model USD conversion.
 
@@ -77,6 +89,7 @@ class LlmUsageLedger:
             stages = {
                 stage: {
                     "calls": e["calls"],
+                    "calls_cached": e.get("calls_cached", 0),
                     "input_tokens": e["input_tokens"],
                     "output_tokens": e["output_tokens"],
                     "models": sorted(e["models"]),
@@ -85,6 +98,7 @@ class LlmUsageLedger:
             }
         totals = {
             "calls": sum(e["calls"] for e in stages.values()),
+            "calls_cached": sum(e["calls_cached"] for e in stages.values()),
             "input_tokens": sum(e["input_tokens"] for e in stages.values()),
             "output_tokens": sum(e["output_tokens"] for e in stages.values()),
         }

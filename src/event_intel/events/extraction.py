@@ -27,9 +27,12 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from event_intel.errors import ErrorCode, MCPError, Stage
+from event_intel.events import llm_cache as _llm_cache
 
 _log = logging.getLogger(__name__)
 
@@ -59,6 +62,21 @@ _EXHIBITOR_LIST_KEYS = (
     "exhibitors", "results", "data", "items", "candidates", "companies", "rows",
 )
 
+# Cost lever #16-⑤: per-chunk user message, kept as a module constant so the
+# LLM-cache prompt fingerprint and the actual prompt can never drift apart.
+# Placeholders (chunk counter, source_ref, chunk body) are the VOLATILE parts —
+# the fingerprint hashes this template unfilled, so re-chunked/re-ordered runs
+# over the same content still hit. Changing this string auto-invalidates the
+# cache via the content hash; bump llm_cache.LLM_CACHE_VERSION only when
+# PARSING semantics change (see events/llm_cache.py docstring).
+_USER_TEMPLATE = (
+    "EVENT PAGE FRAGMENT (chunk {n}/{total}, source: {source_ref}):\n"
+    "---\n"
+    "{chunk}\n"
+    "---\n\n"
+    "Return the JSON array now."
+)
+
 if TYPE_CHECKING:
     from event_intel.events.source_capture import SourceCapture
     from event_intel.providers.llm import LLMProvider
@@ -84,6 +102,9 @@ class ExtractionResult:
     chunks_processed: int
     chunks_total: int
     usage: dict[str, int]
+    # #16-⑤: how many of chunks_processed were served from the LLM disk cache
+    # (zero spend). Actual LLM calls = chunks_processed - chunks_cached.
+    chunks_cached: int = 0
 
 
 SYSTEM_PROMPT_EN = (
@@ -374,6 +395,9 @@ def extract_exhibitors(
     llm_provider: LLMProvider,
     config: dict,
     max_tokens: int | None = None,
+    refresh: bool = False,
+    llm_cache_dir: Path | None = None,
+    now: datetime | None = None,
 ) -> ExtractionResult:
     """Run chunked LLM extraction on a captured source.
 
@@ -381,6 +405,11 @@ def extract_exhibitors(
     `extraction.max_chars_per_chunk`, `extraction.max_chunks_per_event`,
     `extraction.source_snippet_min_chars`, `extraction.extraction_confidence_min`
     from it so the caller controls all caps via defaults.yaml.
+
+    #16-⑤: when `extraction.llm_cache.enabled` is true (absent key = OFF),
+    per-chunk responses are cached on disk and replayed on identical re-runs.
+    `refresh=True` bypasses cache reads but still writes fresh entries.
+    `llm_cache_dir` / `now` are injection points for tests.
     """
     try:
         extraction_cfg = config["extraction"]
@@ -460,16 +489,44 @@ def extract_exhibitors(
     system_prompt = SYSTEM_PROMPT_KO if lang == "ko" else SYSTEM_PROMPT_EN
     chosen_max_tokens = max_tokens or int(config.get("llm", {}).get("extract_max_tokens", 4096))
 
+    # #16-⑤: per-chunk LLM response cache. Absent config key = OFF (legacy
+    # behaviour); defaults.yaml ships it enabled. max_tokens joins the prompt
+    # fingerprint — a different cap can truncate the response differently.
+    cache_cfg = extraction_cfg.get("llm_cache") or {}
+    cache: _llm_cache.LlmExtractionCache | None = None
+    prompt_sha = ""
+    if isinstance(cache_cfg, dict) and bool(cache_cfg.get("enabled", False)):
+        root = (
+            Path(llm_cache_dir)
+            if llm_cache_dir is not None
+            else Path.home() / ".event-intel" / "cache" / "llm"
+        )
+        ttl_raw = cache_cfg.get("ttl_days", 14)
+        ttl_days = None if ttl_raw is None else int(ttl_raw)
+        cache = _llm_cache.LlmExtractionCache(root, ttl_days=ttl_days)
+        prompt_sha = _llm_cache.prompt_fingerprint(
+            system_prompt, _USER_TEMPLATE, f"max_tokens={chosen_max_tokens}"
+        )
+    cache_model = str(getattr(llm_provider, "model", "") or "")
+    now_dt = now or datetime.now(UTC)
+
     all_rows: list[ExhibitorCandidate] = []
     usage_acc = {"input_tokens": 0, "output_tokens": 0}
+    chunks_cached = 0
     for i, chunk in enumerate(chunks):
-        user = (
-            "EVENT PAGE FRAGMENT (chunk "
-            f"{i + 1}/{len(chunks)}, source: {capture.source_ref}):\n"
-            "---\n"
-            f"{chunk}\n"
-            "---\n\n"
-            "Return the JSON array now."
+        if cache is not None and not refresh:
+            cached_text = cache.get(
+                model=cache_model, lang=lang, prompt_sha=prompt_sha,
+                chunk_text=chunk, now=now_dt,
+            )
+            if cached_text is not None:
+                # Re-parse with the CURRENT index — never a stored one — so
+                # chunk attribution stays correct across re-chunking.
+                chunks_cached += 1
+                all_rows.extend(_parse_llm_chunk(cached_text, chunk_index=i))
+                continue
+        user = _USER_TEMPLATE.format(
+            n=i + 1, total=len(chunks), source_ref=capture.source_ref, chunk=chunk
         )
         resp = None
         for attempt in (0, 1):
@@ -498,7 +555,18 @@ def extract_exhibitors(
                 ) from exc
         usage_acc["input_tokens"] += int(resp.usage.get("input_tokens", 0) or 0)
         usage_acc["output_tokens"] += int(resp.usage.get("output_tokens", 0) or 0)
+        if cache is not None:
+            cache.put(
+                model=cache_model, lang=lang, prompt_sha=prompt_sha,
+                chunk_text=chunk, response_text=resp.text, now=now_dt,
+            )
         all_rows.extend(_parse_llm_chunk(resp.text, chunk_index=i))
+
+    if chunks_cached:
+        warnings.append(
+            f"extraction: {chunks_cached}/{len(chunks)} chunks served from LLM "
+            "cache (0 tokens spent on those)"
+        )
 
     # raw_extraction floor — snippet < min chars are dropped silently (not
     # routed to needs_review per Contract #9). Track count for audit.
@@ -518,4 +586,5 @@ def extract_exhibitors(
         chunks_processed=len(chunks),
         chunks_total=chunks_total,
         usage=usage_acc,
+        chunks_cached=chunks_cached,
     )
