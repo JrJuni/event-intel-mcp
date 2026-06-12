@@ -29,13 +29,23 @@ PRODUCT_PAGE = "product_page"
 DOCS = "docs"
 PARTNER_PAGE = "partner_page"
 PRESS_RELEASE = "press_release"
+# Homepage-crawl lane (#16 S4, user-approved news-replacement experiment): the
+# company's OWN /news /press /newsroom listing page, verified by a direct
+# fetch. Assigned DIRECTLY by events.homepage_evidence — never by
+# classify_url_type — so path-based classification of search results is
+# unaffected (a search hit on someone's /press path stays PRESS_RELEASE).
+PRESS_PAGE = "press_page"
 NEWS = "news"
 
-EVIDENCE_TYPES = (OFFICIAL_URL, PRODUCT_PAGE, DOCS, PARTNER_PAGE, PRESS_RELEASE, NEWS)
+EVIDENCE_TYPES = (
+    OFFICIAL_URL, PRODUCT_PAGE, DOCS, PARTNER_PAGE, PRESS_RELEASE, PRESS_PAGE, NEWS,
+)
 
 # Highest precedence first — when one canonical URL matches multiple candidate
 # types, the earliest in this list wins.
-TYPE_PRECEDENCE = [NEWS, PRESS_RELEASE, PARTNER_PAGE, PRODUCT_PAGE, DOCS, OFFICIAL_URL]
+TYPE_PRECEDENCE = [
+    NEWS, PRESS_RELEASE, PRESS_PAGE, PARTNER_PAGE, PRODUCT_PAGE, DOCS, OFFICIAL_URL,
+]
 _PRECEDENCE_RANK = {t: i for i, t in enumerate(TYPE_PRECEDENCE)}
 
 _PRESS_RE = re.compile(
@@ -366,6 +376,14 @@ def _is_identity(item: EvidenceItem, *, official_domain: str | None) -> bool:
 def _is_activity(item: EvidenceItem, *, official_domain: str | None) -> bool:
     if item.type in (NEWS, PRESS_RELEASE):
         return True
+    if item.type == PRESS_PAGE:
+        # Homepage lane (user-approved scoring-semantics change, 2026-06-11):
+        # a verified press/news page on the company's OWN site is the activity
+        # signal replacing news search. Same-site ONLY — a third-party
+        # press_page shouldn't exist (the type is assigned directly by the
+        # crawler), so anything else is defensively not activity. Floor
+        # thresholds themselves (2→S/A, 1→A, 0→B) are unchanged.
+        return same_site(item.source_domain, official_domain)
     if item.type == PARTNER_PAGE:
         # Independent (third-party-domain) partner page is an activity signal.
         return not same_site(item.source_domain, official_domain)
