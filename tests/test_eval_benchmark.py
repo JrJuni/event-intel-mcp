@@ -122,6 +122,8 @@ def test_measure_join_projects_onto_roster_and_computes_metrics():
     assert m["conditional_competitor_leakage_rate"].status == "insufficient_n"
     # competitor extraction coverage: 1 scored / 2 labeled
     assert m["competitor_extraction_coverage"].value == 1 / 2
+    # target extraction coverage: both targets materialized → 2/2
+    assert m["target_extraction_coverage"].value == 2 / 2
 
 
 def test_measure_partner_mode_competitor_is_na():
@@ -163,6 +165,34 @@ def test_gate_failure_when_coverage_below_threshold():
     fails = {g.name for g in rep.gate_failures()}
     assert "extraction_coverage" in fails
     assert rep.passed() is False
+    # target coverage tracks the class, not the cap: ACME scored, Globex not → 1/2
+    assert rep.metrics["target_extraction_coverage"].value == 1 / 2
+
+
+def test_target_coverage_gate_via_custom_manifest_gates():
+    """The renegotiated D3 contract gates on target_extraction_coverage; a
+    frozen manifest naming that metric must actually bind (a missing metric
+    would be silently skipped by _evaluate_gates)."""
+    rr = B._run_result_from_payload("p1", _payload())
+    match = R.match_roster(["ACME Robotics"], _ROSTER)  # Globex (target) dropped
+    gates = (
+        ("target_extraction_coverage", ">=", 0.80, B.REQUIRED),
+        ("extraction_coverage", ">=", 0.80, B.OPTIONAL),  # advisory under caps
+    )
+    rep = B.measure(
+        run_result=rr, roster=_ROSTER, match=match,
+        sealed_labels=_sealed({"ACME Robotics": "target", "Globex": "target"}),
+        thresholds=gates,
+    )
+    by_name = {g.name: g for g in rep.gates}
+    assert by_name["target_extraction_coverage"].passed is False
+    assert by_name["target_extraction_coverage"].applicability == B.REQUIRED
+    assert by_name["extraction_coverage"].applicability == B.OPTIONAL
+    # optional coverage failing must not block; required target gate must
+    assert rep.passed() is False
+    fails = {g.name for g in rep.gate_failures()}
+    assert "target_extraction_coverage" in fails
+    assert "extraction_coverage" not in fails
 
 
 def test_gate_na_metric_is_not_a_failure():

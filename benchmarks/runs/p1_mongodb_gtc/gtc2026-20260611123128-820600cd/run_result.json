@@ -1,0 +1,688 @@
+{
+  "pair": "p1_mongodb_gtc",
+  "run_id": "gtc2026-20260611123128-820600cd",
+  "run_fingerprint": "cdb909d6442ec6acff732c0e5d6c246530c7f5dcba55c6c178b476204884f0ab",
+  "run_summary": {
+    "run_id": "gtc2026-20260611123128-820600cd",
+    "run_fingerprint": "cdb909d6442ec6acff732c0e5d6c246530c7f5dcba55c6c178b476204884f0ab",
+    "git_commit_sha": "4d8b114c8e5687b385eddb9ea99eae279ba930e6",
+    "config_fp": "bcaf614b4039fe1ca4988d01bcf0e50c0305d5280edbf8dc02b56dfece27fc91",
+    "cards_fingerprint": "bd54bbc7c55b4648d1e3f24943a86f30d4f7163ecdc23461b642562edda06c5a",
+    "source_sha256": "c68c6e64c4ab1c2a7838da1b9b800c9001e37570bdee031390855532c9328cf1",
+    "provider": "chatgpt_oauth",
+    "model_ids": {
+      "extract": "claude-sonnet-4-6",
+      "rationale": "claude-sonnet-4-6",
+      "embedding": "bge-m3"
+    },
+    "reference_timestamp": "2026-06-11T12:31:28.356233+00:00",
+    "target_mode": "customer",
+    "max_companies": null,
+    "max_chunks_per_event": 12,
+    "refresh": false,
+    "cache_hits": 0,
+    "cache_misses": 120,
+    "skipped_from_resume": 0,
+    "search_calls": 120,
+    "extracted": 34,
+    "enriched": 30,
+    "scored": 30,
+    "extraction_coverage": null,
+    "stages": [
+      {
+        "stage": "source_capture",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "extraction",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "enrichment",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "retrieval",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "scoring",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "report",
+        "ok": true,
+        "error_code": null
+      }
+    ],
+    "companies": [
+      {
+        "name": "LlamaIndex",
+        "tier": "B",
+        "final_score": 5.013306086047731,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8959638407580146,
+          "website_verification": 1.0,
+          "category_fit": 0.9285714285714286,
+          "competitor_penalty": 0.5150586664676666,
+          "bad_fit_penalty": 0.5023165941238403
+        },
+        "tier_reasons": [
+          "final_score=5.01 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "CrewAI",
+        "tier": "B",
+        "final_score": 5.937059415584088,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.86,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8992905038783,
+          "website_verification": 1.0,
+          "category_fit": 0.9230769230769231,
+          "competitor_penalty": 0.5318547785282135,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.94 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Together AI",
+        "tier": "C",
+        "final_score": 3.950610150082108,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.72,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8923212163264806,
+          "website_verification": 1.0,
+          "category_fit": 0.9090909090909091,
+          "competitor_penalty": 0.5868432819843292,
+          "bad_fit_penalty": 0.5370226204395294
+        },
+        "tier_reasons": [
+          "final_score=3.95 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Baseten",
+        "tier": "B",
+        "final_score": 5.347656491863261,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8900624552485221,
+          "website_verification": 1.0,
+          "category_fit": 0.9,
+          "competitor_penalty": 0.5492677688598633,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.35 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Anyscale",
+        "tier": "B",
+        "final_score": 5.409189936997095,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.74,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8912852718500107,
+          "website_verification": 1.0,
+          "category_fit": 0.9285714285714286,
+          "competitor_penalty": 0.5787414610385895,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.41 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Weights & Biases",
+        "tier": "B",
+        "final_score": 4.610329321610315,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8920498251831424,
+          "website_verification": 1.0,
+          "category_fit": 0.9333333333333333,
+          "competitor_penalty": 0.5391066074371338,
+          "bad_fit_penalty": 0.510348916053772
+        },
+        "tier_reasons": [
+          "final_score=4.61 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Arize AI",
+        "tier": "B",
+        "final_score": 5.7255298728582815,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.78,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8989234188611817,
+          "website_verification": 1.0,
+          "category_fit": 0.9285714285714286,
+          "competitor_penalty": 0.5259178280830383,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.73 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Braintrust",
+        "tier": "B",
+        "final_score": 4.343194634819456,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.8,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8932640667845937,
+          "website_verification": 1.0,
+          "category_fit": 0.9090909090909091,
+          "competitor_penalty": 0.5604173243045807,
+          "bad_fit_penalty": 0.513550877571106
+        },
+        "tier_reasons": [
+          "final_score=4.34 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "ElevenLabs",
+        "tier": "B",
+        "final_score": 5.553647774569173,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8997965829319288,
+          "website_verification": 1.0,
+          "category_fit": 0.9,
+          "competitor_penalty": 0.5374420285224915,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.55 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Nexla",
+        "tier": "B",
+        "final_score": 4.609172320704362,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.88,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8978436730574908,
+          "website_verification": 1.0,
+          "category_fit": 0.9375,
+          "competitor_penalty": 0.5601416230201721,
+          "bad_fit_penalty": 0.5233390033245087
+        },
+        "tier_reasons": [
+          "final_score=4.61 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Workato",
+        "tier": "B",
+        "final_score": 4.204600504601138,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8981862266620915,
+          "website_verification": 1.0,
+          "category_fit": 0.9,
+          "competitor_penalty": 0.5503615736961365,
+          "bad_fit_penalty": 0.5205653309822083
+        },
+        "tier_reasons": [
+          "final_score=4.20 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Lightning AI",
+        "tier": "B",
+        "final_score": 5.635162651462106,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.8,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8951221739734201,
+          "website_verification": 1.0,
+          "category_fit": 0.9375,
+          "competitor_penalty": 0.5710773169994354,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.64 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Modular",
+        "tier": "B",
+        "final_score": 4.175892779734851,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8964922155983722,
+          "website_verification": 1.0,
+          "category_fit": 0.8888888888888888,
+          "competitor_penalty": 0.5512801110744476,
+          "bad_fit_penalty": 0.5230793952941895
+        },
+        "tier_reasons": [
+          "final_score=4.18 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Protopia AI",
+        "tier": "C",
+        "final_score": 3.4817719007446133,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.5,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8880682453847377,
+          "website_verification": 1.0,
+          "category_fit": 0.9090909090909091,
+          "competitor_penalty": 0.5520567297935486,
+          "bad_fit_penalty": 0.5067073106765747
+        },
+        "tier_reasons": [
+          "final_score=3.48 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "OpenPipe",
+        "tier": "B",
+        "final_score": 4.12024175847968,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8997576757120309,
+          "website_verification": 1.0,
+          "category_fit": 0.9230769230769231,
+          "competitor_penalty": 0.5746225416660309,
+          "bad_fit_penalty": 0.535132497549057
+        },
+        "tier_reasons": [
+          "final_score=4.12 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Simplismart",
+        "tier": "B",
+        "final_score": 5.120959517618262,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.62,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8744093948339379,
+          "website_verification": 1.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.5280441641807556,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.12 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "SambaNova Systems",
+        "tier": "B",
+        "final_score": 5.404865421447054,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8563759293774069,
+          "website_verification": 1.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.5184852778911591,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.40 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Modal",
+        "tier": "B",
+        "final_score": 4.008143842268636,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8999501628668114,
+          "website_verification": 1.0,
+          "category_fit": 0.8888888888888888,
+          "competitor_penalty": 0.5560559928417206,
+          "bad_fit_penalty": 0.5855675041675568
+        },
+        "tier_reasons": [
+          "final_score=4.01 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Browserbase",
+        "tier": "B",
+        "final_score": 4.060059985419731,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8943615816040966,
+          "website_verification": 1.0,
+          "category_fit": 0.8888888888888888,
+          "competitor_penalty": 0.529120683670044,
+          "bad_fit_penalty": 0.5391573309898376
+        },
+        "tier_reasons": [
+          "final_score=4.06 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Docker",
+        "tier": "C",
+        "final_score": 3.750369271598406,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.55,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8998020611108837,
+          "website_verification": 1.0,
+          "category_fit": 0.9230769230769231,
+          "competitor_penalty": 0.5310481488704681,
+          "bad_fit_penalty": 0.5041122734546661
+        },
+        "tier_reasons": [
+          "final_score=3.75 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Snowflake",
+        "tier": "C",
+        "final_score": 3.608776173829744,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.82,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8993687885600394,
+          "website_verification": 1.0,
+          "category_fit": 0.9,
+          "competitor_penalty": 0.7334757745265961,
+          "bad_fit_penalty": 0.5872447192668915
+        },
+        "tier_reasons": [
+          "final_score=3.61 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "ClickHouse",
+        "tier": "C",
+        "final_score": 3.6544002681044963,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8994126494108463,
+          "website_verification": 1.0,
+          "category_fit": 0.9166666666666666,
+          "competitor_penalty": 0.792180210351944,
+          "bad_fit_penalty": 0.5928351879119873
+        },
+        "tier_reasons": [
+          "final_score=3.65 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "PlanetScale",
+        "tier": "B",
+        "final_score": 5.248129462934288,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.88,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8986749828956688,
+          "website_verification": 1.0,
+          "category_fit": 0.9285714285714286,
+          "competitor_penalty": 0.7479257583618164,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.25 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Vespa.ai",
+        "tier": "B",
+        "final_score": 4.002309188155921,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8427064196709046,
+          "website_verification": 1.0,
+          "category_fit": 0.9473684210526315,
+          "competitor_penalty": 0.7757696509361267,
+          "bad_fit_penalty": 0.5210437178611755
+        },
+        "tier_reasons": [
+          "final_score=4.00 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Activeloop",
+        "tier": "C",
+        "final_score": 2.8722524796836373,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 0.99,
+          "buying_signal": 0.5695852567032174,
+          "website_verification": 1.0,
+          "category_fit": 0.8333333333333334,
+          "competitor_penalty": 0.8182369321584702,
+          "bad_fit_penalty": 0.5613184571266174
+        },
+        "tier_reasons": [
+          "final_score=2.87 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "CoreWeave",
+        "tier": "C",
+        "final_score": 3.1503378548656573,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.5,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8998089692615581,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.5505538284778595,
+          "bad_fit_penalty": 0.5529748797416687
+        },
+        "tier_reasons": [
+          "final_score=3.15 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Crusoe",
+        "tier": "C",
+        "final_score": 3.836196801882564,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.65,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8996980152008127,
+          "website_verification": 1.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.5499929785728455,
+          "bad_fit_penalty": 0.5343499183654785
+        },
+        "tier_reasons": [
+          "final_score=3.84 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "DigitalOcean",
+        "tier": "B",
+        "final_score": 4.039492743732312,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.72,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8994473876097936,
+          "website_verification": 1.0,
+          "category_fit": 0.9090909090909091,
+          "competitor_penalty": 0.5768488347530365,
+          "bad_fit_penalty": 0.5197375118732452
+        },
+        "tier_reasons": [
+          "final_score=4.04 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "Cloudflare",
+        "tier": "C",
+        "final_score": 3.9676363505977044,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.78,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8996486768495804,
+          "website_verification": 1.0,
+          "category_fit": 0.9,
+          "competitor_penalty": 0.5953883826732635,
+          "bad_fit_penalty": 0.5891909301280975
+        },
+        "tier_reasons": [
+          "final_score=3.97 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "NetApp",
+        "tier": "C",
+        "final_score": 3.6751014153949244,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.99,
+          "buying_signal": 0.898254053115303,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.5835365653038025,
+          "bad_fit_penalty": 0.5359606742858887
+        },
+        "tier_reasons": [
+          "final_score=3.68 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      }
+    ],
+    "warnings": [
+      "triage: selected 30/34 exhibitors by LLM product-domain relevance (1 calls)"
+    ],
+    "pair": null,
+    "source_index_fingerprint": null,
+    "llm_usage": {
+      "schema": "llm-usage/v1",
+      "stages": {
+        "extraction": {
+          "calls": 1,
+          "input_tokens": 1677,
+          "output_tokens": 3511,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        },
+        "llm_fit": {
+          "calls": 30,
+          "input_tokens": 18145,
+          "output_tokens": 3710,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "triage": {
+          "calls": 1,
+          "input_tokens": 1515,
+          "output_tokens": 263,
+          "models": [
+            "gpt-5.5"
+          ]
+        }
+      },
+      "totals": {
+        "calls": 32,
+        "input_tokens": 21337,
+        "output_tokens": 7484
+      },
+      "reference_costs_usd": {
+        "claude-sonnet-4-6": {
+          "input_usd": 0.064011,
+          "output_usd": 0.11226,
+          "total_usd": 0.176271
+        },
+        "gpt-5.4-mini": {
+          "input_usd": 0.016003,
+          "output_usd": 0.033678,
+          "total_usd": 0.049681
+        }
+      }
+    }
+  },
+  "top10_evidence": []
+}

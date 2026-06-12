@@ -1,0 +1,696 @@
+{
+  "pair": "p7_siemens_hannover",
+  "run_id": "hannover_messe_2026-20260611165225-8621f2d0",
+  "run_fingerprint": "2430a859e1b85b34baf7d98f35cf290dc7da7b55bf4ff61cce8090e88181c038",
+  "run_summary": {
+    "run_id": "hannover_messe_2026-20260611165225-8621f2d0",
+    "run_fingerprint": "2430a859e1b85b34baf7d98f35cf290dc7da7b55bf4ff61cce8090e88181c038",
+    "git_commit_sha": "938738944981a6bb8004c7706c90dea233a766b5",
+    "config_fp": "60baed178c71a3620f65401d2b58fdbafcf8da10129499b2a1c4472748314513",
+    "cards_fingerprint": "50a3639102d32f26b664b35eb64756818700c33a0f9f723fe037af56c7fafa73",
+    "source_sha256": "c183cae6ad3d98af0e728038732370e054a7a76e6f3101c8da3002be6944a4bb",
+    "provider": "chatgpt_oauth",
+    "model_ids": {
+      "extract": "claude-sonnet-4-6",
+      "rationale": "claude-sonnet-4-6",
+      "embedding": "bge-m3"
+    },
+    "reference_timestamp": "2026-06-11T16:52:25.232152+00:00",
+    "target_mode": "customer",
+    "max_companies": null,
+    "max_chunks_per_event": 64,
+    "refresh": false,
+    "cache_hits": 36,
+    "cache_misses": 44,
+    "skipped_from_resume": 10,
+    "search_calls": 80,
+    "extracted": 2735,
+    "enriched": 30,
+    "scored": 30,
+    "extraction_coverage": null,
+    "stages": [
+      {
+        "stage": "source_capture",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "extraction",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "enrichment",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "retrieval",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "scoring",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "report",
+        "ok": true,
+        "error_code": null
+      }
+    ],
+    "companies": [
+      {
+        "name": "42q a sanmina division",
+        "tier": "C",
+        "final_score": 2.629016793370247,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.558852344751358,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.63 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "abb",
+        "tier": "B",
+        "final_score": 4.371230705976486,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.86,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.7017912268638611,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.37 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "aegis software",
+        "tier": "B",
+        "final_score": 5.804797078664795,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8596673633626414,
+          "website_verification": 1.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.6092011332511902,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.80 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "altus sistemas de automacao",
+        "tier": "C",
+        "final_score": 2.632975713014602,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6005783677101135,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.63 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "aras",
+        "tier": "B",
+        "final_score": 5.79278849506379,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 1.0,
+          "buying_signal": 0.8727806080977168,
+          "website_verification": 1.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.5475378334522247,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.79 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "asprova",
+        "tier": "C",
+        "final_score": 3.106172350049019,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.598236471414566,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.11 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "asti automation",
+        "tier": "C",
+        "final_score": 2.2220000743865964,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.65,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6365714073181152,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.22 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "autforce automation",
+        "tier": "C",
+        "final_score": 3.4804191073708868,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.7189934128478589,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5851631462574005,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.48 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "automation ml",
+        "tier": "C",
+        "final_score": 3.3693645060062414,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.5658958554267883,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.37 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "automation steeg und hoffmeyer",
+        "tier": "C",
+        "final_score": 2.1320032209157938,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6194276511669159,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.13 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "aveva",
+        "tier": "B",
+        "final_score": 5.628343347068926,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 1.0,
+          "buying_signal": 0.8885180952524485,
+          "website_verification": 1.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.6441239416599274,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.63 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "aveva solutions",
+        "tier": "B",
+        "final_score": 5.61377758869448,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 1.0,
+          "buying_signal": 0.8755497553258011,
+          "website_verification": 1.0,
+          "category_fit": 0.8571428571428571,
+          "competitor_penalty": 0.6672175228595734,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.61 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "bar automation",
+        "tier": "B",
+        "final_score": 4.6912549935298955,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 1.0,
+          "buying_signal": 0.8996533269695308,
+          "website_verification": 1.0,
+          "category_fit": 0.6666666666666666,
+          "competitor_penalty": 0.5594928562641144,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.69 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "beckhoff automation",
+        "tier": "B",
+        "final_score": 5.734523251588217,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 1.0,
+          "buying_signal": 0.8990750073956599,
+          "website_verification": 1.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.6504540741443634,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.73 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "bosch connected industry",
+        "tier": "B",
+        "final_score": 5.625368358755094,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.86,
+          "source_confidence": 0.99,
+          "buying_signal": 0.898693995120779,
+          "website_verification": 1.0,
+          "category_fit": 0.8888888888888888,
+          "competitor_penalty": 0.6060017049312592,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.63 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "bosch rexroth",
+        "tier": "B",
+        "final_score": 5.8173021290189055,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8975463090662181,
+          "website_verification": 1.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.5468620955944061,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.82 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "changsha ata automation",
+        "tier": "C",
+        "final_score": 2.3043914264440537,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.65,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6087453067302704,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.30 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "codi sistemas de gestao da producao",
+        "tier": "B",
+        "final_score": 4.885,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.8,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.88 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "cognite",
+        "tier": "B",
+        "final_score": 5.534809164165467,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8809066198660336,
+          "website_verification": 1.0,
+          "category_fit": 0.9,
+          "competitor_penalty": 0.6204430758953094,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.53 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "cohera automations",
+        "tier": "C",
+        "final_score": 3.174382846755686,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 0.99,
+          "buying_signal": 0.6874118398314728,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6119242608547211,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.17 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "comau",
+        "tier": "B",
+        "final_score": 5.646293299502027,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.86,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8730849641600529,
+          "website_verification": 1.0,
+          "category_fit": 0.8,
+          "competitor_penalty": 0.5509526133537292,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.65 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "critical manufacturing",
+        "tier": "B",
+        "final_score": 5.163491583985151,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8885212842107229,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.5369400978088379,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.16 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "cybus",
+        "tier": "B",
+        "final_score": 5.313559504901018,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8069929116001696,
+          "website_verification": 1.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5234085321426392,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.31 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "dassault systemes deutschland",
+        "tier": "C",
+        "final_score": 3.3599978750944137,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 0.99,
+          "buying_signal": 0.2,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5642863214015961,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.36 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "phoenix contact",
+        "tier": "A",
+        "final_score": 6.320380471988044,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.8897774575158388,
+          "website_verification": 1.0,
+          "category_fit": 0.8571428571428571,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=6.32 >= 6.00",
+          "evidence_floor=2 >= 1"
+        ]
+      },
+      {
+        "name": "siemens",
+        "tier": "B",
+        "final_score": 4.955556445916494,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 0.99,
+          "buying_signal": 0.3,
+          "website_verification": 1.0,
+          "category_fit": 0.8888888888888888,
+          "competitor_penalty": 0.6179362535476685,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.96 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "siemens industry software",
+        "tier": "B",
+        "final_score": 4.638344406758382,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.98,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8997561412881703,
+          "website_verification": 1.0,
+          "category_fit": 0.875,
+          "competitor_penalty": 0.5901103615760803,
+          "bad_fit_penalty": 0.5533614158630371
+        },
+        "tier_reasons": [
+          "final_score=4.64 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "software defined automation",
+        "tier": "B",
+        "final_score": 4.735515999705909,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8988439600788629,
+          "website_verification": 1.0,
+          "category_fit": 0.8571428571428571,
+          "competitor_penalty": 0.5541665256023407,
+          "bad_fit_penalty": 0.5175525546073914
+        },
+        "tier_reasons": [
+          "final_score=4.74 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "volkswagen",
+        "tier": "B",
+        "final_score": 5.48100023980825,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.8998047756876472,
+          "website_verification": 1.0,
+          "category_fit": 0.6666666666666666,
+          "competitor_penalty": 0.5482019782066345,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.48 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "volkswagen truck bus",
+        "tier": "B",
+        "final_score": 5.682192265913347,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 1.0,
+          "buying_signal": 0.7683679381512662,
+          "website_verification": 1.0,
+          "category_fit": 0.75,
+          "competitor_penalty": 0.512959897518158,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.68 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      }
+    ],
+    "warnings": [
+      "triage: selected 30/2735 exhibitors by LLM product-domain relevance (23 calls)"
+    ],
+    "pair": null,
+    "source_index_fingerprint": null,
+    "llm_usage": {
+      "schema": "llm-usage/v1",
+      "stages": {
+        "extraction": {
+          "calls": 43,
+          "input_tokens": 112621,
+          "output_tokens": 267395,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "llm_fit": {
+          "calls": 30,
+          "input_tokens": 16556,
+          "output_tokens": 3007,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "rationale": {
+          "calls": 1,
+          "input_tokens": 315,
+          "output_tokens": 95,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "triage": {
+          "calls": 23,
+          "input_tokens": 108472,
+          "output_tokens": 19058,
+          "models": [
+            "gpt-5.5"
+          ]
+        }
+      },
+      "totals": {
+        "calls": 97,
+        "input_tokens": 237964,
+        "output_tokens": 289555
+      },
+      "reference_costs_usd": {
+        "claude-sonnet-4-6": {
+          "input_usd": 0.713892,
+          "output_usd": 4.343325,
+          "total_usd": 5.057217
+        },
+        "gpt-5.4-mini": {
+          "input_usd": 0.178473,
+          "output_usd": 1.302998,
+          "total_usd": 1.48147
+        }
+      }
+    }
+  },
+  "top10_evidence": []
+}

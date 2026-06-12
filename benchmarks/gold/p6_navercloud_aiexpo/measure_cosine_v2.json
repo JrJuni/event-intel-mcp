@@ -1,0 +1,155 @@
+{
+  "pair": "p6_navercloud_aiexpo",
+  "run_id": "ai_expo_korea_2026-20260611082648-fa8d456e",
+  "run_fingerprint": "2221b62a9ad96085a456a3a7dbadd4921b040d1a91f5dbbb2400c0d522747c96",
+  "target_mode": "customer",
+  "metrics": {
+    "extraction_coverage": {
+      "value": 0.13705583756345177,
+      "status": "ok",
+      "n": 197
+    },
+    "mention_coverage": {
+      "value": 0.13705583756345177,
+      "status": "ok",
+      "n": 197
+    },
+    "precision_at_10": {
+      "value": 0.1,
+      "status": "ok",
+      "n": 10
+    },
+    "target_extraction_coverage": {
+      "value": 0.5,
+      "status": "ok",
+      "n": 8
+    },
+    "end_to_end_competitor_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "conditional_competitor_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    "competitor_extraction_coverage": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "end_to_end_bad_fit_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "conditional_bad_fit_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    "bad_fit_extraction_coverage": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "evidence_precision": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "evidence_yield": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "auc": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  },
+  "gates": [
+    {
+      "name": "target_extraction_coverage",
+      "threshold": 0.8,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.5,
+      "status": "ok",
+      "n": 8
+    },
+    {
+      "name": "extraction_coverage",
+      "threshold": 0.8,
+      "direction": ">=",
+      "applicability": "optional",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.13705583756345177,
+      "status": "ok",
+      "n": 197
+    },
+    {
+      "name": "precision_at_10",
+      "threshold": 0.6,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.1,
+      "status": "ok",
+      "n": 10
+    },
+    {
+      "name": "conditional_competitor_leakage_rate",
+      "threshold": 0.1,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    {
+      "name": "conditional_bad_fit_leakage_rate",
+      "threshold": 0.05,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    {
+      "name": "evidence_precision",
+      "threshold": 0.85,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  ],
+  "eligibility": "fail",
+  "passed": false
+}

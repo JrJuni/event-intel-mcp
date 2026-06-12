@@ -83,6 +83,12 @@
 - Brave 결과는 publisher 직접 URL이라 본문 fetch도 정상(161 ok / 41 봇월 에러 — 키리스와 동일한 봇월 비율).
 - **운영 권고**: zero-config 기본은 키리스 유지(무료 약속), 단 **무료 Brave 키(월 2k 쿼리)를 "품질 업그레이드" 경로로 문서화** — config 한 줄(`search.provider: brave`)로 이미 전환 가능. 키리스 lane의 다음 카드: Bing-first(#99, 측정 대기) + GDELT lane.
 
+## 3.6 LLM extraction lane (D3에서 코드 반영, 2026-06-11)
+
+| 실패 형태 | 대응 | 근거 |
+|---|---|---|
+| chat_once 예외 (transient 추정) | **청크당 1회 재시도 (5s 대기)** 후 UPSTREAM_ERROR | 실측 1건: p7 fullx 64청크 빌드가 chunk 39/43에서 단발 LLM 오류로 사망 — **75분 작업 전량 손실**. 빈도 데이터 부족이라 상한·대기 모두 **PROVISIONAL**; 근본 처방은 backlog #16-⑤ (chunk_hash 키 LLM 결과 캐시) |
+
 ## 4. 미해결 — 데이터 대기
 
 - **기준 ⑤ 미달**: 대기업 본문뉴스 ≥10건 달성률 0–20% (G4 measure 3 pair). `count_news` 12→20+ 상향

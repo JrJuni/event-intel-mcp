@@ -446,6 +446,13 @@ def measure(
         "precision_at_10": _metrics.precision_at_k(
             scored_by_rid, labels_by_rid, positive, k=10
         ),
+        # target-class coverage — the triage-quality gate under max_companies
+        # caps: overall extraction_coverage is structurally ceilinged at
+        # cap/|roster| on large rosters, but whether the known-gold targets
+        # survive into the scored set is exactly what triage must protect.
+        "target_extraction_coverage": _metrics.class_extraction_coverage(
+            labels_by_rid, scored_ids, klass="target"
+        ),
     }
 
     # competitor trio — N/A under partner mode (competitor is neutral there).

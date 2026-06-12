@@ -214,8 +214,13 @@ def build_event_tier_list(
             capture=capture, lang=lang, llm_provider=extract_llm, config=config,
         )
         # extraction pre-aggregates its per-chunk usage; fold it in as one entry.
+        # Record the provider's ACTUAL model, not the config request: for
+        # chatgpt_oauth the factory ignores the model param entirely, so
+        # llm_model_extract would mislabel a free-OAuth run as a paid one.
         usage_ledger.record(
-            "extraction", llm_model_extract, extraction.usage,
+            "extraction",
+            getattr(extract_llm, "model", llm_model_extract) or llm_model_extract,
+            extraction.usage,
             calls=extraction.chunks_processed,
         )
 

@@ -6,6 +6,27 @@
 
 ## 진행 중
 
+- **다음 phase — 비용 최적화(#16 ①④⑤) + 홈페이지 크롤 증거 lane (2026-06-11 사용자 결정, plan `~/.claude/plans/config-zero-mossy-toucan.md` v1)**
+  - D3 실측 비용($5.06/run Sonnet 환산)이 예상보다 높아 #16 즉시 착수. **검증은 전부 skeleton + mock(offline pytest) — 라이브 스모크/벤치마크 런 금지**(사용자 지시). 레버 범위: **① CSV 직변환 + ④ 스테이지별 모델 right-sizing + ⑤ LLM 결과 캐시** (②prompt-caching ③Batch ⑥Brave는 deferred). 추가: **뉴스 검색 → 회사 홈페이지 크롤 대체 실험**(identity + /press activity 증거, floor 임계 불변, config 가역).
+
+- **Y1D — capability_fit LLM-first 재설계 (D0~D3) ✅ 전체 완료 (2026-06-11, plan `config-zero-mossy-toucan.md` v3 [완료·아카이브], D0~D2 머지 + D3 branch `y1d-d3-measure`)**
+  - **계기.** capability_fit(가중 0.30)이 cosine에서 전 라벨 ~0.5 평탄(양성 식별 실패) + 대형 로스터(p7 2,885사)는 head-truncation으로 gold 전원 추출 전 탈락. 사용자 결정: cosine→**LLM 명시 판단을 기본값으로**(cosine은 폴백/escape hatch), 대형 로스터는 **LLM 트리아지 깔때기**(벤치 hack 불가), 단 **비용 계측 선행**.
+  - ✅ **D0** — `runtime/llm_ledger.py`: 전 스테이지 LLM usage 수집 → run_summary `llm_usage`(stage별 calls/tokens/models) + **기준모델 양측 환산**(`reference_costs_usd`: Sonnet 4.6 / gpt-5.4-mini). `benchmark cost` CLI. 후속 fix: ledger가 config 문자열이 아닌 **실제 응답 모델** 기록(`46eabab`).
+  - ✅ **D1** — `scoring/llm_fit.py` + `capability_fit_mode: llm` 기본값(실패 시 회사 단위 cosine 자동 폴백 + warning). 9-cell 무영향(fixture 하드코딩), cosine 핀 회귀 green.
+  - ✅ **D2** — `events/triage.py` LLM 배치 트리아지(≤cap 무호출, 초과 시 배치 채점→top-K). 전 배치 실패 → 선두-N 폴백.
+  - ✅ **D3 실측 (gold 4 pair + 통제 변형)** — measure 파일 커밋(`benchmarks/gold/*/measure_llm*.json`):
+    | pair | P@10 | tgt_extraction_cov | 비고 |
+    |---|---|---|---|
+    | p1 GTC×MongoDB | **0.40** | 7/7 | cosine 0.40과 동률 (소형 로스터) |
+    | p5 BDLDN×Snowflake | 0.30 | 5/10 | 누락 5사 전원 **추출은 됐으나 triage가 drop** |
+    | p6 AI EXPO×네이버클라우드 | 0.20 | 4/8 | **CONTAMINATED** — Brave 쿼터 사망 mid-run |
+    | p7 Hannover×Siemens (default) | 0.00 | 0/4 | 청크캡 12/43 head-truncation (예측 적중) |
+    | p7 **fullx** (캡 64 통제변형) | 0.00 | 0/4 | **추출 94.8%(2,735/2,885) 달성에도 0/4 — 추출 무죄, triage 병목 확정** |
+  - **진단 — triage lookalike-bias**: triage의 "제품 도메인 관련도" 축이 경쟁사/lookalike를 승격시키고 고객형 타깃을 밀어냄(p5 진단과 p7 mega-roster에서 동일 패턴). **처방은 스코어링/프롬프트 변경이라 사용자 결정 대기**(backlog #17).
+  - **비용 실측 (p7 fullx, 97 calls / 238k in / 290k out)**: **$5.06 Sonnet-4.6 환산 / $1.48 gpt-5.4-mini 환산** — extraction $4.35(출력 토큰 지배) + triage $0.61 + fit $0.09. 실지출 $0(ChatGPT OAuth). 검색 ~150 쿼리/run. → **backlog #16 비용 최적화의 실측 근거.**
+  - **운영 사건**: R2 크론이 fullx outputs를 덮어씀 → run_result.json 내장 run_summary로 측정 구제(--tier-list는 advisory 전용이라 생략 가능). 부수 fix: 청크당 transient 1회 재시도(`9387389` — 75분 빌드가 단발 LLM 오류로 전사하던 것).
+  - **취소(2026-06-11 사용자 지시 "스모크 임의 실행 금지")**: p6 ddgs 재실행 + p1 mini 라이브런 — fullx가 병목을 이미 확정해 정보 가치 낮음.
+
 - **ZNC — Zero-config 뉴스 수집(본문 크롤링 포함) 신뢰성 + entity 게이트 + 경험적 retry policy + gold pair 3종 ✅ 전체 완료 (2026-06-11, plan `~/.claude/plans/config-zero-mossy-toucan.md` [완료·아카이브] — PR #75~#93, 단 하루에 19 PR. R2 크론만 계속 누적)**
   - **계기.** 사용자 최우선: **config zero — 배포 패키지만으로(키 0) 뉴스 서치·크롤링 동작** + "너무 빨리 포기하지 않게". 탐색이 실버그 확인: ① ddgs 결과-0건이 `DDGSException`으로 raise → **enrichment 스테이지 전체 abort**, ② 기존 retry가 잡던 `RatelimitException`은 ddgs 9.14가 **실제로 raise 안 하는 죽은 코드**, ③ rate-limit 빈 결과가 캐시/resume에 7일 고착. **성공 기준 5(사용자 계약)**: ①본문 크롤링 ②제품/솔루션 정보 포함 ③RAG 연관도 산출 가능(이번 phase는 report-only) ④중복 없음 ⑤매출 ≥$10M→뉴스 ≥10건/미만→≥3건(revenue tier는 G-lane 라벨링에서). retry 상수는 **경험적**(실패 계측→스모크 ≥10회→R3 명문화, 최대 ~5회 + 사이트형태 playbook).
   - ✅ **N1** (#75) — degraded 결과 미고착: per-call `last_call_degraded`, degraded는 캐시 미기록 + resume row `degraded`(재사용 금지→다음 실행 재시도). `ENRICH_CACHE_VERSION` 6. → playbook #15.

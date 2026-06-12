@@ -1,0 +1,420 @@
+{
+  "pair": "p6_navercloud_aiexpo",
+  "run_id": "ai_expo_korea_2026-20260611130914-addc9b04",
+  "run_fingerprint": "085ade388f3ff09873af75ba0c354fc761b9ccfea930e5fd49517f6946c3327a",
+  "target_mode": "customer",
+  "metrics": {
+    "extraction_coverage": {
+      "value": 0.14213197969543148,
+      "status": "ok",
+      "n": 197
+    },
+    "mention_coverage": {
+      "value": 0.14213197969543148,
+      "status": "ok",
+      "n": 197
+    },
+    "precision_at_10": {
+      "value": 0.2,
+      "status": "ok",
+      "n": 10
+    },
+    "target_extraction_coverage": {
+      "value": 0.5,
+      "status": "ok",
+      "n": 8
+    },
+    "end_to_end_competitor_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "conditional_competitor_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    "competitor_extraction_coverage": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "end_to_end_bad_fit_selection_rate": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "conditional_bad_fit_leakage_rate": {
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    "bad_fit_extraction_coverage": {
+      "value": 0.0,
+      "status": "ok",
+      "n": 1
+    },
+    "evidence_precision": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "evidence_yield": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    },
+    "auc": {
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  },
+  "gates": [
+    {
+      "name": "target_extraction_coverage",
+      "threshold": 0.8,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.5,
+      "status": "ok",
+      "n": 8
+    },
+    {
+      "name": "extraction_coverage",
+      "threshold": 0.8,
+      "direction": ">=",
+      "applicability": "optional",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.14213197969543148,
+      "status": "ok",
+      "n": 197
+    },
+    {
+      "name": "precision_at_10",
+      "threshold": 0.6,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": false,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": 0.2,
+      "status": "ok",
+      "n": 10
+    },
+    {
+      "name": "conditional_competitor_leakage_rate",
+      "threshold": 0.1,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    {
+      "name": "conditional_bad_fit_leakage_rate",
+      "threshold": 0.05,
+      "direction": "<=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "insufficient_n",
+      "n": 0
+    },
+    {
+      "name": "evidence_precision",
+      "threshold": 0.85,
+      "direction": ">=",
+      "applicability": "required",
+      "passed": null,
+      "waived": false,
+      "waiver_reason": null,
+      "waiver_by": null,
+      "value": null,
+      "status": "n/a",
+      "n": 0
+    }
+  ],
+  "eligibility": "fail",
+  "passed": false,
+  "news_capture": {
+    "schema": "news-capture/v1",
+    "grade": "advisory",
+    "thresholds": {
+      ">=10M": 10,
+      "<10M": 3
+    },
+    "companies": [
+      {
+        "name": "이스트소프트",
+        "revenue_tier": ">=10M",
+        "bodied_news": 15,
+        "listed_news": 20,
+        "threshold": 10,
+        "met": true
+      },
+      {
+        "name": "일레븐랩스",
+        "revenue_tier": null,
+        "bodied_news": 11,
+        "listed_news": 17,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "야놀자",
+        "revenue_tier": ">=10M",
+        "bodied_news": 16,
+        "listed_news": 20,
+        "threshold": 10,
+        "met": true
+      },
+      {
+        "name": "(주)마음AI",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "솔트룩스이노베이션",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "딥서치",
+        "revenue_tier": null,
+        "bodied_news": 1,
+        "listed_news": 1,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "무하유",
+        "revenue_tier": null,
+        "bodied_news": 8,
+        "listed_news": 8,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "벡스코",
+        "revenue_tier": null,
+        "bodied_news": 14,
+        "listed_news": 20,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "삼일회계법인",
+        "revenue_tier": null,
+        "bodied_news": 11,
+        "listed_news": 14,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "씽크프리",
+        "revenue_tier": null,
+        "bodied_news": 8,
+        "listed_news": 11,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "올거나이즈",
+        "revenue_tier": null,
+        "bodied_news": 5,
+        "listed_news": 6,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "유니닥스",
+        "revenue_tier": null,
+        "bodied_news": 9,
+        "listed_news": 9,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "주식회사 벨루가",
+        "revenue_tier": "<10M",
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": 3,
+        "met": false
+      },
+      {
+        "name": "카페 24 (대행사 (주)모티프커뮤니케이션 )",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "크라우드웍스",
+        "revenue_tier": ">=10M",
+        "bodied_news": 18,
+        "listed_news": 19,
+        "threshold": 10,
+        "met": true
+      },
+      {
+        "name": "팀스파르타",
+        "revenue_tier": null,
+        "bodied_news": 13,
+        "listed_news": 14,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "페르소나에이아이",
+        "revenue_tier": null,
+        "bodied_news": 1,
+        "listed_news": 2,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "프렌들리에이아이",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "(주) 시스트란",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "(주)딥브레인에이아이",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "(주)반야에이아이",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "(주)사이냅소프트",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "(주)엘리스그룹",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "(주)엠클라우독",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "(주)와이즈넛",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "(주)코난테크놀로지",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "DataForce / 데이터포스",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "KB금융지주",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "Appen Korea Co., Ltd",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      },
+      {
+        "name": "DLI MEMORY, INC.",
+        "revenue_tier": null,
+        "bodied_news": 0,
+        "listed_news": 0,
+        "threshold": null,
+        "met": null
+      }
+    ],
+    "summary": {
+      "total": 30,
+      "unknown_tier": 26,
+      "big": {
+        "total": 3,
+        "met": 3,
+        "met_rate": 1.0
+      },
+      "small": {
+        "total": 1,
+        "met": 0,
+        "met_rate": 0.0
+      },
+      "overall_met_rate": 0.75
+    }
+  }
+}
