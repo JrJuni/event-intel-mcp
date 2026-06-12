@@ -1,0 +1,705 @@
+{
+  "pair": "p6_navercloud_aiexpo",
+  "run_id": "ai_expo_korea_2026-20260611130914-addc9b04",
+  "run_fingerprint": "085ade388f3ff09873af75ba0c354fc761b9ccfea930e5fd49517f6946c3327a",
+  "run_summary": {
+    "run_id": "ai_expo_korea_2026-20260611130914-addc9b04",
+    "run_fingerprint": "085ade388f3ff09873af75ba0c354fc761b9ccfea930e5fd49517f6946c3327a",
+    "git_commit_sha": "700473cb342c436960e23a4b33cdfa7e4fdca639",
+    "config_fp": "bcaf614b4039fe1ca4988d01bcf0e50c0305d5280edbf8dc02b56dfece27fc91",
+    "cards_fingerprint": "053384d1aa1959312b6ab92c7092ec26279b3402e7fe5f125161ad9bf12b794b",
+    "source_sha256": "a915bdb4bd1a288234140c73f18166c13bc29221e5e02b4da07573a20f37a6d0",
+    "provider": "chatgpt_oauth",
+    "model_ids": {
+      "extract": "claude-sonnet-4-6",
+      "rationale": "claude-sonnet-4-6",
+      "embedding": "bge-m3"
+    },
+    "reference_timestamp": "2026-06-11T13:09:14.166939+00:00",
+    "target_mode": "customer",
+    "max_companies": null,
+    "max_chunks_per_event": 12,
+    "refresh": false,
+    "cache_hits": 0,
+    "cache_misses": 180,
+    "skipped_from_resume": 0,
+    "search_calls": 180,
+    "extracted": 223,
+    "enriched": 30,
+    "scored": 30,
+    "extraction_coverage": null,
+    "stages": [
+      {
+        "stage": "source_capture",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "extraction",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "enrichment",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "retrieval",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "scoring",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "report",
+        "ok": true,
+        "error_code": null
+      }
+    ],
+    "companies": [
+      {
+        "name": "이스트소프트",
+        "tier": "C",
+        "final_score": 3.4050481398589554,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.78,
+          "source_confidence": 0.99,
+          "buying_signal": 0.869083153518514,
+          "website_verification": 0.0,
+          "category_fit": 0.9375,
+          "competitor_penalty": 0.5364568829536438,
+          "bad_fit_penalty": 0.5008910000324249
+        },
+        "tier_reasons": [
+          "final_score=3.41 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "일레븐랩스",
+        "tier": "B",
+        "final_score": 4.7989780838396925,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.82,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8891908773519452,
+          "website_verification": 0.0,
+          "category_fit": 0.9333333333333333,
+          "competitor_penalty": 0.5370880663394928,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.80 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "야놀자",
+        "tier": "A",
+        "final_score": 6.2711100552516115,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.68,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8974067035010747,
+          "website_verification": 0.0,
+          "category_fit": 0.9333333333333333,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=6.27 >= 6.00",
+          "evidence_floor=1 >= 1"
+        ]
+      },
+      {
+        "name": "(주)마음AI",
+        "tier": "C",
+        "final_score": 1.4278194612264627,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5139462351799011,
+          "bad_fit_penalty": 0.5033474862575531
+        },
+        "tier_reasons": [
+          "final_score=1.43 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "솔트룩스이노베이션",
+        "tier": "C",
+        "final_score": 2.782028475999832,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.8,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5294204354286194,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.78 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "딥서치",
+        "tier": "C",
+        "final_score": 3.8310596276967424,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.99,
+          "buying_signal": 0.6478930522103239,
+          "website_verification": 0.0,
+          "category_fit": 0.8333333333333334,
+          "competitor_penalty": 0.5645085573196411,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.83 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "무하유",
+        "tier": "B",
+        "final_score": 4.523010657789315,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 0.99,
+          "buying_signal": 0.7982656905323777,
+          "website_verification": 0.0,
+          "category_fit": 0.9285714285714286,
+          "competitor_penalty": 0.5149271488189697,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.52 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "벡스코",
+        "tier": "B",
+        "final_score": 4.174374824481095,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.62,
+          "source_confidence": 0.98,
+          "buying_signal": 0.8988851121889405,
+          "website_verification": 0.0,
+          "category_fit": 0.8571428571428571,
+          "competitor_penalty": 0.5113334655761719,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.17 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "삼일회계법인",
+        "tier": "A",
+        "final_score": 6.674685392879907,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.86,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8397902619199374,
+          "website_verification": 0.0,
+          "category_fit": 0.9,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=6.67 >= 6.00",
+          "evidence_floor=1 >= 1"
+        ]
+      },
+      {
+        "name": "씽크프리",
+        "tier": "C",
+        "final_score": 3.3968242173846264,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.78,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8913969758785902,
+          "website_verification": 0.0,
+          "category_fit": 0.9166666666666666,
+          "competitor_penalty": 0.5290045738220215,
+          "bad_fit_penalty": 0.5155020952224731
+        },
+        "tier_reasons": [
+          "final_score=3.40 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "올거나이즈",
+        "tier": "B",
+        "final_score": 5.109099866131201,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8873406953333667,
+          "website_verification": 0.0,
+          "category_fit": 0.9285714285714286,
+          "competitor_penalty": 0.5570766627788544,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.11 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "유니닥스",
+        "tier": "B",
+        "final_score": 4.582912981292556,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.78,
+          "source_confidence": 0.99,
+          "buying_signal": 0.849093175073149,
+          "website_verification": 0.0,
+          "category_fit": 0.9285714285714286,
+          "competitor_penalty": 0.5453096926212311,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.58 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "주식회사 벨루가",
+        "tier": "C",
+        "final_score": 0.9093028581142424,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5073420405387878,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=0.91 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "카페 24 (대행사 (주)모티프커뮤니케이션 )",
+        "tier": "C",
+        "final_score": 1.3646018546819683,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5443994700908661,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.36 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "크라우드웍스",
+        "tier": "A",
+        "final_score": 6.1534615263142545,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.64,
+          "source_confidence": 0.99,
+          "buying_signal": 0.8989743508761694,
+          "website_verification": 0.0,
+          "category_fit": 0.9333333333333333,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=6.15 >= 6.00",
+          "evidence_floor=1 >= 1"
+        ]
+      },
+      {
+        "name": "팀스파르타",
+        "tier": "B",
+        "final_score": 4.476076264270699,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.99,
+          "buying_signal": 0.899179282398441,
+          "website_verification": 0.0,
+          "category_fit": 0.9285714285714286,
+          "competitor_penalty": 0.5287285149097443,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.48 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "페르소나에이아이",
+        "tier": "C",
+        "final_score": 3.8189505957617054,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.99,
+          "buying_signal": 0.501164612310044,
+          "website_verification": 0.0,
+          "category_fit": 0.8333333333333334,
+          "competitor_penalty": 0.5050846636295319,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.82 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "프렌들리에이아이",
+        "tier": "C",
+        "final_score": 3.885,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.8,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.88 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "(주) 시스트란",
+        "tier": "C",
+        "final_score": 0.0,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.5,
+          "source_confidence": 0.99,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5622999370098114,
+          "bad_fit_penalty": 0.5118483901023865
+        },
+        "tier_reasons": [
+          "final_score=0.00 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "(주)딥브레인에이아이",
+        "tier": "C",
+        "final_score": 1.713029204010964,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.530723363161087,
+          "bad_fit_penalty": 0.5397756099700928
+        },
+        "tier_reasons": [
+          "final_score=1.71 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "(주)반야에이아이",
+        "tier": "B",
+        "final_score": 4.32,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.32 >= 4.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "(주)사이냅소프트",
+        "tier": "C",
+        "final_score": 2.9781506401300435,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5119569599628448,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.98 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "(주)엘리스그룹",
+        "tier": "B",
+        "final_score": 4.38,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.72,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.38 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "(주)엠클라우독",
+        "tier": "C",
+        "final_score": 1.3387345945835116,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.78,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5617845356464386,
+          "bad_fit_penalty": 0.5020078122615814
+        },
+        "tier_reasons": [
+          "final_score=1.34 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "(주)와이즈넛",
+        "tier": "C",
+        "final_score": 1.150830899477005,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.72,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5522695183753967,
+          "bad_fit_penalty": 0.5184903144836426
+        },
+        "tier_reasons": [
+          "final_score=1.15 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "(주)코난테크놀로지",
+        "tier": "C",
+        "final_score": 1.165721960067749,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5344865620136261,
+          "bad_fit_penalty": 0.5134300291538239
+        },
+        "tier_reasons": [
+          "final_score=1.17 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "DataForce / 데이터포스",
+        "tier": "C",
+        "final_score": 1.6128041338920596,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5354897379875183,
+          "bad_fit_penalty": 0.5131927132606506
+        },
+        "tier_reasons": [
+          "final_score=1.61 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "KB금융지주",
+        "tier": "B",
+        "final_score": 4.0200000000000005,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 0.98,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.02 >= 4.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "Appen Korea Co., Ltd",
+        "tier": "C",
+        "final_score": 1.7024277442693714,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 0.96,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.533194363117218,
+          "bad_fit_penalty": 0.5285567939281464
+        },
+        "tier_reasons": [
+          "final_score=1.70 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "DLI MEMORY, INC.",
+        "tier": "C",
+        "final_score": 1.8056692028045662,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 0.96,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.5,
+          "competitor_penalty": 0.5140902996063232,
+          "bad_fit_penalty": 0.5140058994293213
+        },
+        "tier_reasons": [
+          "final_score=1.81 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      }
+    ],
+    "warnings": [
+      "triage: selected 30/223 exhibitors by LLM product-domain relevance (2 calls)",
+      "search errors: 56 query(ies) raised and degraded to empty (provider=brave/v1); affected rows will re-enrich on the next run"
+    ],
+    "pair": null,
+    "source_index_fingerprint": null,
+    "llm_usage": {
+      "schema": "llm-usage/v1",
+      "stages": {
+        "extraction": {
+          "calls": 3,
+          "input_tokens": 10346,
+          "output_tokens": 16037,
+          "models": [
+            "claude-sonnet-4-6"
+          ]
+        },
+        "llm_fit": {
+          "calls": 30,
+          "input_tokens": 29964,
+          "output_tokens": 3965,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "rationale": {
+          "calls": 3,
+          "input_tokens": 1169,
+          "output_tokens": 350,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "rescue": {
+          "calls": 5,
+          "input_tokens": 1517,
+          "output_tokens": 294,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "triage": {
+          "calls": 2,
+          "input_tokens": 8480,
+          "output_tokens": 1525,
+          "models": [
+            "gpt-5.5"
+          ]
+        }
+      },
+      "totals": {
+        "calls": 43,
+        "input_tokens": 51476,
+        "output_tokens": 22171
+      },
+      "reference_costs_usd": {
+        "claude-sonnet-4-6": {
+          "input_usd": 0.154428,
+          "output_usd": 0.332565,
+          "total_usd": 0.486993
+        },
+        "gpt-5.4-mini": {
+          "input_usd": 0.038607,
+          "output_usd": 0.099769,
+          "total_usd": 0.138377
+        }
+      }
+    }
+  },
+  "top10_evidence": []
+}
