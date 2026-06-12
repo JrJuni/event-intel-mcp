@@ -38,6 +38,19 @@ _log = logging.getLogger(__name__)
 # 39 after ~75 min). Constant is PROVISIONAL (docs/retry-playbook.md).
 _CHUNK_RETRY_SLEEP_SECONDS = 5.0
 
+# Cost lever #16-①: a structured CSV roster already carries name/url/description
+# verbatim — chunked LLM extraction would only re-emit the same rows (p7 fullx
+# measured: extraction $4.35 of a $5.06 run). When a name column is detected the
+# rows convert directly to candidates with ZERO LLM calls; detection failure
+# falls back to the normal LLM path. Header match is case-insensitive on the
+# trimmed header; priority is list order (first hit wins).
+_CSV_NAME_COLUMNS = (
+    "name", "company", "company_name", "exhibitor",
+    "회사명", "업체명", "참가사", "상호",
+)
+_CSV_URL_COLUMNS = ("url", "website", "homepage", "홈페이지")
+_CSV_DESC_COLUMNS = ("description", "설명", "소개")
+
 # plan v3 R6: known wrapping keys an LLM may use to envelope the candidate list.
 # When the response is a dict (instead of the requested top-level list), unwrap
 # the first matching key. Single-key dicts with a list value are also unwrapped
@@ -306,6 +319,54 @@ def _merge_candidates(
     return list(by_key.values())
 
 
+def _csv_direct_candidates(
+    capture: SourceCapture, *, snippet_min_chars: int
+) -> tuple[list[ExhibitorCandidate], str] | None:
+    """Convert structured CSV rows directly to candidates — no LLM.
+
+    Returns ``(rows, name_column)`` or None when no name column is detected
+    (caller falls back to chunked LLM extraction). The snippet is the row's own
+    non-empty cells — CSV cells ARE the verbatim source, so the snippet floor
+    keeps its audit meaning. Rows shorter than the floor get a synthetic
+    ``CSV row {i} of {source_ref}: ...`` prefix so a legitimate short row (bare
+    name) isn't silently dropped; the row index keeps it auditable.
+    """
+    rows = capture.csv_rows or []
+    if not rows:
+        return None
+    norm_headers = {h.strip().lower(): h for h in rows[0].keys() if h and h.strip()}
+    name_col = next((norm_headers[c] for c in _CSV_NAME_COLUMNS if c in norm_headers), None)
+    if name_col is None:
+        return None
+    url_col = next((norm_headers[c] for c in _CSV_URL_COLUMNS if c in norm_headers), None)
+    desc_col = next((norm_headers[c] for c in _CSV_DESC_COLUMNS if c in norm_headers), None)
+
+    out: list[ExhibitorCandidate] = []
+    for i, row in enumerate(rows):
+        name = (row.get(name_col) or "").strip()
+        if not name:
+            continue
+        # Dict order is DictReader header order; cells were strip()ed at capture.
+        snippet = " | ".join(v for v in row.values() if v)
+        if len(snippet) < snippet_min_chars:
+            snippet = f"CSV row {i} of {capture.source_ref}: {snippet}"
+        url = ((row.get(url_col) or "").strip() or None) if url_col else None
+        desc = ((row.get(desc_col) or "").strip() or None) if desc_col else None
+        out.append(
+            ExhibitorCandidate(
+                name=name,
+                source_snippet=snippet,
+                url=url,
+                description=desc,
+                extraction_confidence=1.0,
+                chunk_indices=[i],
+            )
+        )
+    if not out:
+        return None
+    return out, name_col
+
+
 def extract_exhibitors(
     *,
     capture: SourceCapture,
@@ -345,8 +406,48 @@ def extract_exhibitors(
             hint={"source_ref": capture.source_ref, "kind": capture.kind},
         )
 
-    chunks = _split_chunks(capture.text, max_chars=max_chars_per_chunk)
     warnings: list[str] = list(capture.warnings)
+
+    # Cost lever #16-①: CSV direct conversion — structured rows skip the LLM
+    # entirely. Off switch: extraction.csv_short_circuit: false (absent = on).
+    # getattr: replay/eval harnesses pass duck-typed captures without csv_rows.
+    csv_rows = getattr(capture, "csv_rows", None)
+    if bool(extraction_cfg.get("csv_short_circuit", True)) and csv_rows:
+        direct = _csv_direct_candidates(capture, snippet_min_chars=snippet_min_chars)
+        if direct is not None:
+            rows_direct, name_col = direct
+            warnings.append(
+                f"extraction: CSV short-circuit on name column {name_col!r} — "
+                f"{len(rows_direct)} rows converted, 0 LLM calls"
+            )
+            floored = [
+                r for r in rows_direct if len(r.source_snippet) >= snippet_min_chars
+            ]
+            dropped_low_snippet = len(rows_direct) - len(floored)
+            merged = _merge_candidates(floored, lang=lang)
+            return ExtractionResult(
+                candidates=[
+                    r for r in merged if r.extraction_confidence >= confidence_min
+                ],
+                needs_review=[
+                    r for r in merged if r.extraction_confidence < confidence_min
+                ],
+                dropped_low_snippet=dropped_low_snippet,
+                warnings=warnings,
+                chunks_processed=0,
+                chunks_total=0,
+                usage={"input_tokens": 0, "output_tokens": 0},
+            )
+        headers = list((csv_rows[0] or {}).keys())
+        warnings.append(
+            "extraction: csv_short_circuit found no name column among headers "
+            f"{headers!r} — falling back to LLM extraction"
+        )
+        _log.warning(
+            "CSV short-circuit: no name column among %r; using LLM path", headers
+        )
+
+    chunks = _split_chunks(capture.text, max_chars=max_chars_per_chunk)
     chunks_total = len(chunks)
     if chunks_total > max_chunks_per_event:
         warnings.append(
