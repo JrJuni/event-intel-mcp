@@ -617,6 +617,44 @@ def test_build_oauth_stage_models_are_noop_with_warning(all_fakes, monkeypatch, 
     assert rs["llm_usage"]["stages"]["llm_fit"]["models"] == ["fake-oauth-mini"]
 
 
+# ---------- #16-⑤: LLM extraction cache (build-level) ----------
+
+
+def test_build_rerun_serves_extraction_from_llm_cache(all_fakes, monkeypatch, repo_root):
+    """With extraction.llm_cache enabled, a re-run over the same source spends
+    zero extraction LLM calls — ledger shows calls=0 / calls_cached=chunks."""
+    import copy
+    import json as _json
+
+    cfg = copy.deepcopy(_MIN_CONFIG)
+    cfg["extraction"]["llm_cache"] = {"enabled": True, "ttl_days": 14}
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: cfg)
+    src = str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html")
+
+    out1 = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_llmcache_a",
+        source_kind="html_file", source_ref=src, run_rationale=False,
+    )
+    assert out1["ok"] is True, out1
+    rs1 = _json.loads(Path(out1["run_summary_path"]).read_text(encoding="utf-8"))
+    e1 = rs1["llm_usage"]["stages"]["extraction"]
+    assert e1["calls"] >= 1 and e1["calls_cached"] == 0
+
+    out2 = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_llmcache_b",
+        source_kind="html_file", source_ref=src, run_rationale=False,
+    )
+    assert out2["ok"] is True, out2
+    rs2 = _json.loads(Path(out2["run_summary_path"]).read_text(encoding="utf-8"))
+    e2 = rs2["llm_usage"]["stages"]["extraction"]
+    assert e2["calls"] == 0
+    assert e2["calls_cached"] == e1["calls"]
+    assert e2["input_tokens"] == 0 and e2["output_tokens"] == 0
+    assert any("served from LLM cache" in w for w in out2["warnings"])
+    # Same roster either way.
+    assert out2["candidates_extracted"] == out1["candidates_extracted"]
+
+
 # ---------- Y1D D2: LLM roster triage (over-cap selection) ----------
 
 

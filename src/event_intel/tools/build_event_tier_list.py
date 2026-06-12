@@ -212,17 +212,22 @@ def build_event_tier_list(
         extract_llm = _llm.make_llm_provider(config, model=llm_model_extract)
         extraction = _extraction.extract_exhibitors(
             capture=capture, lang=lang, llm_provider=extract_llm, config=config,
+            refresh=refresh,
         )
         # extraction pre-aggregates its per-chunk usage; fold it in as one entry.
         # Record the provider's ACTUAL model, not the config request: for
         # chatgpt_oauth the factory ignores the model param entirely, so
         # llm_model_extract would mislabel a free-OAuth run as a paid one.
+        # #16-⑤: cache-served chunks were not LLM calls — count them separately
+        # so calls × tokens stays an honest spend record.
         usage_ledger.record(
             "extraction",
             getattr(extract_llm, "model", llm_model_extract) or llm_model_extract,
             extraction.usage,
-            calls=extraction.chunks_processed,
+            calls=max(0, extraction.chunks_processed - extraction.chunks_cached),
         )
+        if extraction.chunks_cached:
+            usage_ledger.record_cached("extraction", calls=extraction.chunks_cached)
 
         # 4.4. Per-stage model right-sizing (#16-④): triage and llm_fit are
         #      bounded classification judgments — config may pin a cheaper
