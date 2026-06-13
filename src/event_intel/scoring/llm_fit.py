@@ -110,6 +110,11 @@ def _evidence_text(row: EnrichedExhibitor | None) -> str:
         parts.append(row.source_snippet)
     if row.description:
         parts.append(row.description)
+    # #16 S5 — homepage lane: the crawled homepage excerpt stands in for the
+    # news titles that are absent in homepage mode. getattr-guarded so legacy
+    # rows (pre-S5 resume dicts) keep working; the join cap below bounds it.
+    if getattr(row, "homepage_excerpt", None):
+        parts.append(row.homepage_excerpt)
     for n in (row.news_signals or [])[:3]:
         if n.title:
             parts.append(n.title)

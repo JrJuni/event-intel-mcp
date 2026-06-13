@@ -93,6 +93,11 @@ def _build_rationale_user_message(
         titles = "; ".join(n.title for n in scored.row.news_signals[:3] if n.title)
         if titles:
             parts.append(f"RECENT_NEWS: {titles}")
+    # #16 S5 — homepage lane carries no news titles; the crawled homepage
+    # excerpt (capped — the rationale prompt should stay small) stands in.
+    excerpt = getattr(scored.row, "homepage_excerpt", None)
+    if excerpt:
+        parts.append(f"HOMEPAGE: {excerpt[:300]}")
     if cards:
         parts.append(f"PRODUCT: {cards.product_name} — {cards.one_liner}")
         if scored.fit and scored.fit.capability_fit_breakdown:
