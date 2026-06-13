@@ -6,6 +6,11 @@
 
 ## 진행 중
 
+- **R2 캠페인 취소 + homepage = 확정 evidence 방향 (2026-06-13 사용자 결정)**
+  - **R2 취소.** zero-config 뉴스-스모크 캠페인(`EventIntelR2Smoke` 크론, 누적 1/10)을 **전면 취소** — 크론 삭제, retry-playbook 재집계 트리거 해제. 뉴스 검색 retry-stats 수집이 목적이었으나 evidence lane을 homepage로 트면서 목적이 소멸.
+  - **homepage 확정.** `evidence_source: homepage`는 이미 출하 default(S4/S5, #16). 이제 **실험이 아니라 확정 방향**으로 격상 — 뉴스 레인(count_news·news_body·supplement·RSS 폴백·query_rescue)은 `evidence_source: news` 한 줄로 되돌리는 **escape-hatch fallback**으로만 유지(삭제 아님).
+  - **다음.** R2(뉴스)를 대체하는 **homepage smoke 1회**(사용자 지시 "한번 해보자")로 homepage lane을 라이브 실증 — 그간 PROVISIONAL이던 homepage lane 품질 / Haiku 품질 / 캐시 hit률 / CSV 휴리스틱 / #17 de-bias P@10을 한 런에서 동시 확인. 타깃은 **holdout(MongoDB×AI Expo Tokyo) 제외**, 비-블라인드 gold pair에서 선정. ← 진행 예정.
+
 - **#17 triage lookalike-bias 처방 ✅ ①+② 슬라이스 완료 (2026-06-13, 사용자 2-결정 잠금, branch `triage-target-fit-debias`)**
   - **계기.** D3 확정 진단: 추출 94.8% 달성에도 P@10=0 — triage의 "제품 도메인 관련도" 채점 축이 경쟁사/lookalike(같은 도메인 어휘)를 승격시키고 고객형 타깃을 top-K 밖으로 밀어내는 구조 편향.
   - **처방(① + ② 한 슬라이스).** triage 채점 축을 **`target_mode`(customer|partner|ecosystem) 하의 타깃 적합도**로 재정의 — 프롬프트 en/ko 재작성 + `triage_roster(target_mode=…)` 주입(build site의 `resolved_target_mode` 흐름). capability_digest에 **고객 프로필**(ideal-customer signals · buyer pains · bad-fit keywords) 보강. 경쟁사 처리 = **고객 recall 최대화: 컷 허용** — "경쟁사 반드시 통과" 불변식 제거(competitor_penalty는 스코어링에서 여전히 적용). ③ 2-pass 미채택.
@@ -29,7 +34,7 @@
     | rationale 등 | ~$0.01 | ~$0.01 | ~$0.01 | 동일 |
     | **합계(CSV)** | **$5.06** | $0.71 | **~$0.24** (≈95%↓) | 재실행 ~$0.24 |
     | 검색 쿼리/run | ~150 | ~150 | ~150 | homepage lane: **~30**(CSV+url ~0) |
-  - **남은 것(차후 phase)**: ②prompt-caching ③Batch ⑥Brave rescue deferred(backlog #16) · homepage lane 품질 / Haiku 품질 / 캐시 hit률 / CSV 휴리스틱 오탐의 **라이브 검증** · R2 재가동 시 `evidence_source` 핀 여부 재논의 · buying_signal의 press_page 추출 여부(open).
+  - **남은 것(차후 phase)**: ②prompt-caching ③Batch ⑥Brave rescue deferred(backlog #16) · homepage lane 품질 / Haiku 품질 / 캐시 hit률 / CSV 휴리스틱 오탐의 **라이브 검증** → **homepage smoke로 흡수**(아래 R2 취소 항목) · buying_signal의 press_page 추출 여부(open).
 
 - **Y1D — capability_fit LLM-first 재설계 (D0~D3) ✅ 전체 완료 (2026-06-11, plan `config-zero-mossy-toucan.md` v3 [완료·아카이브], D0~D2 머지 + D3 branch `y1d-d3-measure`)**
   - **계기.** capability_fit(가중 0.30)이 cosine에서 전 라벨 ~0.5 평탄(양성 식별 실패) + 대형 로스터(p7 2,885사)는 head-truncation으로 gold 전원 추출 전 탈락. 사용자 결정: cosine→**LLM 명시 판단을 기본값으로**(cosine은 폴백/escape hatch), 대형 로스터는 **LLM 트리아지 깔때기**(벤치 hack 불가), 단 **비용 계측 선행**.
@@ -49,7 +54,7 @@
   - **운영 사건**: R2 크론이 fullx outputs를 덮어씀 → run_result.json 내장 run_summary로 측정 구제(--tier-list는 advisory 전용이라 생략 가능). 부수 fix: 청크당 transient 1회 재시도(`9387389` — 75분 빌드가 단발 LLM 오류로 전사하던 것).
   - **취소(2026-06-11 사용자 지시 "스모크 임의 실행 금지")**: p6 ddgs 재실행 + p1 mini 라이브런 — fullx가 병목을 이미 확정해 정보 가치 낮음.
 
-- **ZNC — Zero-config 뉴스 수집(본문 크롤링 포함) 신뢰성 + entity 게이트 + 경험적 retry policy + gold pair 3종 ✅ 전체 완료 (2026-06-11, plan `~/.claude/plans/config-zero-mossy-toucan.md` [완료·아카이브] — PR #75~#93, 단 하루에 19 PR. R2 크론만 계속 누적)**
+- **ZNC — Zero-config 뉴스 수집(본문 크롤링 포함) 신뢰성 + entity 게이트 + 경험적 retry policy + gold pair 3종 ✅ 전체 완료 (2026-06-11, plan `~/.claude/plans/config-zero-mossy-toucan.md` [완료·아카이브] — PR #75~#93, 단 하루에 19 PR. R2 크론은 2026-06-13 취소)**
   - **계기.** 사용자 최우선: **config zero — 배포 패키지만으로(키 0) 뉴스 서치·크롤링 동작** + "너무 빨리 포기하지 않게". 탐색이 실버그 확인: ① ddgs 결과-0건이 `DDGSException`으로 raise → **enrichment 스테이지 전체 abort**, ② 기존 retry가 잡던 `RatelimitException`은 ddgs 9.14가 **실제로 raise 안 하는 죽은 코드**, ③ rate-limit 빈 결과가 캐시/resume에 7일 고착. **성공 기준 5(사용자 계약)**: ①본문 크롤링 ②제품/솔루션 정보 포함 ③RAG 연관도 산출 가능(이번 phase는 report-only) ④중복 없음 ⑤매출 ≥$10M→뉴스 ≥10건/미만→≥3건(revenue tier는 G-lane 라벨링에서). retry 상수는 **경험적**(실패 계측→스모크 ≥10회→R3 명문화, 최대 ~5회 + 사이트형태 playbook).
   - ✅ **N1** (#75) — degraded 결과 미고착: per-call `last_call_degraded`, degraded는 캐시 미기록 + resume row `degraded`(재사용 금지→다음 실행 재시도). `ENRICH_CACHE_VERSION` 6. → playbook #15.
   - ✅ **N2** (#76) — 예외 분류 fix(genuine-empty=`[]`·캐시 / 그 외=재시도→degrade, 메시지 리터럴 핀 테스트) + `search.ddgs_backend: auto`(fresh DDGS/attempt=엔진 회전) + no-stage-abort(MCPError만 fatal) + max_retries 5(잠정—R3 확정). → lesson 2026-06-11.
@@ -66,7 +71,7 @@
   - ✅ **G2** (#89) — 카드 3종(Snowflake/Siemens DI/네이버클라우드) draft→스키마 교정→ingest(26/29/25 chunks). R2 pairs를 본 게임 조합으로 전환.
   - ✅ **G3** (#90/#91/#92) — **3 pair 전부 20/20 gold** (L0–L6 멀티벤더: GPT 초안→Claude 독립(SHA 증명)→웹 refine→seal). 분포 T/C/B/N: p5=10/3/0/7, p6=8/1/1/10, p7=4/2/2/12. 합의율 0.5/0.5/0.7. 대표 판정: Domo 양벤더 오판→파트너 증거로 target, self-부스→neutral, T3Q=competitor(업스테이지 리셀러), Aras=PLM competitor. **revenue_tiers.json 신설**(기준 ⑤ 분모). 택소노미 규율: bad_fit=카드 사유 매칭만, 대학·재단=neutral.
   - ✅ **G4** (#91/#92) — `eval/news_capture.py` **advisory** 메트릭(freeze 규율상 게이트 승격은 차기 freeze) + measure 3 pair: **P@10 0.5/0.4/0.0**(p7 0.0은 2,885사 head-truncation 샘플링 왜곡 — 대형 roster 샘플링 전략 필요 교훈), eligibility fail(coverage, DEV 예상). **기준 ⑤ 정량 결론: 대기업 본문뉴스 ≥10건 달성률 0~20% → count_news 12→20+ 상향 필요(사용자 결정 대기)**.
-  - ✅ **R2 인프라+캠페인** (#85) — `benchmarks/r2_pairs.yaml` + `scripts/r2_smoke.py` + Task Scheduler `EventIntelR2Smoke`(4h 간격, 사용자 지정). 첫 배치 3 pair 완주. **크론은 계속 누적 중** — ≥10런마다 retry-playbook 재집계.
+  - ✅ **R2 인프라+캠페인** (#85) — `benchmarks/r2_pairs.yaml` + `scripts/r2_smoke.py` + Task Scheduler `EventIntelR2Smoke`(4h 간격, 사용자 지정). 첫 배치 3 pair 완주. **❌ 캠페인 취소(2026-06-13 사용자 결정)** — 누적 1/10에서 중단, 크론 `EventIntelR2Smoke` 삭제. 뉴스-retry-stats 수집이 목적이었으나 evidence lane이 homepage로 확정되며 목적 소멸. retry-playbook 재집계 트리거도 함께 해제. **homepage smoke(1회, 사용자 지시)로 대체** — 위 진행 중 항목 참조.
   - ✅ **R3** (#93) — **1,141 events 기반 retry policy 명문화** + `docs/retry-playbook.md` 신설(8번째 standing doc): 검색 lane rate-limit 0/900(스로틀-우선 CONFIRMED, 재시도 상한은 PROVISIONAL 정직 표기) / 본문 lane 403=16/16 결정적(재시도 0회) vs 429·5xx·transport(1회 재시도) **코드 반영**.
   - **결과**: 키 0으로 뉴스 서치+본문 크롤링 전 체인 동작·실증. 실패는 ①스테이지를 못 죽이고 ②캐시/resume에 고착 안 되고 ③폴백·본문·rescue가 차례로 발화하고 ④degraded로 가시화되고 ⑤retry 상수는 데이터로 명문화. gold DEV pair 4종(GTC+신규 3) 확보 → **Y1D 재개 조건 충족 여부 = 사용자 결정**(backlog #1/#6). 테스트 +~150, 전 슬라이스 CI green.
 

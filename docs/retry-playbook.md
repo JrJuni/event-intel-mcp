@@ -5,7 +5,7 @@
 함께 적고, 미검증 상수는 PROVISIONAL로 명시한다** (사용자 원칙: 상수는 선험이 아니라 데이터에서).
 
 - **근거 데이터**: `~/.event-intel/diagnostics/**/*.jsonl` (R1 계측) → `benchmark retry-stats`.
-- **개정 트리거**: R2 크론 캠페인(`EventIntelR2Smoke`, 4h 간격) 누적 ≥10런 시점마다 재집계·갱신.
+- **개정 트리거**: R2 크론 캠페인(`EventIntelR2Smoke`)은 2026-06-13 취소(evidence lane이 homepage로 확정 → 뉴스-retry-stats 누적 목적 소멸). 이후 갱신은 신규 라이브 런(예: homepage smoke)의 `diagnostics/` 산출이 모일 때 수동 재집계.
 - 최초 작성 2026-06-11: **1,141 events / 12 파일** (스모크 1배치 + AIEWF 재빌드 2회 + gold-blind 런 3회).
 
 ---
