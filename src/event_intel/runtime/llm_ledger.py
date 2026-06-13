@@ -20,13 +20,22 @@ mixed cost. Stages whose model is unknown to the pricing table, mixed, or free
 wrong. ``reference_costs_usd`` (all-tokens-on-one-model conversion) is kept
 unchanged for cross-run continuity with v1 data.
 
+Schema v3 (E4): ``search_usage`` — per-lane web-search query counts. Search is
+the OTHER spend axis a build has (ddgs is keyless but quota-limited; Brave is
+billed per query), and Tier-2 adaptive resolution (``events/tier2.py``) can fire
+up to ``max_searches_per_event`` ddgs queries that were previously invisible.
+``record_search`` accumulates queries (and how many degraded under rate-limit)
+by lane so a run can report its search budget alongside its token cost — no
+silent caps. Counts only, no USD conversion yet (ddgs cash cost is $0; a Brave
+price line is a later phase).
+
 Pure stdlib — import-cold safe (guarded by tests/test_mcp_cold_start.py).
 """
 from __future__ import annotations
 
 import threading
 
-LLM_USAGE_SCHEMA = "llm-usage/v2"
+LLM_USAGE_SCHEMA = "llm-usage/v3"
 
 _TOKEN_KEYS = ("input_tokens", "output_tokens")
 
@@ -43,6 +52,7 @@ class LlmUsageLedger:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._stages: dict[str, dict] = {}
+        self._searches: dict[str, dict] = {}
 
     @staticmethod
     def _tok(usage: dict | None, key: str) -> int:
@@ -78,6 +88,26 @@ class LlmUsageLedger:
             )
             entry["calls_cached"] = entry.get("calls_cached", 0) + max(0, int(calls))
 
+    def record_search(
+        self, lane: str, *, count: int = 1, degraded: int = 0
+    ) -> None:
+        """E4: count web-search queries for a lane (``tier2`` / ``enrichment`` …).
+
+        ``count`` queries are added to the lane's total; ``degraded`` of them
+        are additionally marked as having degraded under provider rate-limiting
+        (ddgs empty-on-throttle convention). Negative inputs clamp to 0 and a
+        ``degraded`` larger than ``count`` is capped at ``count`` — accounting
+        must never imply more degraded calls than calls.
+        """
+        n = max(0, int(count))
+        if n == 0:
+            return
+        deg = min(n, max(0, int(degraded)))
+        with self._lock:
+            entry = self._searches.setdefault(lane, {"queries": 0, "degraded": 0})
+            entry["queries"] += n
+            entry["degraded"] += deg
+
     def summary(self, reference_pricing: dict | None = None) -> dict:
         """Snapshot: per-stage usage + totals + reference-model USD conversion.
 
@@ -95,6 +125,10 @@ class LlmUsageLedger:
                     "models": sorted(e["models"]),
                 }
                 for stage, e in sorted(self._stages.items())
+            }
+            search_lanes = {
+                lane: {"queries": e["queries"], "degraded": e["degraded"]}
+                for lane, e in sorted(self._searches.items())
             }
         totals = {
             "calls": sum(e["calls"] for e in stages.values()),
@@ -155,6 +189,13 @@ class LlmUsageLedger:
                 "stages": blended_stages,
                 "total_usd": round(blended_total, 6),
                 "unpriced_stages": sorted(unpriced_stages),
+            },
+            "search_usage": {
+                "lanes": search_lanes,
+                "totals": {
+                    "queries": sum(e["queries"] for e in search_lanes.values()),
+                    "degraded": sum(e["degraded"] for e in search_lanes.values()),
+                },
             },
         }
         if warnings:

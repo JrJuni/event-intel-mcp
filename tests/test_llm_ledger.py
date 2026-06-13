@@ -175,7 +175,7 @@ def test_blended_cost_prices_each_stage_by_its_recorded_model():
                {"input_tokens": 1_000_000, "output_tokens": 200_000})
     s = led.summary(BLEND_PRICING)
     blended = s["blended_cost_usd"]
-    assert s["schema"] == "llm-usage/v2"
+    assert s["schema"] == "llm-usage/v3"
     # sonnet: 1M*3 + 0.2M*15 = 6.0 ; haiku: 1M*1 + 0.2M*5 = 2.0
     assert blended["stages"] == {"extraction": 6.0, "triage": 2.0}
     assert blended["total_usd"] == 8.0
@@ -214,6 +214,61 @@ def test_blended_cost_zero_token_and_empty_stages_skipped():
     }
     empty = LlmUsageLedger().summary(BLEND_PRICING)
     assert empty["blended_cost_usd"]["total_usd"] == 0.0
+
+
+# ---------- E4: search_usage (the other spend axis) ----------
+
+
+def test_search_usage_empty_by_default():
+    s = LlmUsageLedger().summary()
+    assert s["schema"] == "llm-usage/v3"
+    assert s["search_usage"] == {"lanes": {}, "totals": {"queries": 0, "degraded": 0}}
+
+
+def test_search_usage_accumulates_per_lane_and_totals():
+    led = LlmUsageLedger()
+    led.record_search("tier2")                      # 1 query, default count=1
+    led.record_search("tier2", degraded=1)          # 1 degraded query
+    led.record_search("enrichment", count=5, degraded=2)
+    s = led.summary()["search_usage"]
+    assert s["lanes"]["tier2"] == {"queries": 2, "degraded": 1}
+    assert s["lanes"]["enrichment"] == {"queries": 5, "degraded": 2}
+    assert s["totals"] == {"queries": 7, "degraded": 3}
+
+
+def test_search_usage_clamps_negative_and_overlarge_degraded():
+    led = LlmUsageLedger()
+    led.record_search("tier2", count=-3)            # negative count → no-op
+    led.record_search("tier2", count=2, degraded=9)  # degraded capped at count
+    led.record_search("tier2", count=0)             # zero count → no-op
+    s = led.summary()["search_usage"]
+    assert s["lanes"]["tier2"] == {"queries": 2, "degraded": 2}
+    assert s["totals"] == {"queries": 2, "degraded": 2}
+
+
+def test_search_usage_is_independent_of_token_stages():
+    # search counting must not perturb LLM token/cost accounting.
+    led = LlmUsageLedger()
+    led.record("triage", "m", {"input_tokens": 100, "output_tokens": 10})
+    led.record_search("tier2", count=3)
+    s = led.summary()
+    assert s["totals"]["input_tokens"] == 100  # tokens untouched
+    assert s["search_usage"]["totals"]["queries"] == 3
+
+
+def test_record_search_thread_safe():
+    led = LlmUsageLedger()
+
+    def worker():
+        for _ in range(200):
+            led.record_search("tier2")
+
+    threads = [threading.Thread(target=worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert led.summary()["search_usage"]["lanes"]["tier2"]["queries"] == 8 * 200
 
 
 # ---------- run_summary carries the block; ledger seams default to None ----------

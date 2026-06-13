@@ -323,3 +323,55 @@ def test_selected_returned_in_roster_order():
     )
     sel = [c.name for c in res.triage.selected]
     assert sel == ["Alpha", "Beta"]                  # roster order (idx1, idx2)
+
+
+# ---------------------------------------------------------------- E4: cost ledger
+
+
+def test_searches_counted_in_ledger():
+    from event_intel.runtime.llm_ledger import LlmUsageLedger
+
+    cands = [_Cand(f"C{i}") for i in range(4)]
+    tier1 = _tier1({0: 0.1}, {1, 2, 3}, [])
+    led = LlmUsageLedger()
+    res = _tier2.resolve_unknowns(
+        cands, tier1, _DIGEST, _FakeSearch(), _MapLLM({}),
+        max_companies=10, cfg=_tier2.Tier2Config(small_roster_threshold=300),
+        ledger=led,
+    )
+    su = led.summary()["search_usage"]
+    # one ledger search per company actually searched, under the tier2 lane.
+    assert su["lanes"]["tier2"]["queries"] == res.searched == 3
+    assert su["lanes"]["tier2"]["degraded"] == 0
+
+
+def test_degraded_searches_counted_in_ledger():
+    from event_intel.runtime.llm_ledger import LlmUsageLedger
+
+    cands = [_Cand(f"C{i}") for i in range(5)]
+    tier1 = _tier1({}, set(range(5)), [])
+    led = LlmUsageLedger()
+    _tier2.resolve_unknowns(
+        cands, tier1, _DIGEST, _FakeSearch(degrade=True), _MapLLM({}),
+        max_companies=4, cfg=_tier2.Tier2Config(small_roster_threshold=300),
+        ledger=led,
+    )
+    su = led.summary()["search_usage"]["lanes"]["tier2"]
+    # give-up aborts at _DEGRADED_GIVEUP, and every one of those was degraded.
+    assert su["queries"] == _tier2._DEGRADED_GIVEUP
+    assert su["degraded"] == _tier2._DEGRADED_GIVEUP
+
+
+def test_ledger_recording_never_fails_build():
+    # A ledger missing record_search (or a None ledger) must not break Tier 2.
+    class _LegacyLedger:
+        pass
+
+    cands = [_Cand("Fit Co"), _Cand("Seek Co")]
+    tier1 = _tier1({0: 0.6}, {1}, [cands[0], cands[1]])
+    for led in (None, _LegacyLedger()):
+        res = _tier2.resolve_unknowns(
+            cands, tier1, _DIGEST, _FakeSearch(), _MapLLM({"Seek Co": 0.8}),
+            max_companies=2, cfg=_tier2.Tier2Config(), ledger=led,
+        )
+        assert res.searched == 1                      # search still ran, no crash

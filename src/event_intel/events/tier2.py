@@ -136,6 +136,21 @@ def _search_profile(
     return text[:_MAX_TIER2_PROFILE_CHARS], degraded
 
 
+def _record_search(ledger: object | None, *, degraded: bool) -> None:
+    """Count one Tier-2 web search in the build's cost ledger, if one is wired.
+
+    Best-effort and total: a None ledger, a ledger without ``record_search``, or
+    any error is swallowed — cost accounting must never fail a build (Tier 2's
+    NEVER-raises contract). The query already happened; only the count is at risk.
+    """
+    if ledger is None:
+        return
+    try:
+        ledger.record_search("tier2", count=1, degraded=1 if degraded else 0)
+    except Exception:  # noqa: BLE001 — accounting is auxiliary, never fatal
+        pass
+
+
 def resolve_unknowns(
     candidates: list[ExhibitorCandidate],
     tier1: TriageResult,
@@ -206,6 +221,7 @@ def resolve_unknowns(
             searched += 1
             searched_idx.add(i)
             text, degraded = _search_profile(candidates[i], search_provider, cfg, lang)
+            _record_search(ledger, degraded=degraded)
             if degraded:
                 consecutive_degraded += 1
             else:

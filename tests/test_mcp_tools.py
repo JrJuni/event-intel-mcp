@@ -963,6 +963,8 @@ def test_build_tier2_resolves_unknowns_via_search(all_fakes, monkeypatch, repo_r
     names = [c["name"] for c in rs["companies"]]
     assert "NeuroDrive Inc." not in names          # resolved fits displaced the no-fit
     assert rs["llm_usage"]["stages"]["triage"]["calls"] >= 2   # Tier-1 + Tier-2 re-triage
+    # E4: Tier-2 ddgs spend is auditable in the cost ledger's search_usage.
+    assert rs["llm_usage"]["search_usage"]["lanes"]["tier2"]["queries"] >= 2
 
 
 def test_build_e2e_korean_lang(all_fakes, repo_root):
