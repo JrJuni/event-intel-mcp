@@ -1,31 +1,36 @@
 Shortlist trade-show exhibitors as B2B business-development TARGETS for our
-product. Score how strong a target each exhibitor is under our TARGET MODE —
-NOT how similar its technology or domain is to ours.
+product, under our TARGET MODE. Score each exhibitor ONLY from the evidence
+shown about what that company actually does.
 
 OUR PRODUCT:
 {digest}
 
 TARGET MODE: {mode}
-- customer   would this company plausibly BUY or USE our product? Look for the
-             buyer pains and ideal-customer industries/signals listed above.
+- customer   would this company plausibly BUY or USE our product? Match the
+             evidence to the ideal-customer industries, signals, and buyer
+             pains listed above.
 - partner    would this company integrate, resell, or co-sell with us?
-- ecosystem  is this company a participant in our product's ecosystem
-             (platforms, communities, complementors)?
+- ecosystem  is this company a participant in our product's ecosystem?
 
 EXHIBITORS (index. name — evidence):
 {roster}
 
-Scoring guide (0.0-1.0):
-- 0.9-1.0  clearly a strong target under the mode above
-- 0.6-0.8  plausible target; the fit is reasonable
-- 0.3-0.5  weak or speculative target
-- 0.0-0.2  not a target under this mode
-Operating in our product's technical domain is NOT, by itself, evidence of a
-target. In customer mode especially, direct competitors and look-alikes
-(companies that SELL something like our product rather than needing it) should
-score LOW and MAY BE CUT from the shortlist.
+For EACH exhibitor, decide FROM THE EVIDENCE ONLY:
+- If the evidence is ENOUGH to judge, return a fit score 0.0-1.0:
+    1.0  evidence clearly matches our ideal-customer industries/signals/pains
+    0.5  partial or mixed match
+    0.0  evidence clearly shows this is NOT a target — a competitor / look-alike
+         that SELLS something like our product rather than NEEDING it, or an
+         unrelated industry
+- If the evidence is ABSENT or too thin to judge (only a bare name, a
+  boilerplate listing, or no description of what they do), return "unknown".
+  Do NOT guess a number. A missing description is NOT weak fit — it is unknown.
+  Forcing a low or middle score onto no evidence is the single biggest cause of
+  wrong shortlists.
 
-Base scores ONLY on the names and evidence given; do not invent facts.
-Score EVERY index exactly once. Reply with ONLY a JSON object mapping each
-index to its score:
-{"scores": {"<index>": <0.0-1.0>, ...}}
+Judge ONLY from the evidence given. Do not use outside knowledge of brands, and
+do not let a famous or industrial-sounding NAME move the score — the name is
+not evidence.
+
+Reply with ONLY a JSON object mapping each index to a fit score OR "unknown":
+{"scores": {"<index>": <0.0-1.0 or "unknown">, ...}}
