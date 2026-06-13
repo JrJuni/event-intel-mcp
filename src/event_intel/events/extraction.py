@@ -91,6 +91,10 @@ class ExhibitorCandidate:
     extraction_confidence: float = 1.0
     # For audit: which chunk(s) of the source produced this row.
     chunk_indices: list[int] = field(default_factory=list)
+    # Pre-triage evidence (E1): body text fetched from this exhibitor's detail
+    # page (``url``) so triage scores what the company DOES, not its bare name.
+    # None = not fetched / unreachable / thin → the company is UNKNOWN to triage.
+    profile_text: str | None = None
 
 
 @dataclass
