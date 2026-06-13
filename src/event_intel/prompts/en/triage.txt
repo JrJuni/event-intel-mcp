@@ -1,21 +1,29 @@
-Shortlist trade-show exhibitors for B2B outreach. Score how relevant each
-exhibitor is to OUR PRODUCT's domain — how plausibly that company would need
-or benefit from it.
+Shortlist trade-show exhibitors as B2B business-development TARGETS for our
+product. Score how strong a target each exhibitor is under our TARGET MODE —
+NOT how similar its technology or domain is to ours.
 
 OUR PRODUCT:
 {digest}
+
+TARGET MODE: {mode}
+- customer   would this company plausibly BUY or USE our product? Look for the
+             buyer pains and ideal-customer industries/signals listed above.
+- partner    would this company integrate, resell, or co-sell with us?
+- ecosystem  is this company a participant in our product's ecosystem
+             (platforms, communities, complementors)?
 
 EXHIBITORS (index. name — evidence):
 {roster}
 
 Scoring guide (0.0-1.0):
-- 0.9-1.0  clear, concrete need for our product in their business
-- 0.6-0.8  same domain and a plausible use case
-- 0.3-0.5  loosely related domain; the need is speculative
-- 0.0-0.2  unrelated domain or no plausible need
-If an exhibitor SELLS a similar or competing product, score it by domain
-relatedness as usual (0.6+) — competitor screening happens in a LATER step,
-and competitors MUST pass this shortlist.
+- 0.9-1.0  clearly a strong target under the mode above
+- 0.6-0.8  plausible target; the fit is reasonable
+- 0.3-0.5  weak or speculative target
+- 0.0-0.2  not a target under this mode
+Operating in our product's technical domain is NOT, by itself, evidence of a
+target. In customer mode especially, direct competitors and look-alikes
+(companies that SELL something like our product rather than needing it) should
+score LOW and MAY BE CUT from the shortlist.
 
 Base scores ONLY on the names and evidence given; do not invent facts.
 Score EVERY index exactly once. Reply with ONLY a JSON object mapping each

@@ -13,8 +13,17 @@ Boundary rules:
 - a batch fails (transport or unparseable) → that batch scores neutral 0.5
   + warning; remaining batches still count. All batches failing therefore
   degrades to the old first-N behaviour. This stage NEVER fails a build.
-- competitors / bad-fit companies are SAME-domain by definition and must PASS
-  triage (the prompt says so explicitly) — penalties are scoring's job.
+
+Scoring axis (#17, 2026-06-13): the roster is scored for TARGET FIT under the
+resolved ``target_mode`` (customer | partner | ecosystem), NOT product-domain
+similarity. The old "domain relatedness" axis promoted look-alikes/competitors
+(same domain vocabulary) and pushed customer-type targets out of the top-K on
+mega-rosters — the diagnosed P@10=0 bias (D3). Competitors/look-alikes are no
+longer guaranteed a slot: under customer mode they score low on target fit and
+MAY BE CUT (user decision: maximize customer recall; competitor visibility is
+secondary on large rosters, and competitor_penalty still applies to whatever
+reaches scoring). The de-biasing *efficacy* is verified live; offline tests
+cover the plumbing (prompt content, digest fields, selection logic).
 
 stdlib-only at module load (cold-import rule); the LLM arrives as an injected
 provider.
@@ -65,20 +74,39 @@ def load_triage_prompt(lang: str) -> str:
 
 
 def build_capability_digest(cards: CapabilityCards | None) -> str | None:
-    """~200-token product digest for the triage prompt — name, one-liner,
-    capability names + a few keywords, ideal industries. NOT the full cards.
+    """~250-token product digest for the triage prompt — name, one-liner,
+    capability names + keywords, ideal-customer industries AND signals, the
+    buyer pains we solve, and bad-fit keywords. NOT the full cards.
+
+    The signals / pains / bad-fit lines are the #17 enrichment: target-fit
+    scoring needs the *customer profile* (who would buy and why), not just the
+    product's own domain vocabulary, otherwise the LLM falls back to domain
+    matching and re-introduces the look-alike bias.
+
     Defensive: any surprise shape → None (caller falls back to first-N).
     """
     if cards is None:
         return None
     try:
         lines = [f"{cards.product_name} — {cards.one_liner}"]
+        pains: list[str] = []
         for cap in cards.capabilities:
             kw = ", ".join(list(cap.keywords)[:6])
             lines.append(f"- {cap.name}: {kw}" if kw else f"- {cap.name}")
+            pains.extend(list(getattr(cap, "buyer_pains", []) or []))
         industries = ", ".join(list(cards.ideal_customer.industries)[:8])
         if industries:
             lines.append(f"Ideal customer industries: {industries}")
+        signals = ", ".join(list(cards.ideal_customer.company_signals)[:8])
+        if signals:
+            lines.append(f"Ideal customer signals: {signals}")
+        if pains:
+            lines.append(f"Buyer pains we solve: {', '.join(pains[:6])}")
+        bad_kw: list[str] = []
+        for bf in getattr(cards, "bad_fit", []) or []:
+            bad_kw.extend(list(getattr(bf, "keywords", []) or []))
+        if bad_kw:
+            lines.append(f"Not a fit: {', '.join(bad_kw[:8])}")
         return "\n".join(lines)
     except Exception:  # noqa: BLE001 — digest is best-effort, never fail a build
         return None
@@ -135,11 +163,13 @@ def triage_roster(
     max_companies: int,
     batch_size: int = 120,
     lang: str = "en",
+    target_mode: str = "customer",
     ledger: object | None = None,
 ) -> TriageResult:
-    """Score the full roster for product-domain relevance and keep the top
-    ``max_companies``, ORIGINAL ROSTER ORDER preserved. See module docstring
-    for the boundary rules. NEVER raises.
+    """Score the full roster for TARGET FIT under ``target_mode`` and keep the
+    top ``max_companies``, ORIGINAL ROSTER ORDER preserved. See module
+    docstring for the boundary rules and the #17 scoring-axis change. NEVER
+    raises.
     """
     total = len(candidates)
     cap = max(1, int(max_companies))
@@ -165,6 +195,7 @@ def triage_roster(
         prompt = (
             template
             .replace("{digest}", str(capability_digest))
+            .replace("{mode}", str(target_mode or "customer"))
             .replace("{roster}", _roster_listing(batch, b_start))
         )
         parsed: dict[int, float] | None = None
@@ -203,8 +234,8 @@ def triage_roster(
     else:
         # No-silent-caps: triage trimming is always announced.
         warnings.append(
-            f"triage: selected {cap}/{total} exhibitors by LLM product-domain "
-            f"relevance ({calls} calls)"
+            f"triage: selected {cap}/{total} exhibitors by LLM target fit "
+            f"(mode={target_mode}, {calls} calls)"
         )
         if failed_batches:
             warnings.append(

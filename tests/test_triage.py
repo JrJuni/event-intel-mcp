@@ -5,10 +5,13 @@ Corner-case set (self-generated, slice discipline):
 - over-cap → top-K by score, ORIGINAL roster order preserved, selection warning
 - one batch malformed → that batch neutral 0.5 + warning, other batches scored
 - every batch fails → exact first-N fallback + dedicated warning
-- competitor instruction present in both prompt languages
+- target-fit axis (#17): resolved target_mode injected into the prompt; the
+  "may be cut" rule present; low-fit company (incl. competitor) is cut, no
+  forced pass-through
 - global indices across batches (misalignment would silently rank wrong rows)
 - parse: clamp / NaN / inf / non-numeric entries / fenced / no-wrapper / garbage
-- digest: happy path, None cards, broken cards object (never raises)
+- digest: happy path + customer profile (signals/pains/bad-fit), None cards,
+  broken cards object (never raises)
 - ledger records stage="triage" with real usage; ledger=None safe
 """
 from __future__ import annotations
@@ -43,6 +46,7 @@ def _cards() -> CapabilityCards:
             "industries": ["AI infrastructure", "SaaS"],
             "company_signals": ["ships an AI product"],
         },
+        bad_fit=[{"reason": "we are not a consultancy", "keywords": ["consulting"]}],
     )
 
 
@@ -136,6 +140,15 @@ def test_digest_contains_product_capabilities_industries():
     assert "AI infrastructure" in digest
 
 
+def test_digest_carries_customer_profile_for_target_fit():
+    # #17: target-fit scoring needs the customer profile, not just product
+    # domain vocabulary — signals, buyer pains, and bad-fit keywords.
+    digest = _triage.build_capability_digest(_cards())
+    assert "ships an AI product" in digest      # ideal_customer.company_signals
+    assert "slow retrieval" in digest            # capability buyer_pains
+    assert "consulting" in digest                # bad_fit keywords
+
+
 def test_digest_none_and_broken_cards():
     assert _triage.build_capability_digest(None) is None
     assert _triage.build_capability_digest(object()) is None  # never raises
@@ -174,9 +187,10 @@ def test_over_cap_selects_top_k_in_roster_order():
     assert stage["calls"] == 1
     assert stage["input_tokens"] == 200
     assert stage["models"] == ["fake-triage-model"]
-    # prompt carried the digest + the competitor pass-through instruction
+    # prompt carried the digest + the target-fit axis (default mode customer)
     assert "Acme Vector DB" in llm.prompts[0]
-    assert "MUST pass" in llm.prompts[0]
+    assert "TARGET MODE: customer" in llm.prompts[0]
+    assert "MAY BE CUT" in llm.prompts[0]
 
 
 def test_batches_use_global_indices():
@@ -230,16 +244,32 @@ def test_no_digest_first_n_fallback_zero_calls():
     assert any("no capability digest" in w for w in res.warnings)
 
 
-def test_competitor_names_pass_triage():
-    # A competitor scored high by the rubric must be IN the shortlist — the
-    # penalty is scoring's job, not triage's.
-    llm = _TriageLLM()
-    roster = [_cand("FitCo Competitor"), _cand("NoMatch A"),
-              _cand("NoMatch B"), _cand("FitCo Target")]
+def test_low_target_fit_company_is_cut_no_forced_pass():
+    # #17 contract change: triage ranks PURELY by the LLM's target-fit score.
+    # There is no "competitors must pass" guarantee anymore — a company the
+    # model scores low (here a competitor/look-alike that isn't a customer)
+    # is cut in favour of higher-fit targets. competitor_penalty still applies
+    # later to whatever does reach scoring.
+    llm = _TriageLLM()  # scores names containing 'fit' high, else low
+    roster = [_cand("Rival Vector DB"), _cand("FitCo Target A"),
+              _cand("Lookalike Search"), _cand("FitCo Target B")]
     res = _triage.triage_roster(
         roster, "digest", llm, max_companies=2,
     )
-    assert [c.name for c in res.selected] == ["FitCo Competitor", "FitCo Target"]
+    names = [c.name for c in res.selected]
+    assert names == ["FitCo Target A", "FitCo Target B"]
+    assert "Rival Vector DB" not in names
+
+
+def test_prompt_carries_resolved_target_mode():
+    # The resolved target_mode is injected into the prompt so the rubric scores
+    # for the right kind of target (customer vs partner vs ecosystem).
+    llm = _TriageLLM()
+    roster = [_cand(f"C{i}") for i in range(4)]
+    _triage.triage_roster(
+        roster, "digest", llm, max_companies=2, target_mode="partner",
+    )
+    assert "TARGET MODE: partner" in llm.prompts[0]
 
 
 def test_neutral_ties_keep_roster_order():

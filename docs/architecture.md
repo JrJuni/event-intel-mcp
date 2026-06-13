@@ -146,10 +146,17 @@ extraction (Sonnet, chunked, snippet-anchored, max 12 chunks/event)
 exhibitor_candidates.yaml  (raw)
    │ roster triage (Y1D D2, `enrichment.triage.enabled`): when the roster
    │   exceeds max_companies, batched LLM calls score the FULL roster for
-   │   product-domain relevance (names+snippets vs ~200-token card digest) and
-   │   the top-max_companies go to enrichment — instead of "first 30 in page
-   │   order" (p7: 2,885 exhibitors → coverage 1%). roster ≤ cap → 0 calls;
-   │   total LLM failure → first-N (old behaviour); competitors must PASS
+   │   TARGET FIT under the resolved `target_mode` (customer | partner |
+   │   ecosystem) — NOT product-domain similarity (names+snippets vs a
+   │   ~250-token card digest that now carries ideal-customer signals + buyer
+   │   pains + bad-fit keywords) — and the top-max_companies go to enrichment,
+   │   instead of "first 30 in page order" (p7: 2,885 exhibitors → coverage 1%).
+   │   The mode-aware axis is #17's de-bias: the old "domain relevance" axis
+   │   promoted look-alikes/competitors and pushed customer-type targets out of
+   │   top-K (P@10=0). roster ≤ cap → 0 calls; total LLM failure → first-N (old
+   │   behaviour); competitors/look-alikes score low and MAY BE CUT (customer-
+   │   recall priority; competitor_penalty still applies at scoring). Efficacy
+   │   is live-verified; offline tests cover the plumbing only.
    │ enrichment (per exhibitor via search.provider, cached, max 30 companies)
    │   ├ deterministic official URL rule (Levenshtein + keyword overlap)
    │   ├ activity-evidence lane switch (`enrichment.evidence_source`, #16 S5;

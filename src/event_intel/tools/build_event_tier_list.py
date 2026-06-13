@@ -283,6 +283,7 @@ def build_event_tier_list(
                 max_companies=_enrich_cap,
                 batch_size=int(_triage_cfg.get("batch_size", 120)),
                 lang=lang,
+                target_mode=resolved_target_mode,
                 ledger=usage_ledger,
             )
             candidates_for_enrich = triage_result.selected
