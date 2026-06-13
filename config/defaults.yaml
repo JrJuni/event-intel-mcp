@@ -191,7 +191,7 @@ llm:
   extract_max_tokens: 4096
   rationale_max_tokens: 256
   openai_model: gpt-4.1                    # used when provider=openai (official key-based API)
-  chatgpt_oauth_model: gpt-5.5             # used when provider=chatgpt_oauth (alt: gpt-5.4)
+  chatgpt_oauth_model: gpt-5.4-mini        # used when provider=chatgpt_oauth — pinned to mini tier for cost (alt: gpt-5.5)
   chatgpt_oauth_reasoning_effort: low      # low | medium | high (Codex Responses reasoning effort)
 
 acquisition:
