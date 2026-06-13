@@ -1,0 +1,1087 @@
+{
+  "pair": "p7_siemens_hannover",
+  "run_id": "hannover_messe_2026-20260613072111-2ab0d4c4",
+  "run_fingerprint": "0d417112a2654fbeb4d69091e83380ff6029c43d70d16722058ae736c397c39c",
+  "run_summary": {
+    "run_id": "hannover_messe_2026-20260613072111-2ab0d4c4",
+    "run_fingerprint": "0d417112a2654fbeb4d69091e83380ff6029c43d70d16722058ae736c397c39c",
+    "git_commit_sha": "46c69d2e211726f5600bd7008472102b332d9301",
+    "config_fp": "349cf0bc6a9cc40bd9b2131b08bba7a3b56bfc1f8564a66db58b87d555ac2adc",
+    "cards_fingerprint": "50a3639102d32f26b664b35eb64756818700c33a0f9f723fe037af56c7fafa73",
+    "source_sha256": "6f2f56e685d530f51513114bc1878c640064c509d0d51f996ffcd4e896ecf1ac",
+    "provider": "chatgpt_oauth",
+    "model_ids": {
+      "extract": "claude-sonnet-4-6",
+      "rationale": "claude-sonnet-4-6",
+      "embedding": "bge-m3"
+    },
+    "reference_timestamp": "2026-06-13T07:21:11.091134+00:00",
+    "target_mode": "customer",
+    "max_companies": 50,
+    "max_chunks_per_event": 12,
+    "refresh": false,
+    "cache_hits": 0,
+    "cache_misses": 27,
+    "skipped_from_resume": 23,
+    "search_calls": 27,
+    "extracted": 2735,
+    "enriched": 50,
+    "scored": 50,
+    "extraction_coverage": null,
+    "stages": [
+      {
+        "stage": "source_capture",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "extraction",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "enrichment",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "retrieval",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "scoring",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "report",
+        "ok": true,
+        "error_code": null
+      }
+    ],
+    "companies": [
+      {
+        "name": "acoforja industria de forjados",
+        "tier": "C",
+        "final_score": 3.318142043352127,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.86,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.503387987613678,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.32 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "acolucci maquinas para embalagens",
+        "tier": "C",
+        "final_score": 1.7214905083179475,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5367169976234436,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.72 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "akar auto industries",
+        "tier": "C",
+        "final_score": 3.052679482102394,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5706630051136017,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.05 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "akoglu otomotiv",
+        "tier": "C",
+        "final_score": 1.3029979348182674,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.570572018623352,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.30 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "alstom transportation germany",
+        "tier": "C",
+        "final_score": 1.7489671558141708,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5717236697673798,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.75 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "automotive parts manufacturers",
+        "tier": "C",
+        "final_score": 2.1430057406425482,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5877126455307007,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.14 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "basquevolt",
+        "tier": "C",
+        "final_score": 2.976078382730484,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.82,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5668347477912903,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.98 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "battr energy",
+        "tier": "C",
+        "final_score": 2.526388099789619,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5924605429172516,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.53 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "bayer",
+        "tier": "C",
+        "final_score": 2.9668766498565673,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.8,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5523209571838379,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.97 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "beijing minli energy storage technology",
+        "tier": "C",
+        "final_score": 1.099538141489029,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.55,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5858462452888489,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.10 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "brembo",
+        "tier": "C",
+        "final_score": 2.8896508926153186,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.78,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5572426021099091,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.89 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "cellcentric",
+        "tier": "C",
+        "final_score": 3.192240985035897,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.86,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5393597185611725,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.19 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "circuibras ind com de circuitos",
+        "tier": "C",
+        "final_score": 1.0429517984390264,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.45,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5162994861602783,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.04 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "clarios germany",
+        "tier": "C",
+        "final_score": 2.2538102805614475,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.55,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.541768491268158,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.25 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "daehwa electric machinery",
+        "tier": "C",
+        "final_score": 1.7219634473323822,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5651533007621765,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.72 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "daejin hydraulic machinery",
+        "tier": "C",
+        "final_score": 1.4387227326631544,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5317935049533844,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.44 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "dalian rizhibao machinery manufacture",
+        "tier": "C",
+        "final_score": 1.3019102096557613,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5708827972412109,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.30 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "dansk sintermetal",
+        "tier": "B",
+        "final_score": 4.359999999999999,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.62,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.36 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "de nora italy hydrogen techn",
+        "tier": "C",
+        "final_score": 0.8105437874794008,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5398446321487427,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=0.81 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "delia automotive",
+        "tier": "C",
+        "final_score": 2.7287283450365063,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5346490442752838,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.73 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "delixi new energy technology hangzhou",
+        "tier": "C",
+        "final_score": 0.7325227677822116,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5621363520622253,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=0.73 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "demas makina yedek parca",
+        "tier": "C",
+        "final_score": 2.8500000000000005,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.45,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.85 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "dezhou willex hydraulic machinery",
+        "tier": "C",
+        "final_score": 1.8146439313888552,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5386731624603271,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.81 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "dfl nsar bearings technology",
+        "tier": "C",
+        "final_score": 1.3523750990629195,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.55,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5136071145534515,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.35 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "diehl aviation laupheim",
+        "tier": "C",
+        "final_score": 0.9320452392101292,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.1,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5337013602256775,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=0.93 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "dingzhou dongfang foundry",
+        "tier": "C",
+        "final_score": 2.4889275908470148,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5174492597579956,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.49 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "dinsense transmission equipment",
+        "tier": "C",
+        "final_score": 0.9877992928028112,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.45,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5320573449134827,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=0.99 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "dmg mori emea holding",
+        "tier": "C",
+        "final_score": 3.2137500077486036,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5246428549289703,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.21 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "ebm papst mulfingen",
+        "tier": "C",
+        "final_score": 3.0986563926935196,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.82,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.531812459230423,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.10 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "ehrt maschinenbau",
+        "tier": "C",
+        "final_score": 1.5369402140378952,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.65,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5465885102748871,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.54 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "embraer",
+        "tier": "C",
+        "final_score": 3.2573525965213768,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5978992581367493,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.26 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "farina componentes automotivos",
+        "tier": "B",
+        "final_score": 4.75,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.75 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "franho maquinas e equipmentos",
+        "tier": "C",
+        "final_score": 1.0402627348899847,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.45,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5170677900314331,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.04 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "fundijacto fundicao injectada de meta",
+        "tier": "B",
+        "final_score": 4.66,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.72,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=4.66 >= 4.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "graebener",
+        "tier": "C",
+        "final_score": 3.095766657590866,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.8,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.515495240688324,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.10 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "hung hsin precision industry",
+        "tier": "C",
+        "final_score": 2.8575243800878525,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5407073199748993,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.86 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "indie semiconductor ffo",
+        "tier": "C",
+        "final_score": 0.8342772245407106,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5330636501312256,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=0.83 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "krones",
+        "tier": "C",
+        "final_score": 2.521585614085197,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.62,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.525261253118515,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.52 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "merck",
+        "tier": "C",
+        "final_score": 2.5090739846229546,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.65,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.554550290107727,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.51 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "microvast",
+        "tier": "C",
+        "final_score": 1.5066947132349013,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.3,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.540944367647171,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.51 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "motherson manufacturing services",
+        "tier": "C",
+        "final_score": 1.9396120607852938,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5172536969184875,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.94 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "motus otomotiv makine ve metal",
+        "tier": "C",
+        "final_score": 1.6191364794969556,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.65,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5231038630008698,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.62 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "powerco",
+        "tier": "C",
+        "final_score": 1.4607059895992278,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.3,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5540840029716492,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.46 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "schaeffler technologies",
+        "tier": "C",
+        "final_score": 2.3678789645433422,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6377488672733307,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.37 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "schwabische werkzeugmaschinen",
+        "tier": "C",
+        "final_score": 1.6940830260515214,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5445477068424225,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.69 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "toyota industries",
+        "tier": "C",
+        "final_score": 1.6870949089527132,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5751157402992249,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.69 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "volkswagen",
+        "tier": "C",
+        "final_score": 3.1717121630907066,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5366536676883698,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.17 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "volkswagen truck bus",
+        "tier": "B",
+        "final_score": 5.35,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.35 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "xpeng motors germany",
+        "tier": "C",
+        "final_score": 2.1840089440345767,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5331403017044067,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.18 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "zf getriebe brandenburg",
+        "tier": "C",
+        "final_score": 3.7199999999999998,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.74,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.72 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      }
+    ],
+    "warnings": [
+      "extraction: CSV short-circuit on name column 'company_name' — 2885 rows converted, 0 LLM calls",
+      "llm.triage_model / llm.fit_model have no effect under provider=chatgpt_oauth (the OAuth lane pins llm.chatgpt_oauth_model) — per-stage right-sizing skipped",
+      "triage: selected 50/2735 exhibitors by LLM target fit (mode=customer, 23 calls)"
+    ],
+    "pair": null,
+    "source_index_fingerprint": null,
+    "llm_usage": {
+      "schema": "llm-usage/v2",
+      "stages": {
+        "extraction": {
+          "calls": 0,
+          "calls_cached": 0,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "llm_fit": {
+          "calls": 50,
+          "calls_cached": 0,
+          "input_tokens": 28236,
+          "output_tokens": 6177,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "triage": {
+          "calls": 23,
+          "calls_cached": 0,
+          "input_tokens": 109023,
+          "output_tokens": 19815,
+          "models": [
+            "gpt-5.5"
+          ]
+        }
+      },
+      "totals": {
+        "calls": 73,
+        "calls_cached": 0,
+        "input_tokens": 137259,
+        "output_tokens": 25992
+      },
+      "reference_costs_usd": {
+        "claude-sonnet-4-6": {
+          "input_usd": 0.411777,
+          "output_usd": 0.38988,
+          "total_usd": 0.801657
+        },
+        "gpt-5.4-mini": {
+          "input_usd": 0.102944,
+          "output_usd": 0.116964,
+          "total_usd": 0.219908
+        },
+        "claude-haiku-4-5": {
+          "input_usd": 0.137259,
+          "output_usd": 0.12996,
+          "total_usd": 0.267219
+        }
+      },
+      "blended_cost_usd": {
+        "stages": {},
+        "total_usd": 0.0,
+        "unpriced_stages": [
+          "llm_fit",
+          "triage"
+        ]
+      }
+    }
+  },
+  "top10_evidence": []
+}

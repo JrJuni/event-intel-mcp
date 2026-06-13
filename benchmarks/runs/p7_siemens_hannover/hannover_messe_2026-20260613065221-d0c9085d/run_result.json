@@ -1,0 +1,707 @@
+{
+  "pair": "p7_siemens_hannover",
+  "run_id": "hannover_messe_2026-20260613065221-d0c9085d",
+  "run_fingerprint": "21f2f9a0f8728c044f1f2d9e1cf3c863a02a4bbd6151ace8470b444064284e6a",
+  "run_summary": {
+    "run_id": "hannover_messe_2026-20260613065221-d0c9085d",
+    "run_fingerprint": "21f2f9a0f8728c044f1f2d9e1cf3c863a02a4bbd6151ace8470b444064284e6a",
+    "git_commit_sha": "46c69d2e211726f5600bd7008472102b332d9301",
+    "config_fp": "349cf0bc6a9cc40bd9b2131b08bba7a3b56bfc1f8564a66db58b87d555ac2adc",
+    "cards_fingerprint": "50a3639102d32f26b664b35eb64756818700c33a0f9f723fe037af56c7fafa73",
+    "source_sha256": "6f2f56e685d530f51513114bc1878c640064c509d0d51f996ffcd4e896ecf1ac",
+    "provider": "chatgpt_oauth",
+    "model_ids": {
+      "extract": "claude-sonnet-4-6",
+      "rationale": "claude-sonnet-4-6",
+      "embedding": "bge-m3"
+    },
+    "reference_timestamp": "2026-06-13T06:52:21.078097+00:00",
+    "target_mode": "customer",
+    "max_companies": null,
+    "max_chunks_per_event": 12,
+    "refresh": false,
+    "cache_hits": 0,
+    "cache_misses": 30,
+    "skipped_from_resume": 0,
+    "search_calls": 30,
+    "extracted": 2735,
+    "enriched": 30,
+    "scored": 30,
+    "extraction_coverage": null,
+    "stages": [
+      {
+        "stage": "source_capture",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "extraction",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "enrichment",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "retrieval",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "scoring",
+        "ok": true,
+        "error_code": null
+      },
+      {
+        "stage": "report",
+        "ok": true,
+        "error_code": null
+      }
+    ],
+    "companies": [
+      {
+        "name": "acolucci maquinas para embalagens",
+        "tier": "C",
+        "final_score": 1.7214905083179475,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5367169976234436,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.72 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "akar auto industries",
+        "tier": "C",
+        "final_score": 3.052679482102394,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5706630051136017,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.05 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "akoglu otomotiv",
+        "tier": "C",
+        "final_score": 1.3029982477426527,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5705719292163849,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.30 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "alstom transportation germany",
+        "tier": "C",
+        "final_score": 1.5989671558141707,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5717236697673798,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.60 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "analog devices",
+        "tier": "C",
+        "final_score": 2.859032571315765,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.75,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5402764081954956,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.86 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "automotive parts manufacturers",
+        "tier": "C",
+        "final_score": 2.1430057406425482,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.9,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5877126455307007,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.14 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "basquevolt",
+        "tier": "C",
+        "final_score": 2.916078069806099,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.8,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5668348371982574,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.92 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "bayer",
+        "tier": "C",
+        "final_score": 2.666876649856567,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5523209571838379,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.67 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "beijing minli energy storage technology",
+        "tier": "C",
+        "final_score": 1.099538141489029,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.55,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5858462452888489,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.10 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "bosch",
+        "tier": "C",
+        "final_score": 1.6249786794185639,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.35,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.550006091594696,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.62 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "bosch industrial additive manufacturing",
+        "tier": "C",
+        "final_score": 1.9168595635890961,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.78,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5494686961174011,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.92 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "brembo",
+        "tier": "C",
+        "final_score": 2.8896508926153186,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.78,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5572426021099091,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.89 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "cellcentric",
+        "tier": "C",
+        "final_score": 3.1622404634952552,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5393598675727844,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.16 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "changzhou boren precision machinery",
+        "tier": "C",
+        "final_score": 1.118018090724945,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.5,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.53770911693573,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.12 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "clarios germany",
+        "tier": "C",
+        "final_score": 2.253809863328934,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.55,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5417686104774475,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.25 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "krones",
+        "tier": "C",
+        "final_score": 2.461585614085197,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.525261253118515,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.46 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "merck",
+        "tier": "C",
+        "final_score": 2.659073984622955,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.554550290107727,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.66 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "motherson manufacturing services",
+        "tier": "C",
+        "final_score": 1.7896120607852937,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5172536969184875,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.79 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "motus otomotiv makine ve metal",
+        "tier": "C",
+        "final_score": 1.4691364794969555,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.6,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5231038630008698,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.47 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "powerco",
+        "tier": "C",
+        "final_score": 1.760705989599228,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.4,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5540840029716492,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.76 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "robert bosch power tools",
+        "tier": "C",
+        "final_score": 2.628014657497406,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.72,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5805672407150269,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.63 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "schaeffler technologies",
+        "tier": "C",
+        "final_score": 2.3678789645433422,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.6377488672733307,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.37 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "schwabische werkzeugmaschinen",
+        "tier": "C",
+        "final_score": 1.6940830260515214,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.7,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5445477068424225,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.69 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "seho systems",
+        "tier": "C",
+        "final_score": 3.0165485024452208,
+        "evidence_floor": 1,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5809861421585083,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.02 >= 0.00",
+          "evidence_floor=1 >= 0"
+        ]
+      },
+      {
+        "name": "toyota industries",
+        "tier": "C",
+        "final_score": 1.387094908952713,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.3,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5751157402992249,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=1.39 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "volkswagen",
+        "tier": "C",
+        "final_score": 3.1717120587825773,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5366536974906921,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.17 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "volkswagen truck bus",
+        "tier": "B",
+        "final_score": 5.35,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.95,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=5.35 >= 4.00",
+          "evidence_floor=2 >= 0"
+        ]
+      },
+      {
+        "name": "xpeng motors germany",
+        "tier": "C",
+        "final_score": 2.1840089440345767,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.85,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5331403017044067,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=2.18 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "zf getriebe brandenburg",
+        "tier": "C",
+        "final_score": 3.9000000000000004,
+        "evidence_floor": 0,
+        "dimensions": {
+          "capability_fit": 0.8,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 0.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.0,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.90 >= 0.00",
+          "evidence_floor=0 >= 0"
+        ]
+      },
+      {
+        "name": "zoomlion",
+        "tier": "C",
+        "final_score": 3.222721697688103,
+        "evidence_floor": 2,
+        "dimensions": {
+          "capability_fit": 0.86,
+          "source_confidence": 1.0,
+          "buying_signal": 0.0,
+          "website_verification": 1.0,
+          "category_fit": 0.0,
+          "competitor_penalty": 0.5306509435176849,
+          "bad_fit_penalty": 0.0
+        },
+        "tier_reasons": [
+          "final_score=3.22 >= 0.00",
+          "evidence_floor=2 >= 0"
+        ]
+      }
+    ],
+    "warnings": [
+      "extraction: CSV short-circuit on name column 'company_name' — 2885 rows converted, 0 LLM calls",
+      "llm.triage_model / llm.fit_model have no effect under provider=chatgpt_oauth (the OAuth lane pins llm.chatgpt_oauth_model) — per-stage right-sizing skipped",
+      "triage: selected 30/2735 exhibitors by LLM target fit (mode=customer, 23 calls)"
+    ],
+    "pair": null,
+    "source_index_fingerprint": null,
+    "llm_usage": {
+      "schema": "llm-usage/v2",
+      "stages": {
+        "extraction": {
+          "calls": 0,
+          "calls_cached": 0,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "llm_fit": {
+          "calls": 30,
+          "calls_cached": 0,
+          "input_tokens": 16882,
+          "output_tokens": 3816,
+          "models": [
+            "gpt-5.5"
+          ]
+        },
+        "triage": {
+          "calls": 23,
+          "calls_cached": 0,
+          "input_tokens": 109023,
+          "output_tokens": 19604,
+          "models": [
+            "gpt-5.5"
+          ]
+        }
+      },
+      "totals": {
+        "calls": 53,
+        "calls_cached": 0,
+        "input_tokens": 125905,
+        "output_tokens": 23420
+      },
+      "reference_costs_usd": {
+        "claude-sonnet-4-6": {
+          "input_usd": 0.377715,
+          "output_usd": 0.3513,
+          "total_usd": 0.729015
+        },
+        "gpt-5.4-mini": {
+          "input_usd": 0.094429,
+          "output_usd": 0.10539,
+          "total_usd": 0.199819
+        },
+        "claude-haiku-4-5": {
+          "input_usd": 0.125905,
+          "output_usd": 0.1171,
+          "total_usd": 0.243005
+        }
+      },
+      "blended_cost_usd": {
+        "stages": {},
+        "total_usd": 0.0,
+        "unpriced_stages": [
+          "llm_fit",
+          "triage"
+        ]
+      }
+    }
+  },
+  "top10_evidence": []
+}

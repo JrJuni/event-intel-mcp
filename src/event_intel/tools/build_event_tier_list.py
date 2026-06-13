@@ -30,6 +30,7 @@ from event_intel.events import news_body as _news_body
 from event_intel.events import profile_fetch as _profile
 from event_intel.events import run_summary as _run_summary
 from event_intel.events import source_capture as _source_capture
+from event_intel.events import tier2 as _tier2
 from event_intel.events import triage as _triage
 from event_intel.providers import embedding as _embedding
 from event_intel.providers import llm as _llm
@@ -266,6 +267,13 @@ def build_event_tier_list(
         #      relevance instead of "the first N in page order". Enrichment's
         #      own cap stays as a no-op backstop. Roster ≤ cap → zero calls;
         #      total LLM failure → first-N (old behaviour); never fails a build.
+        # Search provider is built ONCE here (when enrichment runs) and reused by
+        # both Tier-2 triage (E3) and enrichment, so a config error surfaces once
+        # and a single rate-limiter instance bounds the whole build.
+        search_provider = None
+        if enrichment_enabled and extraction.candidates:
+            search_provider = _search.make_search_provider(config)
+
         triage_warnings: list[str] = []
         candidates_for_enrich = extraction.candidates
         _triage_cfg = (config.get("enrichment", {}) or {}).get("triage", {}) or {}
@@ -294,23 +302,48 @@ def build_event_tier_list(
                 )
                 profile_result = profiler.fetch_roster(extraction.candidates)
                 triage_warnings.extend(profile_result.warnings)
+            _digest = _triage.build_capability_digest(cards)
+            _fit_cutoff = float(
+                _triage_cfg.get("fit_cutoff", _triage.DEFAULT_FIT_CUTOFF)
+            )
             triage_result = _triage.triage_roster(
                 extraction.candidates,
-                _triage.build_capability_digest(cards),
+                _digest,
                 triage_llm,
                 max_companies=_enrich_cap,
                 batch_size=int(_triage_cfg.get("batch_size", 120)),
                 lang=lang,
                 target_mode=resolved_target_mode,
-                fit_cutoff=float(_triage_cfg.get("fit_cutoff", _triage.DEFAULT_FIT_CUTOFF)),
+                fit_cutoff=_fit_cutoff,
                 ledger=usage_ledger,
             )
+            # 4.5b. Tier-2 adaptive search (E3) — resolve UNKNOWN exhibitors that
+            #       are still in contention for a slot via per-company web search
+            #       + re-triage. Roster-size gated + adaptive early-stop; skips
+            #       entirely when Tier 1 already filled the shortlist. No-op when
+            #       there are no UNKNOWN or no search provider. Never fails a build.
+            _tier2_cfg = (config.get("enrichment", {}) or {}).get("tier2", {}) or {}
+            tier2_res = _tier2.resolve_unknowns(
+                extraction.candidates,
+                triage_result,
+                _digest,
+                search_provider,
+                triage_llm,
+                max_companies=_enrich_cap,
+                cfg=_tier2.Tier2Config.from_dict(_tier2_cfg),
+                fit_cutoff=_fit_cutoff,
+                lang=lang,
+                target_mode=resolved_target_mode,
+                ledger=usage_ledger,
+            )
+            triage_result = tier2_res.triage
             candidates_for_enrich = triage_result.selected
             triage_warnings.extend(triage_result.warnings)
 
-        # 5. Enrichment (S4) — optional.
+        # 5. Enrichment (S4) — optional. Reuses the provider built above.
         if enrichment_enabled and extraction.candidates:
-            search_provider = _search.make_search_provider(config)
+            if search_provider is None:
+                search_provider = _search.make_search_provider(config)
             # Resume is scoped per EVENT, not per workspace (review #4): the
             # default workspace-global resume let a later event silently reuse an
             # earlier event's rows (keyed by company name). The per-query search

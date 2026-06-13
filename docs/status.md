@@ -6,6 +6,13 @@
 
 ## 진행 중
 
+- **Evidence-first triage 재설계 (E1~E3 ✅ / E4 ⏳, 2026-06-13, branch `e3-tier2-adaptive-search`)**
+  - **계기.** homepage smoke P@10=0.0(메모 `p7-homepage-smoke-result`) 진단: triage가 **이름만** 보고 채점 → 실타깃과 산업적-이름 lookalike를 구분 불가. 처방 = **증거 우선 2-tier 적응 루프** + 2-시그널 출력(fit_score vs evidence_status).
+  - ✅ **E1 profile_fetch** (PR #115) — `events/profile_fetch.py`: triage 전 풀 로스터의 detail-page 본문을 `candidate.profile_text`로 적재(HTTP+캐시+trafilatura, **검색·LLM 0콜**). Tier-1 증거.
+  - ✅ **E2 triage 재작성** (PR #116) — 2-시그널: 각 사 → 수치 fit(0.0-1.0, KNOWN) **또는** `"unknown"`(증거 없음 = 라우팅 STATE, 낮은 점수 아님). 3-band 선택(사용자 승인): KNOWN_FIT(≥cutoff) > UNKNOWN(로스터순) > KNOWN_NOFIT. all-UNKNOWN = 기존 first-N과 동일 degrade. 프롬프트 en/ko "이름은 증거 아님" 재작성.
+  - ✅ **E3 Tier-2 적응 검색** (이 브랜치) — `events/tier2.py` `resolve_unknowns`: 슬롯 경합 중인 UNKNOWN을 **회사당 웹검색 1회 → profile_text → 재-triage**로 KNOWN 전환. **게이트**: Tier-1 KNOWN_FIT ≥ cap이면 전체 skip(증거 충분 = $0). **로스터 자동 게이팅**(사용자 선택): 소형(≤`small_roster_threshold` 300) 전수 브루트포스 / 대형은 `max_searches_per_event`(50) 상한 + 미검색분 로깅. **적응 조기종료**: cap 충족 시 중단. ddgs degrade 3연속 → abort. 상수 전부 PROVISIONAL·config 구동. triage 내부를 `score_indexed`/`select_by_band`로 추출(부분 재채점 공유). offline 16-케이스 + build 배선 1-케이스, 전체 pytest green.
+  - ⏳ **E4(다음)** — cost ledger에 Tier-2 검색 카운트 + 투영 비용표 + 문서 마감.
+
 - **R2 캠페인 취소 + homepage = 확정 evidence 방향 (2026-06-13 사용자 결정)**
   - **R2 취소.** zero-config 뉴스-스모크 캠페인(`EventIntelR2Smoke` 크론, 누적 1/10)을 **전면 취소** — 크론 삭제, retry-playbook 재집계 트리거 해제. 뉴스 검색 retry-stats 수집이 목적이었으나 evidence lane을 homepage로 트면서 목적이 소멸.
   - **homepage 확정.** `evidence_source: homepage`는 이미 출하 default(S4/S5, #16). 이제 **실험이 아니라 확정 방향**으로 격상 — 뉴스 레인(count_news·news_body·supplement·RSS 폴백·query_rescue)은 `evidence_source: news` 한 줄로 되돌리는 **escape-hatch fallback**으로만 유지(삭제 아님).

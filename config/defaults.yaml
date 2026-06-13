@@ -82,6 +82,13 @@ enrichment:
     batch_size: 120                # companies per triage call
     fit_cutoff: 0.5                # E2: fit ≥ cutoff = KNOWN_FIT (kept first); below = KNOWN_NOFIT (cut first).
                                    # UNKNOWN (no evidence) sits between — kept ahead of low-fit for Tier 2.
+  tier2:                           # E3 Tier-2 adaptive search — resolve UNKNOWN exhibitors still in contention
+    enabled: true                  # for a slot via ONE web search/company + re-triage (UNKNOWN → fit/no-fit).
+                                   # Skips entirely when Tier 1 already filled the shortlist with KNOWN_FIT.
+    small_roster_threshold: 300    # PROVISIONAL — roster ≤ this: brute-force EVERY UNKNOWN (minor-show recall).
+    max_searches_per_event: 50     # PROVISIONAL — roster > threshold: hard ddgs-spend ceiling per event.
+    search_batch: 10               # UNKNOWN searched + re-triaged per adaptive step (early-stop granularity)
+    search_count: 3                # web results/company folded into evidence. All PROVISIONAL — tune from live data.
   fetch_timeout_seconds: 10
   fetch_body_max_chars: 2000
   cache_enabled: true              # Cache search responses per (provider, query, kind) hash

@@ -897,6 +897,74 @@ def test_build_pre_triage_disabled_skips_profile_fetch(
     assert "triage" in rs["llm_usage"]["stages"]            # triage still ran
 
 
+def test_build_tier2_resolves_unknowns_via_search(all_fakes, monkeypatch, repo_root):
+    """E3 wiring: when Tier-1 triage marks companies UNKNOWN and they are in
+    contention for a slot, Tier 2 web-searches them (recording provider) and the
+    re-triage resolves them into the shortlist — proving the build wires Tier 2
+    after triage and reuses the single search provider."""
+    import json as _json
+
+    class _Tier2WiringLLM(_FakeLLM):
+        """Tier-1 marks the non-NeuroDrive companies UNKNOWN; the Tier-2
+        re-triage (2nd shortlist call onward) resolves them to fit."""
+
+        def __init__(self, **kw):
+            super().__init__(**kw)
+            self.triage_calls = 0
+
+        def chat_once(self, *, system, user, **kwargs):
+            if "shortlist" in system.lower():
+                self.triage_calls += 1
+                scores = {}
+                for line in user.splitlines():
+                    head, _, _ = line.partition(" — ")
+                    idx_s, _, name = head.partition(". ")
+                    if idx_s.strip().isdigit() and name:
+                        if self.triage_calls == 1:
+                            scores[idx_s.strip()] = (
+                                0.2 if "neurodrive" in name.lower() else "unknown"
+                            )
+                        else:
+                            scores[idx_s.strip()] = 0.9
+                return _llm.LLMResponse(
+                    text=_json.dumps({"scores": scores}),
+                    usage={"input_tokens": 150, "output_tokens": 30},
+                    model=self.model,
+                )
+            return super().chat_once(system=system, user=user, **kwargs)
+
+    class _RecordingSearch(_FakeSearch):
+        def __init__(self, **kw):
+            super().__init__(**kw)
+            self.web_queries = []
+
+        def search(self, query, *, kind, count, days=None, lang="en"):
+            if kind == "web":
+                self.web_queries.append(query)
+            return super().search(query, kind=kind, count=count, days=days, lang=lang)
+
+    rec = _RecordingSearch()
+    monkeypatch.setattr(_llm, "AnthropicProvider", _Tier2WiringLLM)
+    monkeypatch.setattr(_search, "make_search_provider", lambda config=None: rec)
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: _enable_triage_config())
+    _write_sample_cards(repo_root)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_tier2",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        max_companies=2, run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    # Tier 2 web-searched both UNKNOWN companies (NeuroDrive was KNOWN_NOFIT).
+    assert any("mobius" in q.lower() for q in rec.web_queries)
+    assert any("edgevision" in q.lower() for q in rec.web_queries)
+    assert any(w.startswith("tier2: searched") for w in out["warnings"])
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    names = [c["name"] for c in rs["companies"]]
+    assert "NeuroDrive Inc." not in names          # resolved fits displaced the no-fit
+    assert rs["llm_usage"]["stages"]["triage"]["calls"] >= 2   # Tier-1 + Tier-2 re-triage
+
+
 def test_build_e2e_korean_lang(all_fakes, repo_root):
     out = build_tool(
         workspace_id="default",
