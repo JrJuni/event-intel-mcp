@@ -120,9 +120,11 @@ Anthropic 대상 + **search ✅ ddgs는 ZCS S2에서 process-wide throttle + 지
 5. **⑤ LLM 결과 캐시 — ✅ 완료 (#108, extraction 한정)**: `sha256(version|model|lang|prompt_sha|chunk_sha)` 키 영속 캐시 — 재실행 재과금 제거, "75분 빌드가 chunk 39에서 전사" 근본 처방(retry-playbook §3.6). **triage/fit 캐시는 확장 후보**(범위 외 기록).
 6. **⑥ Brave rescue rung — ⏸️ deferred**: 6월 Brave 쿼터 소진이라 라이브 검증 불가. **이번 phase의 홈페이지 크롤 lane이 쿼리 ~150→~30을 먼저 달성(S5 머지)** — Brave rescue의 필요 자체가 줄었을 수 있음, 라이브 데이터 확보 후 재평가.
 
-### #17 triage lookalike-bias 처방 (P1, 사용자 결정 대기 — 스코어링/프롬프트 변경)
+### #17 triage lookalike-bias 처방 — ✅ ①+② 완료 (사용자 승인, 2026-06-13)
 
-**D3 확정 진단(2026-06-11)**: p7 fullx(청크캡 64)가 추출 94.8%(2,735/2,885)를 달성하고도 gold 4사 전원이 scored 30에 못 들어감(P@10 0.0) — p5에서도 누락 gold 5사 전원이 "추출됐으나 triage drop". **triage의 "제품 도메인 관련도" 채점 축이 경쟁사/lookalike(같은 도메인 어휘)를 승격시키고 고객형(customer-type) 타깃을 밀어내는 구조 편향.** 처방 후보: ① triage 프롬프트에 "고객형 vs 동종업" 구분 축 추가 ② capability_digest에 target_mode 반영 ③ 2-pass triage(도메인 필터→고객 적합). 전부 triage 채점 의미 변경 = **사용자 승인 필요**. 검증은 mock 시나리오(경쟁사·고객형 혼합 roster) + 차후 라이브 1회.
+**D3 확정 진단(2026-06-11)**: p7 fullx(청크캡 64)가 추출 94.8%(2,735/2,885)를 달성하고도 gold 4사 전원이 scored 30에 못 들어감(P@10 0.0) — p5에서도 누락 gold 5사 전원이 "추출됐으나 triage drop". **triage의 "제품 도메인 관련도" 채점 축이 경쟁사/lookalike(같은 도메인 어휘)를 승격시키고 고객형(customer-type) 타깃을 밀어내는 구조 편향.**
+
+**처방 (사용자 2-결정 잠금)**: ①+② 한 슬라이스 = triage 채점 축을 "제품 도메인 관련도" → **`target_mode`(customer|partner|ecosystem) 하의 타깃 적합도**로 재정의(프롬프트 en/ko 재작성 + `triage_roster(target_mode=...)` 주입, build site의 `resolved_target_mode` 흐름) + capability_digest에 고객 프로필(ideal-customer signals · buyer pains · bad-fit keywords) 보강. 경쟁사 처리 = **고객 recall 최대화: 컷 허용** — "경쟁사는 반드시 통과" 불변식 제거(competitor_penalty는 스코어링 단계에서 여전히 적용). ③ 2-pass는 미채택. **검증은 offline plumbing(프롬프트 내용·digest 필드·선택 로직·회귀 0)만**; **de-bias 효능(P@10 개선)은 offline 검증 불가 → PROVISIONAL, 라이브 1회 차후.**
 
 ### #15 기준 ⑤ 충족 — count_news 상향 (P1, 사용자 결정 대기)
 **ZNC G4 정량 결론(2026-06-11)**: 대기업 본문뉴스 ≥10건 달성률 0~20% (3 pair measure, advisory `news_capture`). `count_news` 12로는 게이트·중복제거·본문 fetch(73~78%) 통과 후 5~9건 대역. **처방 후보**: ① `count_news` 12→20+(검색 예산 ~1.7배) ② rescue식 보조 뉴스 쿼리 ③ 기준 완화. 검색 예산 trade-off라 **사용자 결정 필요**; 결정 시 1슬라이스(config+재측정).

@@ -6,6 +6,11 @@
 
 ## 진행 중
 
+- **#17 triage lookalike-bias 처방 ✅ ①+② 슬라이스 완료 (2026-06-13, 사용자 2-결정 잠금, branch `triage-target-fit-debias`)**
+  - **계기.** D3 확정 진단: 추출 94.8% 달성에도 P@10=0 — triage의 "제품 도메인 관련도" 채점 축이 경쟁사/lookalike(같은 도메인 어휘)를 승격시키고 고객형 타깃을 top-K 밖으로 밀어내는 구조 편향.
+  - **처방(① + ② 한 슬라이스).** triage 채점 축을 **`target_mode`(customer|partner|ecosystem) 하의 타깃 적합도**로 재정의 — 프롬프트 en/ko 재작성 + `triage_roster(target_mode=…)` 주입(build site의 `resolved_target_mode` 흐름). capability_digest에 **고객 프로필**(ideal-customer signals · buyer pains · bad-fit keywords) 보강. 경쟁사 처리 = **고객 recall 최대화: 컷 허용** — "경쟁사 반드시 통과" 불변식 제거(competitor_penalty는 스코어링에서 여전히 적용). ③ 2-pass 미채택.
+  - **검증.** offline plumbing만(프롬프트 내용·digest 필드·선택 로직·회귀 0) — ruff + 전체 pytest green. **de-bias 효능(P@10 개선)은 offline 검증 불가 → PROVISIONAL, 라이브 1회 차후.** 라이브 스모크 0회(사용자 지시 유지).
+
 - **비용 최적화(#16 ①④⑤) + 홈페이지 크롤 증거 lane ✅ 전체 완료 (2026-06-11 착수, plan `config-zero-mossy-toucan.md` v1 [완료·아카이브] — S0~S6, PR #105(S0 동승)·#106~#111)**
   - **계기.** D3 실측 비용 **$5.06/run**(Sonnet-4.6 환산, p7 fullx 2,885사)이 예상보다 높아 #16 즉시 착수. **검증은 전부 skeleton + mock(offline pytest) — 라이브 스모크/벤치마크 런 0회**(사용자 지시). 비용 효과는 실측 baseline에서의 **투영치만** 보고(전부 PROVISIONAL). 추가로 사용자 선택 "뉴스 대체 실험": activity 증거를 뉴스 검색 대신 회사 자체 /press·/news 페이지에서.
   - ✅ **S0** (#105 동승) — D3 문서 마감(잔여 라이브런 p6 재실행·p1 mini 취소 명기).
