@@ -181,6 +181,12 @@ def _csv_value(v: object) -> str:
 
 def _capture_csv(path: Path) -> SourceCapture:
     raw = _read_file(path)
+    # Excel / Windows CSV exports prepend a UTF-8 BOM (U+FEFF). It is NOT
+    # whitespace, so a later header.strip() leaves it glued to the first column
+    # name ('<BOM>company_name') — which silently defeats the CSV name-column
+    # short-circuit and forces the expensive LLM path. Consume it here.
+    if raw[:1] == "\ufeff":
+        raw = raw[1:]
     try:
         # restkey collects overflow from ragged rows under a named key (not None,
         # whose value would be a list and break the strip); restval fills short rows.
