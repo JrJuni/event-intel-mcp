@@ -94,6 +94,30 @@ def test_csv_short_row_fills_missing_with_empty(tmp_path):
     assert cap.csv_rows[0]["description"] == ""
 
 
+def test_csv_utf8_bom_header_is_stripped(tmp_path):
+    """Excel / Windows CSV exports prepend a UTF-8 BOM (U+FEFF). It is NOT
+    whitespace, so a header.strip() leaves it glued to the first column name
+    ('\\ufeffcompany_name') — which silently defeats the CSV name-column
+    short-circuit and forces the expensive LLM path. Regression for the
+    Hannover×Siemens 2,885-row smoke that fell to the LLM path on this.
+
+    utf-8-sig is exactly how Excel/Windows write the BOM, so it reproduces the
+    real failure rather than a synthetic one.
+    """
+    p = tmp_path / "bom.csv"
+    p.write_text(
+        "company_name,detail_url\nAcme,https://acme.example\n",
+        encoding="utf-8-sig",
+    )
+    cap = capture_source(source_kind="csv_file", source_ref=str(p))
+    assert cap.csv_rows is not None and len(cap.csv_rows) == 1
+    keys = list(cap.csv_rows[0].keys())
+    # The first header is the clean name, NOT '\ufeffcompany_name'.
+    assert keys[0] == "company_name"
+    assert not any(k.startswith("\ufeff") for k in keys)
+    assert cap.csv_rows[0]["company_name"] == "Acme"
+
+
 def test_html_text_capture_works_inline():
     html = "<html><body><h2>Acme Co.</h2><p>We sell widgets to fortune 500s.</p></body></html>"
     cap = capture_source(source_kind="html_text", source_ref=html)
