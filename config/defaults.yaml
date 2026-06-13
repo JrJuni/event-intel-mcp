@@ -61,12 +61,27 @@ enrichment:
     enabled: true
     max_companies: 5               # max LLM proposal calls per event
     max_queries: 3                 # max alternate queries per company
+  pre_triage:                      # E2 Tier-1 evidence — fetch each exhibitor's detail-page body into
+    enabled: true                  # candidate.profile_text BEFORE triage so triage scores what a company DOES,
+                                   # not its bare name (diagnosed name-only P@10=0). Runs only on an over-cap
+                                   # roster (when triage discriminates). No search/LLM cost: HTTP + cache +
+                                   # trafilatura. Absent/false → triage falls back to source_snippet.
+    max_bytes_per_page: 1048576    # hard streaming byte cap per detail page (1 MiB)
+    timeout_s: 10
+    min_body_chars: 80             # detail pages are terse; below this → no profile (company stays UNKNOWN)
+    profile_max_chars: 600         # evidence shown to triage per company (token budget)
+    cache_ttl_days: 14             # URL-keyed page verdicts reused across runs
+    max_retries: 1                 # R3: ONE retry for transient shapes only (retry-playbook §2)
+    retry_pause_s: 2
+    throttle_s: 0.5                # politeness pause before each live fetch (single exhibition host)
   triage:                          # Y1D D2 — LLM roster triage when the extracted roster > max_companies:
-    enabled: true                  # score the FULL roster for product-domain relevance (batched, names+snippets
-                                   # only) and enrich the top-max_companies instead of "the first 30 in page order"
+    enabled: true                  # score the FULL roster for TARGET FIT from Tier-1 evidence (batched) and
+                                   # enrich the top-max_companies instead of "the first 30 in page order"
                                    # (p7 Siemens 2,885 exhibitors → coverage 1% without this). Absent key = off.
                                    # Total LLM failure degrades to the old first-N behaviour.
     batch_size: 120                # companies per triage call
+    fit_cutoff: 0.5                # E2: fit ≥ cutoff = KNOWN_FIT (kept first); below = KNOWN_NOFIT (cut first).
+                                   # UNKNOWN (no evidence) sits between — kept ahead of low-fit for Tier 2.
   fetch_timeout_seconds: 10
   fetch_body_max_chars: 2000
   cache_enabled: true              # Cache search responses per (provider, query, kind) hash

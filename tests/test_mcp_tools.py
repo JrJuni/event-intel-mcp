@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from event_intel.events import profile_fetch as _profile
 from event_intel.providers import embedding as _embedding
 from event_intel.providers import llm as _llm
 from event_intel.providers import search as _search
@@ -217,11 +218,28 @@ class _FakeVectorStore:
         raise NotImplementedError
 
 
+class _FakeProfileFetcher:
+    """No-op Tier-1 fetcher: NEVER touches the network (real one would do a
+    live robots.txt + httpx GET per candidate URL). Leaves profile_text None so
+    triage falls back to the snippet — byte-identical to the pre-E2 behaviour.
+    Dedicated wiring tests override this with a spy.
+    """
+
+    def __init__(self, **_):
+        pass
+
+    def fetch_roster(self, candidates):
+        return _profile.ProfileFetchResult(n_total=len(candidates))
+
+
 @pytest.fixture
 def all_fakes(monkeypatch, tmp_path):
     """Wire fake providers + inline config + isolated outputs dir."""
     monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: dict(_MIN_CONFIG))
     monkeypatch.setattr(_llm, "AnthropicProvider", _FakeLLM)
+    # Tier-1 profile fetch is offline-faked by default so over-cap triage tests
+    # never reach the network; tests that exercise the wiring re-patch it.
+    monkeypatch.setattr(_profile, "ProfileFetcher", _FakeProfileFetcher)
     # Inject the fake via the FACTORY (default provider is now ddgs, not brave) so
     # neither preflight nor build constructs a live network provider.
     monkeypatch.setattr(_search, "make_search_provider", lambda config=None: _FakeSearch())
@@ -808,6 +826,75 @@ def test_build_triage_absent_key_is_off(all_fakes, repo_root):
     assert any("capped enrichment at 2/3" in w for w in out["warnings"])
     names = [c["name"] for c in rs["companies"]]
     assert "NeuroDrive Inc." in names and "EdgeVision Co., Ltd." not in names
+
+
+def test_build_pre_triage_profiles_full_roster_before_triage(
+    all_fakes, monkeypatch, repo_root
+):
+    """E2 wiring: over-cap + pre_triage default-on → Tier-1 fetch_roster runs on
+    the FULL roster (not the capped selection) before triage, mutates
+    profile_text, and its warnings surface in the tool output."""
+    seen: dict[str, object] = {}
+
+    class _SpyProfiler:
+        def __init__(self, **_):
+            pass
+
+        def fetch_roster(self, candidates):
+            seen["n"] = len(candidates)
+            for c in candidates:
+                c.profile_text = f"PROFILE of {c.name}"
+            return _profile.ProfileFetchResult(
+                n_total=len(candidates),
+                warnings=["profile_fetch: 3/3 exhibitors profiled (spy)"],
+            )
+
+    monkeypatch.setattr(_profile, "ProfileFetcher", _SpyProfiler)
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: _enable_triage_config())
+    _write_sample_cards(repo_root)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_pretriage",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        max_companies=2, run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    assert seen["n"] == 3                                   # FULL roster, not the cap (2)
+    assert any("profiled (spy)" in w for w in out["warnings"])
+
+
+def test_build_pre_triage_disabled_skips_profile_fetch(
+    all_fakes, monkeypatch, repo_root
+):
+    """enrichment.pre_triage.enabled=false → fetch_roster is never constructed/
+    called, but triage itself still runs on the bare snippets."""
+    import json as _json
+
+    called = {"n": 0}
+
+    class _SpyProfiler:
+        def __init__(self, **_):
+            pass
+
+        def fetch_roster(self, candidates):
+            called["n"] += 1
+            return _profile.ProfileFetchResult(n_total=len(candidates))
+
+    monkeypatch.setattr(_profile, "ProfileFetcher", _SpyProfiler)
+    cfg = _enable_triage_config()
+    cfg["enrichment"]["pre_triage"] = {"enabled": False}
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: cfg)
+    _write_sample_cards(repo_root)
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_nopretriage",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        max_companies=2, run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    assert called["n"] == 0
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    assert "triage" in rs["llm_usage"]["stages"]            # triage still ran
 
 
 def test_build_e2e_korean_lang(all_fakes, repo_root):

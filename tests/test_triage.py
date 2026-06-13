@@ -2,14 +2,19 @@
 
 Corner-case set (self-generated, slice discipline):
 - roster ≤ cap → zero LLM calls, identity order, no warnings
-- over-cap → top-K by score, ORIGINAL roster order preserved, selection warning
-- one batch malformed → that batch neutral 0.5 + warning, other batches scored
-- every batch fails → exact first-N fallback + dedicated warning
-- target-fit axis (#17): resolved target_mode injected into the prompt; the
-  "may be cut" rule present; low-fit company (incl. competitor) is cut, no
-  forced pass-through
+- over-cap → top-K by band, ORIGINAL roster order preserved, selection warning
+- E2 two-signal: "unknown" parses to None; UNKNOWN companies kept ahead of
+  KNOWN-but-low-fit ones (KNOWN_FIT > UNKNOWN > KNOWN_NOFIT); fit_cutoff moves
+  the FIT/NOFIT boundary; profile_text used as evidence over the bare snippet
+- one batch malformed → that batch's companies become UNKNOWN + warning, other
+  batches scored
+- every batch fails → exact first-N fallback (all-UNKNOWN ranks in roster order)
+  + dedicated warning
+- target-fit axis (#17): resolved target_mode injected into the prompt; low-fit
+  company (incl. competitor) is cut, no forced pass-through
 - global indices across batches (misalignment would silently rank wrong rows)
-- parse: clamp / NaN / inf / non-numeric entries / fenced / no-wrapper / garbage
+- parse: clamp / NaN / inf / non-numeric entries / "unknown" / fenced /
+  no-wrapper / garbage
 - digest: happy path + customer profile (signals/pains/bad-fit), None cards,
   broken cards object (never raises)
 - ledger records stage="triage" with real usage; ledger=None safe
@@ -98,6 +103,33 @@ class _ExplodingLLM:
         raise RuntimeError("transport down")
 
 
+class _MapLLM:
+    """Returns a fixed value per company NAME — a float, or the string
+    "unknown" for a no-evidence verdict. Unlisted names default to 0.1.
+    """
+
+    def __init__(self, mapping: dict[str, object]):
+        self.mapping = mapping
+        self.calls = 0
+        self.model = "map-llm"
+        self.prompts: list[str] = []
+
+    def chat_once(self, *, system, user, max_tokens, temperature):
+        self.calls += 1
+        self.prompts.append(user)
+        scores: dict[str, object] = {}
+        for line in user.splitlines():
+            head, _, _ = line.partition(" — ")
+            idx_s, _, name = head.partition(". ")
+            if idx_s.strip().isdigit() and name:
+                scores[idx_s.strip()] = self.mapping.get(name.strip(), 0.1)
+        return _llm.LLMResponse(
+            text=json.dumps({"scores": scores}),
+            usage={"input_tokens": 10, "output_tokens": 5},
+            model=self.model,
+        )
+
+
 # ---------------------------------------------------------------- parse
 
 
@@ -127,6 +159,21 @@ def test_parse_unusable_inputs():
     assert _triage.parse_triage_response("no json here") is None
     assert _triage.parse_triage_response("[0.1, 0.2]") is None
     assert _triage.parse_triage_response('{"scores": {"x": "y"}}') is None
+
+
+def test_parse_unknown_maps_to_none():
+    # E2: the literal "unknown" (any case) is an explicit no-evidence verdict,
+    # parsed to None and routed to the UNKNOWN band — NOT dropped, NOT a number.
+    out = _triage.parse_triage_response(
+        '{"scores": {"0": 0.7, "1": "unknown", "2": "UNKNOWN", "3": "y"}}'
+    )
+    assert out == {0: 0.7, 1: None, 2: None}   # "3":"y" is non-numeric → dropped
+
+
+def test_parse_all_unknown_is_not_none():
+    # A response that is all-unknown is still usable (truthy dict of Nones),
+    # not a parse failure — those companies are KNOWN-unknown, not unscored.
+    assert _triage.parse_triage_response('{"scores": {"0": "unknown"}}') == {0: None}
 
 
 # ---------------------------------------------------------------- digest
@@ -188,9 +235,11 @@ def test_over_cap_selects_top_k_in_roster_order():
     assert stage["input_tokens"] == 200
     assert stage["models"] == ["fake-triage-model"]
     # prompt carried the digest + the target-fit axis (default mode customer)
+    # + the evidence-first instruction (E2: name is not evidence, "unknown")
     assert "Acme Vector DB" in llm.prompts[0]
     assert "TARGET MODE: customer" in llm.prompts[0]
-    assert "MAY BE CUT" in llm.prompts[0]
+    assert "not\nevidence" in llm.prompts[0] or "not evidence" in llm.prompts[0]
+    assert '"unknown"' in llm.prompts[0]
 
 
 def test_batches_use_global_indices():
@@ -207,9 +256,11 @@ def test_batches_use_global_indices():
     assert any(c.name == "FitCo Tail" for c in res.selected)
 
 
-def test_malformed_batch_goes_neutral_other_batches_scored():
-    # batch 0 returns garbage → its 2 companies score neutral 0.5;
-    # batch 1 scores normally → its FitCo (0.9) wins, NoMatch (0.1) loses.
+def test_malformed_batch_goes_unknown_other_batches_scored():
+    # batch 0 returns garbage → its 2 companies become UNKNOWN; batch 1 scores
+    # normally → FitCo Late (0.9, KNOWN_FIT) wins, NoMatch Late (0.1, NOFIT)
+    # loses. With cap 2: FitCo Late (band FIT) + the first UNKNOWN (band UNKNOWN,
+    # kept ahead of the low-fit NoMatch). Returned in roster order.
     llm = _TriageLLM(reply_overrides={0: "sorry, cannot help"})
     roster = [_cand("Neutral A"), _cand("Neutral B"),
               _cand("FitCo Late"), _cand("NoMatch Late")]
@@ -217,6 +268,7 @@ def test_malformed_batch_goes_neutral_other_batches_scored():
         roster, "digest", llm, max_companies=2, batch_size=2,
     )
     assert [c.name for c in res.selected] == ["Neutral A", "FitCo Late"]
+    assert res.unknown == {0, 1}
     assert any("1/2 batches unscored" in w for w in res.warnings)
     assert any("selected 2/4" in w for w in res.warnings)
 
@@ -320,5 +372,67 @@ def test_scores_diagnostic_map_covers_full_roster():
 
 def test_prompt_lang_ko_and_unknown_fallback():
     ko = _triage.load_triage_prompt("ko")
-    assert "채점 기준" in ko
+    assert "타깃 모드" in ko          # localized rubric present
+    assert "unknown" in ko           # the no-evidence verdict token is kept verbatim
     assert _triage.load_triage_prompt("fr") == _triage.load_triage_prompt("en")
+
+
+# ---------------------------------------------------------------- E2 two-signal
+
+
+def test_three_band_selection_fit_then_unknown_then_nofit():
+    # KNOWN_FIT (≥cutoff, fit desc) > UNKNOWN (roster order) > KNOWN_NOFIT.
+    # An UNKNOWN company outranks a KNOWN-but-low-fit one — no middle/low score
+    # is ever forced onto absent evidence.
+    roster = [_cand("LowFit Co"), _cand("Unknown Co"),
+              _cand("HighFit Co"), _cand("MidFit Co")]
+    llm = _MapLLM({
+        "LowFit Co": 0.2, "Unknown Co": "unknown",
+        "HighFit Co": 0.9, "MidFit Co": 0.6,
+    })
+    res = _triage.triage_roster(roster, "digest", llm, max_companies=3)
+    # top-3 indices {1,2,3} → roster order; LowFit (KNOWN_NOFIT) is cut.
+    assert [c.name for c in res.selected] == ["Unknown Co", "HighFit Co", "MidFit Co"]
+    assert res.unknown == {1}
+    assert res.scores == {0: 0.2, 2: 0.9, 3: 0.6}
+    assert any("had no usable evidence" in w for w in res.warnings)
+
+
+def test_fit_cutoff_controls_band_vs_unknown():
+    # The same 0.45 fit lands in different bands relative to an UNKNOWN company
+    # depending on the cutoff — proving fit_cutoff drives the FIT/NOFIT split.
+    def winner(cutoff: float) -> str:
+        roster = [_cand("Borderline"), _cand("Unknown Co")]
+        llm = _MapLLM({"Borderline": 0.45, "Unknown Co": "unknown"})
+        return _triage.triage_roster(
+            roster, "digest", llm, max_companies=1, fit_cutoff=cutoff,
+        ).selected[0].name
+
+    # 0.45 < 0.5 → Borderline is KNOWN_NOFIT, ranks BELOW unknown → unknown wins
+    assert winner(0.5) == "Unknown Co"
+    # 0.45 ≥ 0.4 → Borderline is KNOWN_FIT, ranks ABOVE unknown → Borderline wins
+    assert winner(0.4) == "Borderline"
+
+
+def test_profile_text_used_as_evidence_over_snippet():
+    # E2 Tier-1 wiring: when profile_text is populated, the roster listing the
+    # LLM sees carries it (what the company does), NOT the bare CSV snippet.
+    c = ExhibitorCandidate(name="Acme", source_snippet="CSV row 7: Acme | https://x")
+    c.profile_text = "Acme builds autonomous warehouse robots for logistics."
+    roster = [c, _cand("Filler One"), _cand("Filler Two")]
+    llm = _TriageLLM()
+    _triage.triage_roster(roster, "digest", llm, max_companies=2)
+    prompt = llm.prompts[0]
+    assert "autonomous warehouse robots" in prompt
+    assert "CSV row 7" not in prompt          # profile replaces the bare snippet
+
+
+def test_all_unknown_keeps_roster_order_like_first_n():
+    # Every company UNKNOWN (no evidence anywhere) → pure roster order, exactly
+    # the first-N guarantee, but WITHOUT inventing scores.
+    roster = [_cand(f"C{i}") for i in range(5)]
+    llm = _MapLLM({f"C{i}": "unknown" for i in range(5)})
+    res = _triage.triage_roster(roster, "digest", llm, max_companies=2)
+    assert [c.name for c in res.selected] == ["C0", "C1"]
+    assert res.scores == {}
+    assert res.unknown == set(range(5))

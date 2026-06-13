@@ -27,6 +27,7 @@ from event_intel.errors import ErrorCode, MCPError, Stage, envelope_from_excepti
 from event_intel.events import enrichment as _enrichment
 from event_intel.events import extraction as _extraction
 from event_intel.events import news_body as _news_body
+from event_intel.events import profile_fetch as _profile
 from event_intel.events import run_summary as _run_summary
 from event_intel.events import source_capture as _source_capture
 from event_intel.events import triage as _triage
@@ -276,6 +277,23 @@ def build_event_tier_list(
             _enrich_cap = max_companies or int(
                 (config.get("enrichment", {}) or {}).get("max_companies", 30)
             )
+            # 4.5a. Tier-1 evidence (E2): when triage is about to run on an
+            #       over-cap roster, fetch each exhibitor's detail-page body
+            #       into candidate.profile_text FIRST, so triage scores what a
+            #       company DOES (evidence) rather than its bare name. Only
+            #       worthwhile when triage actually discriminates (roster > cap)
+            #       — a roster ≤ cap is forwarded whole and needs no evidence.
+            #       Cheap tier: no search/LLM, just HTTP + cache + trafilatura.
+            #       Mutates candidates in place; never raises.
+            _pt_cfg = (config.get("enrichment", {}) or {}).get("pre_triage", {}) or {}
+            if bool(_pt_cfg.get("enabled", True)) and len(extraction.candidates) > _enrich_cap:
+                profiler = _profile.ProfileFetcher(
+                    cfg=_profile.ProfileFetchConfig.from_dict(_pt_cfg),
+                    cache_dir=Path.home() / ".event-intel" / "cache" / "profile",
+                    now=datetime.now(UTC),
+                )
+                profile_result = profiler.fetch_roster(extraction.candidates)
+                triage_warnings.extend(profile_result.warnings)
             triage_result = _triage.triage_roster(
                 extraction.candidates,
                 _triage.build_capability_digest(cards),
@@ -284,10 +302,11 @@ def build_event_tier_list(
                 batch_size=int(_triage_cfg.get("batch_size", 120)),
                 lang=lang,
                 target_mode=resolved_target_mode,
+                fit_cutoff=float(_triage_cfg.get("fit_cutoff", _triage.DEFAULT_FIT_CUTOFF)),
                 ledger=usage_ledger,
             )
             candidates_for_enrich = triage_result.selected
-            triage_warnings = triage_result.warnings
+            triage_warnings.extend(triage_result.warnings)
 
         # 5. Enrichment (S4) — optional.
         if enrichment_enabled and extraction.candidates:
