@@ -1,0 +1,66 @@
+{
+  "cap": 50,
+  "n_roster": 2735,
+  "triage_calls": 23,
+  "labeled_ranks": [
+    {
+      "grade": "bad_fit",
+      "rank": 1474,
+      "score": 0.1,
+      "name": "abilis"
+    },
+    {
+      "grade": "bad_fit",
+      "rank": 1471,
+      "score": 0.1,
+      "name": "abat"
+    },
+    {
+      "grade": "competitor",
+      "rank": 2476,
+      "score": 0.0,
+      "name": "abb"
+    },
+    {
+      "grade": "competitor",
+      "rank": 1526,
+      "score": 0.1,
+      "name": "aras"
+    },
+    {
+      "grade": "target",
+      "rank": 1850,
+      "score": 0.1,
+      "name": "machinemaze gmbh"
+    },
+    {
+      "grade": "target",
+      "rank": 182,
+      "score": 0.45,
+      "name": "precision resource canada"
+    },
+    {
+      "grade": "target",
+      "rank": 424,
+      "score": 0.4,
+      "name": "ming tai industrial"
+    },
+    {
+      "grade": "target",
+      "rank": 660,
+      "score": 0.35,
+      "name": "puma industrial"
+    }
+  ],
+  "score_distribution": {
+    "0.0": 260,
+    "0.1": 1108,
+    "0.2": 439,
+    "0.3": 407,
+    "0.4": 279,
+    "0.5": 219,
+    "0.6": 19,
+    "0.7": 4
+  },
+  "top_cap_cutoff_score": 0.5
+}

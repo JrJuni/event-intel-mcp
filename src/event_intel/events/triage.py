@@ -185,21 +185,117 @@ def parse_triage_response(text: str | None) -> dict[int, float | None] | None:
     return out or None
 
 
-def _roster_listing(candidates: list[ExhibitorCandidate], offset: int) -> str:
-    """``index. name — evidence`` per line. Evidence is Tier-1 ``profile_text``
+def _roster_listing(indexed: list[tuple[int, ExhibitorCandidate]]) -> str:
+    """``index. name — evidence`` per line, labelled by each candidate's ROSTER
+    index (not a contiguous 0..n). Evidence is Tier-1/Tier-2 ``profile_text``
     (what the company does) when present, else the bare ``source_snippet``.
+
+    Taking explicit ``(roster_index, candidate)`` pairs (rather than a slice +
+    offset) lets Tier 2 re-score a NON-CONTIGUOUS subset of UNKNOWN companies
+    while keeping every score keyed to its true roster position.
     """
     lines = []
-    for i, c in enumerate(candidates):
+    for idx, c in indexed:
         profile = (getattr(c, "profile_text", None) or "").strip().replace("\n", " ")
         if profile:
             evidence = profile[:_MAX_PROFILE_CHARS]
         else:
             evidence = (c.source_snippet or "").strip().replace("\n", " ")[:_MAX_SNIPPET_CHARS]
         lines.append(
-            f"{offset + i}. {c.name} — {evidence}" if evidence else f"{offset + i}. {c.name}"
+            f"{idx}. {c.name} — {evidence}" if evidence else f"{idx}. {c.name}"
         )
     return "\n".join(lines)
+
+
+def score_indexed(
+    indexed: list[tuple[int, ExhibitorCandidate]],
+    capability_digest: str,
+    llm_provider: object,
+    *,
+    batch_size: int = 120,
+    lang: str = "en",
+    target_mode: str = "customer",
+    ledger: object | None = None,
+) -> tuple[dict[int, float], set[int], int, int, int]:
+    """Score the given ``(roster_index, candidate)`` pairs for TARGET FIT in
+    batched LLM calls. Returns ``(known, unknown, calls, failed_batches,
+    n_batches)`` where ``known`` maps roster index → fit (the LLM judged it) and
+    ``unknown`` is the set of roster indices with no usable evidence (explicit
+    "unknown", a missing index, or a failed batch).
+
+    The shared scoring core for Tier 1 (full roster, via ``triage_roster``) and
+    Tier 2 (``tier2.resolve_unknowns`` re-scoring an UNKNOWN subset after it has
+    attached web evidence). NEVER raises — a batch-level exception marks every
+    company in that batch UNKNOWN.
+    """
+    bs = max(1, int(batch_size))
+    template = load_triage_prompt(lang)
+    known: dict[int, float] = {}
+    unknown: set[int] = set()
+    calls = 0
+    failed_batches = 0
+    n_batches = (len(indexed) + bs - 1) // bs
+    for b_start in range(0, len(indexed), bs):
+        batch = indexed[b_start : b_start + bs]
+        prompt = (
+            template
+            .replace("{digest}", str(capability_digest))
+            .replace("{mode}", str(target_mode or "customer"))
+            .replace("{roster}", _roster_listing(batch))
+        )
+        parsed: dict[int, float | None] | None = None
+        try:
+            resp = llm_provider.chat_once(
+                system=TRIAGE_SYSTEM, user=prompt,
+                max_tokens=_MAX_TOKENS, temperature=0.0,
+            )
+            calls += 1
+            if ledger is not None:
+                ledger.record(
+                    TRIAGE_STAGE,
+                    getattr(llm_provider, "model", ""),
+                    getattr(resp, "usage", None),
+                )
+            parsed = parse_triage_response(getattr(resp, "text", None))
+        except Exception:  # noqa: BLE001 — batch-level fallback, never fail the build
+            parsed = None
+        if parsed is None:
+            failed_batches += 1
+        for idx, _c in batch:
+            # Failed batch → all UNKNOWN. Missing index or explicit "unknown"
+            # → UNKNOWN. A finite number → KNOWN.
+            val = parsed.get(idx) if parsed is not None else None
+            if val is None:
+                unknown.add(idx)
+            else:
+                known[idx] = val
+    return known, unknown, calls, failed_batches, n_batches
+
+
+def select_by_band(
+    total: int,
+    known: dict[int, float],
+    unknown: set[int],
+    cap: int,
+    cutoff: float,
+) -> list[int]:
+    """Top-``cap`` roster indices by the band ordering KNOWN_FIT > UNKNOWN >
+    KNOWN_NOFIT, returned in ascending (original roster) order.
+
+    band: 2 = KNOWN_FIT (fit ≥ cutoff), 1 = UNKNOWN, 0 = KNOWN_NOFIT. Within a
+    band, higher fit first then roster order; UNKNOWN has no fit so it falls
+    back to pure roster order. An all-UNKNOWN roster ranks in roster order →
+    exactly the old first-N behaviour. Shared by Tier 1 and the Tier-2 re-select.
+    """
+    def _rank_key(i: int) -> tuple[int, float, int]:
+        if i in unknown:
+            return (-1, 0.0, i)                      # band 1
+        fit = known.get(i, 0.0)
+        band = 2 if fit >= cutoff else 0
+        return (-band, -fit, i)
+
+    ranked = sorted(range(total), key=_rank_key)
+    return sorted(ranked[:cap])
 
 
 def triage_roster(
@@ -233,62 +329,17 @@ def triage_roster(
             ],
         )
 
-    bs = max(1, int(batch_size))
     cutoff = float(fit_cutoff)
-    template = load_triage_prompt(lang)
-    known: dict[int, float] = {}
-    unknown: set[int] = set()
-    calls = 0
-    failed_batches = 0
-    n_batches = (total + bs - 1) // bs
-    for b_start in range(0, total, bs):
-        batch = candidates[b_start : b_start + bs]
-        prompt = (
-            template
-            .replace("{digest}", str(capability_digest))
-            .replace("{mode}", str(target_mode or "customer"))
-            .replace("{roster}", _roster_listing(batch, b_start))
-        )
-        parsed: dict[int, float | None] | None = None
-        try:
-            resp = llm_provider.chat_once(
-                system=TRIAGE_SYSTEM, user=prompt,
-                max_tokens=_MAX_TOKENS, temperature=0.0,
-            )
-            calls += 1
-            if ledger is not None:
-                ledger.record(
-                    TRIAGE_STAGE,
-                    getattr(llm_provider, "model", ""),
-                    getattr(resp, "usage", None),
-                )
-            parsed = parse_triage_response(getattr(resp, "text", None))
-        except Exception:  # noqa: BLE001 — batch-level fallback, never fail the build
-            parsed = None
-        if parsed is None:
-            failed_batches += 1
-        for i in range(b_start, b_start + len(batch)):
-            # Failed batch → all UNKNOWN. Missing index or explicit "unknown"
-            # → UNKNOWN. A finite number → KNOWN.
-            val = parsed.get(i) if parsed is not None else None
-            if val is None:
-                unknown.add(i)
-            else:
-                known[i] = val
-
-    # Three-band ranking. band: 2 = KNOWN_FIT, 1 = UNKNOWN, 0 = KNOWN_NOFIT.
-    # Within a band, higher fit first then roster order; UNKNOWN has no fit, so
-    # it falls back to pure roster order. A whole-roster failure leaves every
-    # index UNKNOWN → ranks in roster order → exactly the old first-N.
-    def _rank_key(i: int) -> tuple[int, float, int]:
-        if i in unknown:
-            return (-1, 0.0, i)                      # band 1
-        fit = known[i]
-        band = 2 if fit >= cutoff else 0
-        return (-band, -fit, i)
-
-    ranked = sorted(range(total), key=_rank_key)
-    selected_idx = sorted(ranked[:cap])
+    known, unknown, calls, failed_batches, n_batches = score_indexed(
+        list(enumerate(candidates)),
+        capability_digest,
+        llm_provider,
+        batch_size=batch_size,
+        lang=lang,
+        target_mode=target_mode,
+        ledger=ledger,
+    )
+    selected_idx = select_by_band(total, known, unknown, cap, cutoff)
     selected = [candidates[i] for i in selected_idx]
 
     warnings: list[str] = []
