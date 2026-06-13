@@ -6,8 +6,25 @@
 
 ## 진행 중
 
-- **다음 phase — 비용 최적화(#16 ①④⑤) + 홈페이지 크롤 증거 lane (2026-06-11 사용자 결정, plan `~/.claude/plans/config-zero-mossy-toucan.md` v1)**
-  - D3 실측 비용($5.06/run Sonnet 환산)이 예상보다 높아 #16 즉시 착수. **검증은 전부 skeleton + mock(offline pytest) — 라이브 스모크/벤치마크 런 금지**(사용자 지시). 레버 범위: **① CSV 직변환 + ④ 스테이지별 모델 right-sizing + ⑤ LLM 결과 캐시** (②prompt-caching ③Batch ⑥Brave는 deferred). 추가: **뉴스 검색 → 회사 홈페이지 크롤 대체 실험**(identity + /press activity 증거, floor 임계 불변, config 가역).
+- **비용 최적화(#16 ①④⑤) + 홈페이지 크롤 증거 lane ✅ 전체 완료 (2026-06-11 착수, plan `config-zero-mossy-toucan.md` v1 [완료·아카이브] — S0~S6, PR #105(S0 동승)·#106~#111)**
+  - **계기.** D3 실측 비용 **$5.06/run**(Sonnet-4.6 환산, p7 fullx 2,885사)이 예상보다 높아 #16 즉시 착수. **검증은 전부 skeleton + mock(offline pytest) — 라이브 스모크/벤치마크 런 0회**(사용자 지시). 비용 효과는 실측 baseline에서의 **투영치만** 보고(전부 PROVISIONAL). 추가로 사용자 선택 "뉴스 대체 실험": activity 증거를 뉴스 검색 대신 회사 자체 /press·/news 페이지에서.
+  - ✅ **S0** (#105 동승) — D3 문서 마감(잔여 라이브런 p6 재실행·p1 mini 취소 명기).
+  - ✅ **S1 ① CSV 직변환** (#106) — CSV 소스는 name-컬럼 휴리스틱(en/ko 헤더 우선순위 리스트)으로 candidate 직생성 → **extraction LLM 0콜·$0**. 탐지 실패 → 기존 LLM 경로 fallback(warning) + `extraction.csv_short_circuit: false` escape hatch. CSV head-truncation 구조 결함(p7의 청크캡 탈락)도 동시 제거.
+  - ✅ **S2 ④ right-sizing** (#107) — `llm.triage_model` / `llm.fit_model`(기본 Haiku, **품질 PROVISIONAL — 라이브 검증 차후**), rationale은 Sonnet 유지. ledger에 stage별 실제 모델 단가 환산 `blended_cost_usd`(schema v2; 기존 `reference_costs_usd` 연속성 유지). 키 부재 시 기존 동작, oauth provider는 no-op + warning.
+  - ✅ **S3 ⑤ LLM extraction 캐시** (#108) — `events/llm_cache.py`: per-chunk 응답 디스크 캐시, 키 `sha256(version|model|lang|prompt_sha|chunk_sha)`(prompt **불변부만** hash — chunk 카운터 등 휘발 토큰 제외, 재실행·재청킹에서 hit 보존). hit = LLM 0콜 + `calls_cached`(토큰 미합산). "75분 빌드가 chunk 39에서 전사"(retry-playbook §3.6) 손실의 근본 처방.
+  - ✅ **S4 홈페이지 fetcher** (#109) — `events/homepage_evidence.py` `HomepageCrawler`(robots 게이트 → byte cap → trafilatura, transient 미캐시 + 1회 재시도, **절대 raise 안 함** — 실패는 identity-only degrade) + **`press_page` evidence type 신설**: same-registrable-domain의 /press·/news·/newsroom·/media 서브페이지 = activity 증거(third-party는 방어적 False, type 직접 지정 — `classify_url_type` 미경유). **floor 임계(2→S/A, 1→A, 0→B) 불변**(매핑 변경은 사용자 승인 범위).
+  - ✅ **S5 enrichment 배선** (#110) — `enrichment.evidence_source: homepage`(defaults 출하; **코드 기본값은 news** — 키 부재 시 byte-동일, config 한 줄로 가역). homepage 모드: news 검색·rescue news 재시도·evidence ×3 쿼리·news_body lane 전부 skip → **per-company 검색 쿼리 ≤1(URL 보유 시 0)**. `homepage_excerpt`가 llm_fit/rationale 입력(뉴스 타이틀 대역, 사용자 승인 입력 변경). `ENRICH_CACHE_VERSION` 7→8 + fingerprint lane 키(news↔homepage 교차 재사용 차단).
+  - ✅ **S6** (#111) — 문서 마감 + 투영 비용표(아래). backlog #16 ①④⑤ ✅ / ②③⑥ ⏸️, architecture.md evidence 절 갱신, patchnotes.
+  - **투영 비용표 (p7 fullx 실측 $5.06 기준 — 전부 PROVISIONAL, 라이브 검증 차후 phase)**:
+    | Stage | Baseline | +① CSV | +④ right-size | +⑤ 캐시(재실행) |
+    |---|---|---|---|---|
+    | extraction | $4.35 | **$0**(CSV) / $4.35(HTML) | 동일 | HTML 재실행 ~$0 |
+    | triage | $0.61 | $0.61 | **~$0.20** | 동일 |
+    | fit | $0.09 | $0.09 | **~$0.03** | 동일 |
+    | rationale 등 | ~$0.01 | ~$0.01 | ~$0.01 | 동일 |
+    | **합계(CSV)** | **$5.06** | $0.71 | **~$0.24** (≈95%↓) | 재실행 ~$0.24 |
+    | 검색 쿼리/run | ~150 | ~150 | ~150 | homepage lane: **~30**(CSV+url ~0) |
+  - **남은 것(차후 phase)**: ②prompt-caching ③Batch ⑥Brave rescue deferred(backlog #16) · homepage lane 품질 / Haiku 품질 / 캐시 hit률 / CSV 휴리스틱 오탐의 **라이브 검증** · R2 재가동 시 `evidence_source` 핀 여부 재논의 · buying_signal의 press_page 추출 여부(open).
 
 - **Y1D — capability_fit LLM-first 재설계 (D0~D3) ✅ 전체 완료 (2026-06-11, plan `config-zero-mossy-toucan.md` v3 [완료·아카이브], D0~D2 머지 + D3 branch `y1d-d3-measure`)**
   - **계기.** capability_fit(가중 0.30)이 cosine에서 전 라벨 ~0.5 평탄(양성 식별 실패) + 대형 로스터(p7 2,885사)는 head-truncation으로 gold 전원 추출 전 탈락. 사용자 결정: cosine→**LLM 명시 판단을 기본값으로**(cosine은 폴백/escape hatch), 대형 로스터는 **LLM 트리아지 깔때기**(벤치 hack 불가), 단 **비용 계측 선행**.

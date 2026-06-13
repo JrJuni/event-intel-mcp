@@ -150,9 +150,21 @@ exhibitor_candidates.yaml  (raw)
    │   the top-max_companies go to enrichment — instead of "first 30 in page
    │   order" (p7: 2,885 exhibitors → coverage 1%). roster ≤ cap → 0 calls;
    │   total LLM failure → first-N (old behaviour); competitors must PASS
-   │ enrichment (web+news search per exhibitor via search.provider, cached, max 30 companies)
+   │ enrichment (per exhibitor via search.provider, cached, max 30 companies)
    │   ├ deterministic official URL rule (Levenshtein + keyword overlap)
-   │   ├ news collection ladder (zero-config news plan, ZNC):
+   │   ├ activity-evidence lane switch (`enrichment.evidence_source`, #16 S5;
+   │   │    shipped default `homepage`, code default `news` — one config line
+   │   │    reverts):
+   │   │    homepage → own-site crawl (events/homepage_evidence.py): robots-
+   │   │      gated, byte-capped, trafilatura → `press_page` activity evidence
+   │   │      from same-registrable-domain /press·/news·/newsroom·/media
+   │   │      subpages + homepage_excerpt (llm_fit/rationale input). News
+   │   │      search, evidence ×3 queries, and the news-body lane are skipped
+   │   │      → per-company search queries ≤1 (0 when extraction supplied the
+   │   │      URL). Rescue keeps its web retry (recovers official_url).
+   │   │    news → the full ZNC ladder below
+   │   ├ news collection ladder (zero-config news plan, ZNC — active when
+   │   │    `evidence_source: news`):
    │   │    ddgs backend=auto → classified retries (genuine-empty ≠ failure)
    │   │    → Google News RSS fallback (news-only, fires on degraded queries)
    │   │    → article BODY fetch (robots-gated, byte-capped, trafilatura)
@@ -196,6 +208,8 @@ tier_list.md  +  tier_list.yaml  +  run_summary.json
 
 `needs_review` is **not** part of the floor — it's an orthogonal lifecycle for low-confidence candidates that bypass scoring entirely. Reported in a dedicated section of `tier_list.md`.
 
+**Homepage evidence lane (#16 S4/S5)**: with `enrichment.evidence_source: homepage` (shipped default), activity evidence comes from the company's **own** press pages instead of news search. Identity semantics are unchanged (`official_url`); same-registrable-domain press subpages that return 200 with body ≥ `min_body_chars` become `press_page` **activity** evidence — the type is assigned directly by the crawler, never via `classify_url_type`, and a third-party `press_page` is defensively non-activity. **Floor thresholds (2 → S/A, 1 → A max, 0 → B max) are unchanged.** The crawled homepage excerpt feeds llm_fit and the rationale prompt as the stand-in for absent news titles (user-authorized scoring-input change). Parked/thin/robots-denied/unreachable pages degrade to identity-only — same shape as "news search returned 0". `evidence_source: news` restores the full ZNC ladder byte-identically; rows enriched under one lane are never reused under the other (`ENRICH_CACHE_VERSION` 8 + lane key in the config fingerprint).
+
 **Entity-relevance gate (ZNC C2)**: news only counts toward the floor (and buying_signal) if `is_relevant_news` passes — official-domain same-site bypass → whole-token name mention → for AMBIGUOUS names (single common-English-word distinctive token, e.g. Dust/Ramp/Chroma) an additional ≥1 context-term co-occurrence from the company's own snippet/description. Fail-open without context. Fetched article bodies are gated by the same predicate (B2), and near-duplicate bodies (wire syndication) are dropped. Per-article body↔product RAG relatedness is computed post-scoring and recorded in the report only (`news_relatedness`, REPORT_SCHEMA_VERSION 5) — no path to scores/tiers.
 
 ## Process model
@@ -214,6 +228,8 @@ No separate ML worker (unlike bd-coldcall-agent). The complexity wasn't justifie
       event_{workspace_id}_{slug}/   # per-event evidence chunks
   cache/
     search/{ws}/{sha1(provider+query+kind+lang+count+days)}.json  # per-call search response cache (provider-keyed)
+    llm/{sha256(version|model|lang|prompt_sha|chunk_sha)}.json    # extraction per-chunk LLM response cache (#16-⑤)
+    homepage/...                                                  # homepage/press-page crawl cache (#16 homepage lane, URL-keyed)
   artifacts/
     {workspace_id}/{event_slug}/     # acquisition ladder output
       source.html | source.json      # captured page or extracted/probed JSON roster
