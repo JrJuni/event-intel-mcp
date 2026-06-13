@@ -655,6 +655,70 @@ def test_build_rerun_serves_extraction_from_llm_cache(all_fakes, monkeypatch, re
     assert out2["candidates_extracted"] == out1["candidates_extracted"]
 
 
+# ---------- #16 S5: evidence_source=homepage (build-level) ----------
+
+
+def test_build_homepage_mode_zero_news_queries_crawler_wired(all_fakes, monkeypatch, repo_root):
+    """enrichment.evidence_source=homepage → the build issues ZERO news-kind
+    search queries and constructs the crawler through the lazy module-reference
+    seam (so the monkeypatched class is what runs)."""
+    import copy
+    import json as _json
+
+    from event_intel.events import evidence as _evidence
+    from event_intel.events import homepage_evidence as _homepage
+
+    cfg = copy.deepcopy(_MIN_CONFIG)
+    cfg["enrichment"]["evidence_source"] = "homepage"
+    cfg["enrichment"]["homepage"] = {"enabled": True, "max_subpages": 3}
+    monkeypatch.setattr(_preflight, "load_config", lambda *a, **kw: cfg)
+
+    search_calls: list[dict] = []
+
+    class _RecordingSearch(_FakeSearch):
+        def search(self, query, *, kind, count, days=None, lang="en"):
+            search_calls.append({"query": query, "kind": kind})
+            return super().search(query, kind=kind, count=count, days=days, lang=lang)
+
+    monkeypatch.setattr(_search, "make_search_provider", lambda config=None: _RecordingSearch())
+
+    crawl_calls: list[str] = []
+
+    class _FakeCrawler:
+        def __init__(self, *, cfg, cache_dir, failure_log=None, now=None, **_):
+            self.cfg = cfg
+
+        def crawl(self, official_url):
+            crawl_calls.append(official_url)
+            return _homepage.HomepageCrawlResult(
+                evidence=[
+                    _evidence.EvidenceItem(
+                        type=_evidence.PRESS_PAGE,
+                        url=f"{official_url.rstrip('/')}/news",
+                        source_domain=_evidence.domain_of(official_url),
+                    )
+                ],
+                excerpt="Homepage body head.",
+                pages_fetched=2,
+            )
+
+    monkeypatch.setattr(_homepage, "HomepageCrawler", _FakeCrawler)
+
+    out = build_tool(
+        workspace_id="default", event_name="Expo", event_slug="expo_homepage",
+        source_kind="html_file",
+        source_ref=str(repo_root / "tests" / "fixtures" / "events" / "sample_exhibitors.html"),
+        run_rationale=False,
+    )
+    assert out["ok"] is True, out
+    assert not any(c["kind"] == "news" for c in search_calls), search_calls
+    # Mobius + NeuroDrive carry URLs from extraction; EdgeVision's comes from
+    # the single web query — all three end up crawled.
+    assert len(crawl_calls) == 3, crawl_calls
+    rs = _json.loads(Path(out["run_summary_path"]).read_text(encoding="utf-8"))
+    assert len(rs["companies"]) == 3
+
+
 # ---------- Y1D D2: LLM roster triage (over-cap selection) ----------
 
 

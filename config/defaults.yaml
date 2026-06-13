@@ -29,6 +29,20 @@ search:
 
 enrichment:
   max_companies: 30                # Per-event cap on enriched exhibitors
+  evidence_source: homepage        # #16 S5 (user decision 2026-06-11): homepage | news. homepage = activity
+                                   # evidence from the company's OWN /news /press pages (crawl, 0 search
+                                   # queries) instead of news search (~150 queries/run; June = ddgs-only).
+                                   # Code default when the key is absent is news — one line reverts the lane.
+  homepage:                        # Homepage-crawl lane settings (all PROVISIONAL — offline phase, no live runs)
+    enabled: true
+    max_subpages: 3                # own-domain press/news pages fetched per company
+    max_bytes_per_page: 1048576    # hard streaming byte cap per page (1 MiB)
+    timeout_s: 10
+    min_body_chars: 200            # below this → thin page, no evidence granted
+    cache_ttl_days: 14             # URL-keyed page verdicts reused across runs
+    excerpt_max_chars: 2000        # homepage body head carried as llm_fit/rationale input
+    max_retries: 1                 # R3: ONE retry for transient shapes only (retry-playbook §2)
+    retry_pause_s: 2
   count_web: 5                     # web results per official-URL query (legacy alias: brave_count_web)
   count_news: 20                   # news results per company (user decision 2026-06-11, backlog #15: 12 left big-co bodied-news at 5–9 vs the ≥10 bar; legacy alias: brave_count_news)
   news_days_back: 180

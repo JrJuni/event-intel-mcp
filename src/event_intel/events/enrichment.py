@@ -60,7 +60,7 @@ if TYPE_CHECKING:
 #   v7 → entity-gate self-token fix (live AIEWF): ctx co-occurrence no longer
 #        satisfiable by the company's own name token, so v6 rows gated with the
 #        broken predicate (wrong-entity news in evidence) must re-enrich.
-ENRICH_CACHE_VERSION = 7
+ENRICH_CACHE_VERSION = 8
 
 
 def _is_fresh(timestamp_raw: str | None, *, now: datetime, ttl_days: int | None) -> bool:
@@ -110,6 +110,10 @@ def _config_fingerprint(enrichment_cfg: dict, *, provider_sig: str = "") -> str:
         "news_entity_gate": enrichment_cfg.get("news_entity_gate", {}) or {},
         # N4 — query rescue changes what we fetch for blocked-and-empty rows.
         "query_rescue": enrichment_cfg.get("query_rescue", {}) or {},
+        # #16 S5 — the homepage lane swaps the activity-evidence source entirely;
+        # rows enriched under one source must not be reused under the other.
+        "evidence_source": enrichment_cfg.get("evidence_source", "news"),
+        "homepage": enrichment_cfg.get("homepage", {}) or {},
     }
     blob = json.dumps(relevant, sort_keys=True, default=str)
     return hashlib.sha1(blob.encode()).hexdigest()[:16]
@@ -217,6 +221,10 @@ class EnrichedExhibitor:
     extraction_confidence: float = 1.0
     enrichment_status: str = "enriched"   # "enriched" | "needs_review" | "failed"
     enrichment_warnings: list[str] = field(default_factory=list)
+    # #16 S5 — homepage-lane crawl excerpt (body head of the verified homepage).
+    # Feeds llm_fit / rationale as evidence text; None in news mode or when the
+    # homepage was thin/parked/unreachable.
+    homepage_excerpt: str | None = None
     # True iff at least one search query for this row degraded to empty (e.g.
     # rate-limit). Degraded rows are persisted for durability but never reused
     # from resume, so the next run retries them (news plan N1).
@@ -469,6 +477,7 @@ def _to_dict(
         "enrichment_status": row.enrichment_status,
         "enrichment_warnings": row.enrichment_warnings,
         "degraded": row.degraded,
+        "homepage_excerpt": row.homepage_excerpt,
         "_cache_version": ENRICH_CACHE_VERSION,
         "input_fp": input_fp,
         "enriched_at": enriched_at,
@@ -499,6 +508,7 @@ def _from_dict(d: dict) -> EnrichedExhibitor:
         enrichment_status=d.get("enrichment_status", "enriched"),
         enrichment_warnings=list(d.get("enrichment_warnings", [])),
         degraded=bool(d.get("degraded", False)),
+        homepage_excerpt=d.get("homepage_excerpt"),
     )
 
 
@@ -558,6 +568,7 @@ def enrich_exhibitors(
     resume_path: Path | None = None,
     failure_log_path: Path | None = None,
     body_fetcher: object | None = None,
+    homepage_crawler: object | None = None,
     llm_provider: object | None = None,
     max_companies: int | None = None,
     refresh: bool = False,
@@ -649,11 +660,42 @@ def enrich_exhibitors(
     rescue_max_companies = int(rescue_cfg.get("max_companies", 5))
     rescue_max_queries = int(rescue_cfg.get("max_queries", 3))
     rescued_companies = 0
+    # #16 S5 — activity-evidence source. Code default is "news" (absent key =
+    # exact pre-S5 behavior); shipped defaults.yaml pins "homepage" — the lane
+    # is reversible with one config line. In homepage mode the news search and
+    # the ×3 evidence queries are skipped entirely (per-company queries ≤ 1)
+    # and activity comes from the company's own press pages via the crawler.
+    evidence_source = str(enrichment_cfg.get("evidence_source") or "news").lower()
+    homepage_cfg_raw = enrichment_cfg.get("homepage", {}) or {}
+    homepage_mode = evidence_source == "homepage"
+    bad_evidence_source: str | None = None
+    if evidence_source not in ("news", "homepage"):
+        bad_evidence_source = evidence_source
+        homepage_mode = False  # unknown value → fall back to the legacy lane
+    if (
+        homepage_mode
+        and homepage_crawler is None
+        and bool(homepage_cfg_raw.get("enabled", True))
+    ):
+        from event_intel.events import homepage_evidence as _homepage
+
+        homepage_crawler = _homepage.HomepageCrawler(
+            cfg=_homepage.HomepageCrawlConfig.from_dict(homepage_cfg_raw),
+            cache_dir=home / "cache" / "homepage",
+            failure_log=FailureLog(
+                home / "diagnostics" / workspace_id / "fetch_failures.jsonl",
+                base_fields={"workspace": workspace_id},
+            ),
+            now=now,
+        )
     # B1 — article body fetch lane. Built only when config enables it (absent
     # key = off, like evidence_queries, so existing callers/tests keep their
     # exact network behaviour); tests inject a fake via the body_fetcher param.
+    # Homepage mode collects no news, so the body lane is never constructed.
     news_body_cfg = enrichment_cfg.get("news_body", {}) or {}
-    if body_fetcher is None and bool(news_body_cfg.get("enabled", False)):
+    if homepage_mode:
+        body_fetcher = None
+    elif body_fetcher is None and bool(news_body_cfg.get("enabled", False)):
         from event_intel.events import news_body as _news_body
 
         body_fetcher = _news_body.NewsBodyFetcher(
@@ -672,6 +714,17 @@ def enrich_exhibitors(
     cap = max_companies or max_default
     capped = candidates[:cap]
     warnings: list[str] = []
+    if bad_evidence_source is not None:
+        warnings.append(
+            f"enrichment.evidence_source={bad_evidence_source!r} is unknown — "
+            "falling back to 'news' (valid: news | homepage)"
+        )
+    if homepage_mode and homepage_crawler is None:
+        warnings.append(
+            "evidence_source=homepage but enrichment.homepage.enabled=false — "
+            "news search is skipped AND no homepage crawl runs (identity-only "
+            "evidence; activity floor component will be 0)"
+        )
     if "brave_count_web" in enrichment_cfg or "brave_count_news" in enrichment_cfg:
         warnings.append(
             "config uses legacy enrichment.brave_count_* keys — rename to "
@@ -709,7 +762,12 @@ def enrich_exhibitors(
         else:
             to_enrich_names.append(cand.name)
 
-    enabled_suffixes = [suffix for enabled, suffix in ev_enabled.values() if enabled]
+    # Homepage mode: the ×3 evidence queries are part of the news-search lane's
+    # query budget — skipped wholesale (activity comes from the crawl instead).
+    enabled_suffixes = (
+        [] if homepage_mode
+        else [suffix for enabled, suffix in ev_enabled.values() if enabled]
+    )
     assigned_queries = allocate_round_robin(
         to_enrich_names, enabled_suffixes,
         per_company_cap=ev_max_per_company, event_cap=ev_max_extra,
@@ -770,28 +828,31 @@ def enrich_exhibitors(
                     f"scored above {url_threshold} for official-site detection"
                 )
 
-        # 2) News signals
-        news_query = f'"{cand.name}"'
-        news_hits = _search_with_cache(
-            cache=cache, cache_enabled=cache_enabled,
-            search_provider=search_provider, query=news_query,
-            kind="news", count=count_news, lang=lang, days=news_days,
-            hits_counter=(lambda hit: None),
-            now=now, refresh=refresh, failure_log=failure_log,
-        )
-        _tally(news_hits, row)
-        for hit in news_hits["results"]:
-            # Drop utility/non-article pages (login/docs/privacy…) — not real
-            # buying signals. Filter by path, so newsroom press releases stay.
-            if not _is_article_like(hit.url):
-                continue
-            row.news_signals.append(
-                NewsSignal(
-                    title=hit.title, url=hit.url, snippet=hit.snippet,
-                    source=hit.source,
-                    published_at=hit.published_at.isoformat() if hit.published_at else None,
-                )
+        # 2) News signals — skipped wholesale in homepage mode (#16 S5): the
+        #    activity lane is the company's own press pages, not news search.
+        if not homepage_mode:
+            news_query = f'"{cand.name}"'
+            news_hits = _search_with_cache(
+                cache=cache, cache_enabled=cache_enabled,
+                search_provider=search_provider, query=news_query,
+                kind="news", count=count_news, lang=lang, days=news_days,
+                hits_counter=(lambda hit: None),
+                now=now, refresh=refresh, failure_log=failure_log,
             )
+            _tally(news_hits, row)
+            for hit in news_hits["results"]:
+                # Drop utility/non-article pages (login/docs/privacy…) — not
+                # real buying signals. Filter by path, so newsroom press
+                # releases stay.
+                if not _is_article_like(hit.url):
+                    continue
+                row.news_signals.append(
+                    NewsSignal(
+                        title=hit.title, url=hit.url, snippet=hit.snippet,
+                        source=hit.source,
+                        published_at=hit.published_at.isoformat() if hit.published_at else None,
+                    )
+                )
 
         # 2b) N4 — LLM query-rescue (last resort): NO official URL, NO news,
         #     AND at least one query degraded → we likely MISSED this company
@@ -852,6 +913,10 @@ def enrich_exhibitors(
                         _pick_official_url(cand.name, web2["results"], threshold=url_threshold)
                         or _pick_official_url(q, web2["results"], threshold=url_threshold)
                     )
+                if homepage_mode:
+                    # Homepage mode: rescue only retries the official-site
+                    # query — news search stays off in this lane.
+                    continue
                 news2 = _search_with_cache(
                     cache=cache, cache_enabled=cache_enabled,
                     search_provider=search_provider, query=f'"{q}"',
@@ -956,6 +1021,16 @@ def enrich_exhibitors(
                     source_domain=domain_of(row.official_url),
                 )
             )
+        # #16 S5 — homepage lane: crawl the official site for press_page
+        # activity evidence + a fit-input excerpt. The crawler never raises;
+        # its own official_url item merges with the one above (same canonical
+        # URL). No official URL → identity-only degrade, same as the legacy
+        # "news search returned 0" shape.
+        if homepage_mode and homepage_crawler is not None and row.official_url:
+            hp = homepage_crawler.crawl(row.official_url)
+            raw_ev.extend(hp.evidence)
+            row.homepage_excerpt = hp.excerpt
+            row.enrichment_warnings.extend(hp.warnings)
         # Gate news → floor evidence by relevance too (review round-2 #1): the
         # news query is name-quoted but search engines aren't exact, so an
         # off-topic article shouldn't let official_url + 1 article reach
